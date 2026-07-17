@@ -1,0 +1,69 @@
+{
+  "creator": "Bryan",
+  "videos_analyzed": 1,
+  "metrics": {
+    "editing": {
+      "videos_measured": 1,
+      "total_cuts": 6,
+      "total_duration_s": 59.1,
+      "avg_cuts_per_min": 6.1,
+      "avg_shot_length_s": 8.4,
+      "per_video": [
+        {
+          "video": "axTfiU614sI.mp4",
+          "duration_s": 59.1,
+          "cuts": 6,
+          "cuts_per_min": 6.1,
+          "avg_shot_length_s": 8.4
+        }
+      ]
+    },
+    "speech": {
+      "avg_wpm": 202.2,
+      "per_video": [
+        {
+          "video": "axTfiU614sI.mp4",
+          "words": 199,
+          "duration_s": 59.1,
+          "wpm": 202.2
+        }
+      ]
+    },
+    "signature_ngrams": []
+  },
+  "style": {
+    "tone": "Técnico e experimental",
+    "sentence_rhythm": "Frases longas e detalhadas, com objetivo de informar e justificar",
+    "persona": "Expert científico dedicado e inovador",
+    "hook_patterns": [
+      {
+        "pattern": "Revelação inovadora pessoal",
+        "why_it_works": "Ele instiga a curiosidade ao propor uma narrativa de inovação pessoal e científica, prendendo o espectador imediatamente ao descrever um projeto pessoal significativo que promete resultados extraordinários.",
+        "example": "I've been spending millions of dollars trying to create the perfect diet."
+      }
+    ],
+    "copy_structure": "Introduz com um gancho sobre o esforço e a inovação. Em seguida, entra em detalhes sobre a rotina diária e específica, enfatizando a singularidade e ciência por trás das escolhas. Fecha com uma visão abrangente do impacto.",
+    "signature_expressions": [
+      "Green Giant",
+      "collagen peptides",
+      "super veggie",
+      "nutty pudding"
+    ],
+    "persuasion_tactics": [
+      "Uso de estatísticas pessoais para comprovar eficácia (\"meu ritmo de envelhecimento é mais lento que a média de uma criança de 10 anos\")",
+      "Apelo à autoridade científica (\"olhamos evidências científicas\")"
+    ],
+    "evidence_notes": "As medições indicam uma taxa média de palavras por minuto de 202.2, sugerindo um ritmo rápido. No entanto, não há n-grams característicos fornecidos para identificar expressões de assinatura específicas ou padrões repetidos."
+  },
+  "editing": {
+    "cut_cadence": "Cortes a cada 8,4 segundos em média, com um total de 6 cortes em um minuto de vídeo.",
+    "shot_types": "Planos médios de uma pessoa em pé na cozinha, intercalados com close-ups de comida na mesa.",
+    "text_overlay_style": "Sobreposição de texto em letras maiúsculas, palavras-chave destacadas em branco com borda preta. Posição central na tela.",
+    "b_roll_usage": "Uso de B-roll limitado a close-ups de comida, sem gráficos ou memes adicionais.",
+    "visual_identity": "Cenário de cozinha com iluminação natural. Paleta de cores neutras, incluindo tons de cinza e branco.",
+    "retention_tricks": [
+      "Mudança de plano entre a pessoa e a comida para manter o interesse visual."
+    ],
+    "evidence_notes": "Não foi possível concluir o uso de transições especiais além dos cortes diretos disponíveis nos frames."
+  }
+}
