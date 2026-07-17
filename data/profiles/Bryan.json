@@ -32,38 +32,39 @@
     "signature_ngrams": []
   },
   "style": {
-    "tone": "Técnico e experimental",
-    "sentence_rhythm": "Frases longas e detalhadas, com objetivo de informar e justificar",
-    "persona": "Expert científico dedicado e inovador",
+    "tone": "Technical and Scientifically-focused",
+    "sentence_rhythm": "The speech uses complex, multi-clause sentences and occasional short ones, at a fast pace of 202.2 words per minute.",
+    "persona": "Data-driven optimizer and experimenter",
     "hook_patterns": [
       {
-        "pattern": "Revelação inovadora pessoal",
-        "why_it_works": "Ele instiga a curiosidade ao propor uma narrativa de inovação pessoal e científica, prendendo o espectador imediatamente ao descrever um projeto pessoal significativo que promete resultados extraordinários.",
-        "example": "I've been spending millions of dollars trying to create the perfect diet."
+        "pattern": "Curiosity invoking with extravagant claims",
+        "why_it_works": "Starts with an intriguing claim about spending millions and consulting organs, which piques curiosity and invites the audience to learn more.",
+        "example": "\"I've been spending millions of dollars trying to create the perfect diet.\""
+      },
+      {
+        "pattern": "Credibility through personal experience",
+        "why_it_works": "Personal achievements such as slower aging add authority and stimulate interest on the effectiveness of the regimen.",
+        "example": "\"My speed of aging is currently slower than the average 10-year-old.\""
       }
     ],
-    "copy_structure": "Introduz com um gancho sobre o esforço e a inovação. Em seguida, entra em detalhes sobre a rotina diária e específica, enfatizando a singularidade e ciência por trás das escolhas. Fecha com uma visão abrangente do impacto.",
-    "signature_expressions": [
-      "Green Giant",
-      "collagen peptides",
-      "super veggie",
-      "nutty pudding"
-    ],
+    "copy_structure": "The content opens with a shocking claim about a large investment and scientific consultation, followed by an authoritative statement about the results, then shifts to a detailed daily regimen, concluding with a summary of caloric intake.",
+    "signature_expressions": [],
     "persuasion_tactics": [
-      "Uso de estatísticas pessoais para comprovar eficácia (\"meu ritmo de envelhecimento é mais lento que a média de uma criança de 10 anos\")",
-      "Apelo à autoridade científica (\"olhamos evidências científicas\")"
+      "Authority-building via personal achievements",
+      "Scientific credibility by mentioning 'scientific evidence' and '50 perfect biomarkers'"
     ],
-    "evidence_notes": "As medições indicam uma taxa média de palavras por minuto de 202.2, sugerindo um ritmo rápido. No entanto, não há n-grams característicos fornecidos para identificar expressões de assinatura específicas ou padrões repetidos."
+    "evidence_notes": "The transcription does not provide information on expressions used frequently (signature ngrams), nor does it provide details on closing remarks or calls-to-action."
   },
   "editing": {
-    "cut_cadence": "Cortes a cada 8,4 segundos em média, com um total de 6 cortes em um minuto de vídeo.",
-    "shot_types": "Planos médios de uma pessoa em pé na cozinha, intercalados com close-ups de comida na mesa.",
-    "text_overlay_style": "Sobreposição de texto em letras maiúsculas, palavras-chave destacadas em branco com borda preta. Posição central na tela.",
-    "b_roll_usage": "Uso de B-roll limitado a close-ups de comida, sem gráficos ou memes adicionais.",
-    "visual_identity": "Cenário de cozinha com iluminação natural. Paleta de cores neutras, incluindo tons de cinza e branco.",
+    "cut_cadence": "Average of one cut every 9.85 seconds, with 6 cuts in a 59.1-second video, indicating a relatively slow pace.",
+    "shot_types": "Medium shots and close-ups dominate, mainly focusing on the presenter and food items.",
+    "text_overlay_style": "Text overlays with bold white and black outlines, centrally positioned on screen. Words are capitalized and concise.",
+    "b_roll_usage": "Limited use of b-roll, mostly focusing on food items relevant to the dialogue.",
+    "visual_identity": "Clean, modern kitchen setting with neutral tones and natural lighting. Consistent color palette of earth tones and whites.",
     "retention_tricks": [
-      "Mudança de plano entre a pessoa e a comida para manter o interesse visual."
+      "Text overlays for emphasis",
+      "Cut away to food items as visual examples"
     ],
-    "evidence_notes": "Não foi possível concluir o uso de transições especiais além dos cortes diretos disponíveis nos frames."
+    "evidence_notes": "No information about audio elements or background music components was available."
   }
 }

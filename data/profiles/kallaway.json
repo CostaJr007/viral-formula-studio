@@ -1,48 +1,176 @@
 {
   "creator": "kallaway",
   "videos_analyzed": 5,
-  "style": {
-    "tone": "Entusiasmado e visionário",
-    "sentence_rhythm": "Curto e direto, frequentemente com sentenças impactantes ou provocativas.",
-    "persona": "Explorador das inovações tecnológicas",
-    "hook_patterns": [
+  "metrics": {
+    "editing": {
+      "videos_measured": 5,
+      "total_cuts": 180,
+      "total_duration_s": 375.4,
+      "avg_cuts_per_min": 28.8,
+      "avg_shot_length_s": 2.0,
+      "per_video": [
+        {
+          "video": "17845092483090180.mp4",
+          "duration_s": 88.3,
+          "cuts": 39,
+          "cuts_per_min": 26.5,
+          "avg_shot_length_s": 2.2
+        },
+        {
+          "video": "17849000187075100.mp4",
+          "duration_s": 86.6,
+          "cuts": 43,
+          "cuts_per_min": 29.8,
+          "avg_shot_length_s": 2.0
+        },
+        {
+          "video": "17849995527471458.mp4",
+          "duration_s": 71.5,
+          "cuts": 37,
+          "cuts_per_min": 31.0,
+          "avg_shot_length_s": 1.9
+        },
+        {
+          "video": "17854272312262713.mp4",
+          "duration_s": 72.8,
+          "cuts": 37,
+          "cuts_per_min": 30.5,
+          "avg_shot_length_s": 1.9
+        },
+        {
+          "video": "17855162379422990.mp4",
+          "duration_s": 56.2,
+          "cuts": 24,
+          "cuts_per_min": 25.6,
+          "avg_shot_length_s": 2.2
+        }
+      ]
+    },
+    "speech": {
+      "avg_wpm": 216.5,
+      "per_video": [
+        {
+          "video": "17854272312262713.mp4",
+          "words": 282,
+          "duration_s": 72.8,
+          "wpm": 232.5
+        },
+        {
+          "video": "17849995527471458.mp4",
+          "words": 248,
+          "duration_s": 71.5,
+          "wpm": 208.0
+        },
+        {
+          "video": "17861433302924207.mp4",
+          "words": 207,
+          "duration_s": 54.7,
+          "wpm": 226.9
+        },
+        {
+          "video": "17857498571962753.mp4",
+          "words": 300,
+          "duration_s": 87.1,
+          "wpm": 206.7
+        },
+        {
+          "video": "17845092483090180.mp4",
+          "words": 307,
+          "duration_s": 88.3,
+          "wpm": 208.6
+        }
+      ]
+    },
+    "signature_ngrams": [
       {
-        "pattern": "Começar com uma afirmação surpreendente ou visionária.",
-        "why_it_works": "Imediatamente instiga a curiosidade e planta uma promessa de algo grande ou inesperado que continuará no conteúdo.",
-        "example": "\"Apple's doing something for the first time with the iPhone 16. Visual intelligence. It's pretty sick.\""
+        "ngram": "is going to",
+        "count": 6
       },
       {
-        "pattern": "Iniciar com uma visão direta do futuro próximo.",
-        "why_it_works": "Projeta o ouvinte à frente, criando um senso de urgência e antecipação sobre mudanças iminentes.",
-        "example": "\"This is the future of online shopping. And I don't think people realize how easy AI shopping is about to get.\""
+        "ngram": "but here s",
+        "count": 6
+      },
+      {
+        "ngram": "s going to",
+        "count": 5
+      },
+      {
+        "ngram": "here s the",
+        "count": 5
+      },
+      {
+        "ngram": "on the internet",
+        "count": 5
+      },
+      {
+        "ngram": "it s going",
+        "count": 5
+      },
+      {
+        "ngram": "going to be",
+        "count": 4
+      },
+      {
+        "ngram": "this is the",
+        "count": 3
+      },
+      {
+        "ngram": "all you have",
+        "count": 2
+      },
+      {
+        "ngram": "you have to",
+        "count": 2
+      }
+    ]
+  },
+  "style": {
+    "tone": "Didactic and enthusiastic",
+    "sentence_rhythm": "Quick pace with an average of 216.5 words per minute, favoring concise sentences and rapid delivery.",
+    "persona": "Experienced enthusiast with an insatiable curiosity, positioned as an informed early adopter of technology.",
+    "hook_patterns": [
+      {
+        "pattern": "Start with a bold, forward-looking statement",
+        "why_it_works": "Immediately grabs attention by presenting a future scenario, making the audience curious and eager to learn more.",
+        "example": "Apple's doing something for the first time with the iPhone 16. Visual intelligence. It's pretty sick."
+      },
+      {
+        "pattern": "Pose a speculative question or scenario",
+        "why_it_works": "Engages the audience’s imagination, prompting them to think about the implications and creating a desire to know the answers.",
+        "example": "What if there was one global financial network owned by everybody on Earth? Unhackable, no corruption, sounds pretty great."
       }
     ],
-    "copy_structure": "Começa com uma afirmação forte ou visão de futuro, apresenta o desenvolvimento de modo dinâmico com exemplos práticos e visualizações vívidas, e encerra com implicações e projeções sobre a relevância futura do tópico.",
+    "copy_structure": "Opens with an attention-grabbing statement or question, transitions into detailed explanations with specific examples, explores implications, and ends with a forward-looking or speculative wrap-up.",
     "signature_expressions": [
-      "Here's what's crazy",
-      "Think of it like",
-      "Here's the playbook",
-      "The craziest part is",
-      "In essence"
+      "is going to",
+      "but here's",
+      "s going to",
+      "here's the",
+      "on the internet",
+      "it's going to",
+      "going to be",
+      "this is the",
+      "all you have",
+      "you have to"
     ],
     "persuasion_tactics": [
-      "Provoque a curiosidade com visões de futuro e inovações transformadoras.",
-      "Utilize provas de conceito com exemplos concretos e visualizações de uso prático.",
-      "Construa urgência destacando mudanças iminentes e oportunidades de estar na vanguarda."
+      "Using speculative scenarios to stimulate curiosity and engagement.",
+      "Highlighting incremental benefits and innovations to promote excitement.",
+      "Positioning of technology as transformative and inevitable to create urgency."
     ],
-    "evidence_notes": "A estrutura de CTA específica não está clara nas transcrições disponíveis. Não há menção explícita a pedidos para seguir, compartilhar ou conter chamadas diretas para ação além do convite implícito para acompanhar as novidades tecnológicas."
+    "evidence_notes": "The transcripts do not provide explicit examples of social proof, authority, or urgency beyond enthusiasm and future-gazing speculation."
   },
   "editing": {
-    "cut_cadence": "Alterna entre close e detalhes de tela/fotos externas a cada 2-3 segundos.",
-    "shot_types": "Close no rosto do apresentador, tela dividida mostrando apresentações ou aplicativos.",
-    "text_overlay_style": "Texto na tela em amarelo/laranja, centralizado na parte inferior, destacando palavras-chave.",
-    "b_roll_usage": "Imagens de apresentação, apps, cenas de filmes e memes usados entre cortes para ilustrar pontos.",
-    "visual_identity": "Cenário com iluminação controlada, fundo desfocado com itens decorativos, uso de boné como marca.",
+    "cut_cadence": "The videos have an average of 28.8 cuts per minute and an average shot length of 2.0 seconds, indicating rapid transitions, with jump cuts prevalent every 2-3 seconds.",
+    "shot_types": "The predominant framings are medium close-ups of the speaker and split screens that combine presentation slides or video clips with the speaker's commentary.",
+    "text_overlay_style": "Text overlays are used frequently, positioned at the bottom of the screen, often in bright colors like yellow and red to highlight key phrases and match the video's tone.",
+    "b_roll_usage": "Extensive use of b-roll is evident, including clips from software interfaces, movies, and pop culture references to complement the spoken content.",
+    "visual_identity": "The setting is consistent with a room featuring a blurred background. The lighting is warm and even, with a color palette that's neutral except for vibrant overlays.",
     "retention_tricks": [
-      "Zooms repentinos no rosto",
-      "Mudanças rápidas de cena",
-      "Transições com b-roll contextualizado"
+      "Split screens to maintain engagement with simultaneous video and speaker view",
+      "Pop culture references to create relatable moments",
+      "Frequent captioning to highlight key points"
     ],
-    "evidence_notes": "Não foi possível determinar o uso de música ou efeitos sonoros específicos apenas com os frames."
+    "evidence_notes": "The exact use of transitions and any special effects beyond cuts cannot be determined from the frames."
   }
 }

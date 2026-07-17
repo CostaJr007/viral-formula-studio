@@ -125,27 +125,22 @@
     ]
   },
   "style": {
-    "tone": "Didático e motivacional",
-    "sentence_rhythm": "Frases curtas a médias, geralmente diretas e objetivas, com uma média de 179.3 palavras por minuto",
-    "persona": "Mentor técnico e motivador",
+    "tone": "Didactic and motivational",
+    "sentence_rhythm": "Varies from concise to rapidly descriptive, with an average pace of 179.3 words per minute but with videos reaching up to 248.2 wpm.",
+    "persona": "Experienced friend with a scientific and motivational blend",
     "hook_patterns": [
       {
-        "pattern": "Exposição de um desafio ou competição pessoal",
-        "why_it_works": "Cria curiosidade e investe emocionalmente a audiência, querendo saber o resultado final do desafio",
-        "example": "\"This is my brother Brad, and he's the only person in our family who doesn't lift, until now.\""
+        "pattern": "Real-life transformation story",
+        "why_it_works": "Engages audience by presenting a relatable and motivating transformation challenge with a personal connection.",
+        "example": "This is my brother Brad, and he's the only person in our family who doesn't lift, until now."
       },
       {
-        "pattern": "Listagem de dicas práticas",
-        "why_it_works": "Oferece valor imediato e tangível, convencendo a audiência a continuar assistindo para aprender mais dicas",
-        "example": "\"Squat checklist. If you take all five, you have a perfect squat.\""
-      },
-      {
-        "pattern": "Afirmações surpreendentes ou contrárias ao senso comum",
-        "why_it_works": "Desafia o conhecimento prévio da audiência, motivando-a a continuar assistindo para descobrir a justificativa",
-        "example": "\"Turns out, leg extensions are actually much better for growing the big rectus femoris head of the quads than squats.\""
+        "pattern": "Practical checklist for improvement",
+        "why_it_works": "Captures attention with clear, actionable steps promising improvement in a skill or technique.",
+        "example": "Squat checklist. If you take all five, you have a perfect squat."
       }
     ],
-    "copy_structure": "Os vídeos geralmente começam com a apresentação de um problema ou pergunta interessante, seguida por uma série de soluções ou dicas práticas. Muitas vezes termina com a revisão ou resumo dos tópicos abordados e resultados alcançados.",
+    "copy_structure": "Starts with an intriguing hook to capture interest, followed by detailed instructions or storytelling, then closes with results or benefits emphasizing real-world applications.",
     "signature_expressions": [
       "you need to",
       "the science guy",
@@ -159,24 +154,23 @@
       "will target slightly"
     ],
     "persuasion_tactics": [
-      "Prova social, usando exemplos pessoais para demonstrar eficácia",
-      "Apelo para autoridade científica, mencionando estudos para justificar escolhas de exercícios",
-      "Motivação por resultado, apresentando resultados tangíveis e mensuráveis",
-      "Desafios ou competições para engajar a audiência emocionalmente"
+      "Social proof through scientific studies and personal results",
+      "Comparison between different techniques to establish authority",
+      "Creating challenges and goals for motivation"
     ],
-    "evidence_notes": "Não há evidência suficiente sobre como ele encerra especificamente os vídeos, além de um resumo ou revisão do conteúdo."
+    "evidence_notes": "Some videos are not included in the dataset, limiting the observation of full narrative techniques across various topics. The conclusion drawn is mainly based on the structure and rhythm of available transcriptions."
   },
   "editing": {
-    "cut_cadence": "Cortes frequentes com uma média de 17,9 cortes por minuto, variando de 13,5 a 24,1, indicando uso de jump cuts a cada 3,1 segundos em média.",
-    "shot_types": "Predominantemente planos médios de exercícios em academias e close-ups para mostrar detalhes das técnicas.",
-    "text_overlay_style": "Uso consistente de sobreposição de texto para títulos de exercícios e legenda explicativa na parte inferior do vídeo, normalmente em branco para contraste.",
-    "b_roll_usage": "Incorpora alguns gráficos de pesquisa e close-ups de equipamentos para complementar a explicação dos exercícios.",
-    "visual_identity": "Cenários de academia com iluminação clara, cores neutras e foco no equipamento de treino.",
+    "cut_cadence": "The creator uses an average of 17.9 cuts per minute with each shot lasting about 3.1 seconds. Some videos have faster cuts, such as one with 24.1 cuts per minute.",
+    "shot_types": "Predominantly medium and wide shots focusing on exercises and demonstrations. Occasionally, close-ups are used to emphasize form or technique.",
+    "text_overlay_style": "Text overlays are used frequently, positioned centrally or in the lower third, typically in white with a sans-serif font. Key phrases and exercises are listed throughout the video.",
+    "b_roll_usage": "Occasional use of supporting images, such as screenshots of studies or diagrams, to support the narration or explanation during exercise demonstrations.",
+    "visual_identity": "The videos have a consistent gym setting with good lighting and a neutral color palette. Occasionally, there are outdoor shots with natural lighting.",
     "retention_tricks": [
-      "Jump cuts",
-      "Textos rápidos e claros",
-      "Zooms suaves para atenção aos detalhes"
+      "Sudden zooms on key points",
+      "Text overlays for emphasis",
+      "Cutaways to diagrams or study excerpts"
     ],
-    "evidence_notes": "A presença de música, sons de fundo ou efeitos sonoros não pode ser analisada através dos frames."
+    "evidence_notes": "Specific transitions or detailed narrative content could not be concluded solely from frames. The audio and pacing adjustments beyond cut cadence are unknown."
   }
 }

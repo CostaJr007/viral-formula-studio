@@ -19,50 +19,50 @@ from .schemas import EditingProfile
 logger = logging.getLogger(__name__)
 
 INSTRUCTIONS = """
-Você é um editor de vídeo profissional especializado em conteúdo curto (Reels/TikTok/Shorts)
-e em psicologia da retenção.
+You are a professional video editor specialized in short-form content (Reels/TikTok/Shorts)
+and in retention psychology.
 
-Você receberá uma sequência de frames REAIS extraídos dos vídeos de um criador, em
-ordem cronológica, e MEDIÇÕES reais da cadência de cortes (cortes/minuto e duração
-média de take, computadas por detecção de cena do ffmpeg). Sua tarefa é decodificar
-a GRAMÁTICA DE EDIÇÃO dele.
+You will receive a sequence of REAL frames extracted from a creator's videos, in
+chronological order, and real MEASUREMENTS of the cut cadence (cuts/minute and
+average shot length, computed by ffmpeg scene detection). Your task is to decode
+their EDITING GRAMMAR.
 
-Regras de honestidade (CRÍTICO):
-- Em cut_cadence, use os NÚMEROS MEDIDOS (exatos) — sua leitura visual complementa
-  com o que os números não mostram (tipo de corte, ângulo, movimento).
-- Baseie cada conclusão APENAS no que é visível nos frames + nas medições. Não
-  presuma nada que não possa ser observado diretamente.
-- Se algo não puder ser observado com os frames disponíveis, declare em evidence_notes.
-- Responda em português.
+Honesty rules (CRITICAL):
+- In cut_cadence, use the MEASURED NUMBERS (exact) — your visual reading complements
+  them with what the numbers do not show (cut type, angle, movement).
+- Base every conclusion ONLY on what is visible in the frames + the measurements.
+  Do not presume anything that cannot be observed directly.
+- If something cannot be observed with the available frames, state it in evidence_notes.
+- Respond in English.
 """
 
 
 def analyze_editing(creator: str, max_videos: int | None = None, metrics: dict | None = None) -> EditingProfile:
     frames = extract_frames_for_creator(creator, max_videos)
     if not frames:
-        raise ValueError(f"Nenhum frame extraído para '{creator}' — verifique a pasta videos/{creator}/.")
+        raise ValueError(f"No frames extracted for '{creator}' — check the videos/{creator}/ folder.")
 
     metrics_block = ""
     if metrics and metrics.get("editing"):
         metrics_block = (
-            "\n\nMEDIÇÕES reais da cadência de cortes (detecção de cena do ffmpeg — use os números exatos):\n"
+            "\n\nReal MEASUREMENTS of the cut cadence (ffmpeg scene detection — use the exact numbers):\n"
             f"{json.dumps(metrics['editing'], ensure_ascii=False, indent=2)}"
         )
 
     agent = create_agent(
         name=f"editing_analyst_{creator}",
-        description="Editor de vídeo sênior especializado em retenção e gramática de edição.",
+        description="Senior video editor specialized in retention and editing grammar.",
         instructions=INSTRUCTIONS,
         output_schema=EditingProfile,
         vision=True,
     )
-    logger.info("Analisando gramática de edição de %s (%d frames)...", creator, len(frames))
+    logger.info("Analyzing editing grammar of %s (%d frames)...", creator, len(frames))
     response = agent.run(
-        f"Estes são {len(frames)} frames reais, em ordem cronológica, de vídeos do "
-        f"criador '{creator}'. Decodifique a gramática de edição dele.{metrics_block}",
+        f"These are {len(frames)} real frames, in chronological order, from videos by "
+        f"creator '{creator}'. Decode their editing grammar.{metrics_block}",
         images=[Image(filepath=frame) for frame in frames],
     )
     if not isinstance(response.content, EditingProfile):
         # Agno returns the provider's error text as content instead of raising
-        raise RuntimeError(f"Análise visual falhou — resposta do modelo: {str(response.content)[:200]}")
+        raise RuntimeError(f"Visual analysis failed — model response: {str(response.content)[:200]}")
     return response.content

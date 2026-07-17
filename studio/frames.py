@@ -58,7 +58,7 @@ def extract_frames_for_creator(creator: str, max_videos: int | None = None) -> l
     settings = get_settings()
     creator_dir = settings.videos_dir / creator
     if not creator_dir.is_dir():
-        raise FileNotFoundError(f"Pasta de vídeos não encontrada para '{creator}': {creator_dir}")
+        raise FileNotFoundError(f"Videos folder not found for '{creator}': {creator_dir}")
 
     videos = sorted(creator_dir.glob("*.mp4"))[: max_videos or settings.max_videos_per_creator]
     all_frames: list[Path] = []
@@ -70,10 +70,10 @@ def extract_frames_for_creator(creator: str, max_videos: int | None = None) -> l
             all_frames.extend(cached)
             continue
 
-        logger.info("Extraindo frames de %s", video.name)
+        logger.info("Extracting frames from %s", video.name)
         try:
             all_frames.extend(extract_frames(video, out_dir, settings.frames_per_video))
         except Exception:
-            logger.exception("[ERRO] Falha ao extrair frames de %s", video.name)
+            logger.exception("[ERROR] Failed to extract frames from %s", video.name)
 
     return all_frames[: settings.max_frames_per_analysis]

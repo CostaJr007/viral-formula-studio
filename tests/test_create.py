@@ -24,7 +24,7 @@ def test_video_copy_schema():
 
 def test_generate_hooks_requires_profile(monkeypatch):
     monkeypatch.setattr(store, "load_profile", lambda creator: None)
-    with pytest.raises(ValueError, match="não encontrado"):
+    with pytest.raises(ValueError, match="not found"):
         generate_hooks("fantasma", "qualquer tema")
 
 

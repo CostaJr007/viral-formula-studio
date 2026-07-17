@@ -24,14 +24,14 @@ def analyze_creator(
     settings = get_settings()
 
     if transcribe:
-        logger.info("Verificando vídeos novos para transcrever...")
+        logger.info("Checking for new videos to transcribe...")
         process_new_videos()
 
     try:
         profile = store.load_profile(creator) or CreatorProfile(creator=creator, videos_analyzed=0)
     except Exception:
         # Corrupted/poisoned profile (e.g. saved during a failed run) — start fresh
-        logger.warning("Perfil de '%s' ilegível; regenerando do zero.", creator)
+        logger.warning("Profile for '%s' unreadable; regenerating from scratch.", creator)
         profile = CreatorProfile(creator=creator, videos_analyzed=0)
 
     # Deterministic layer first: measured numbers, no LLM
@@ -42,16 +42,16 @@ def analyze_creator(
         profile.style = analyze_style(creator, max_videos, metrics=profile.metrics)
         profile.videos_analyzed = min(len(transcriptions), max_videos or settings.max_videos_per_creator)
     else:
-        logger.warning("Sem transcrições para '%s' — análise textual pulada.", creator)
+        logger.warning("No transcriptions for '%s' — textual analysis skipped.", creator)
 
     try:
         profile.editing = analyze_editing(creator, max_videos, metrics=profile.metrics)
     except (FileNotFoundError, ValueError) as e:
-        logger.warning("Análise visual pulada: %s", e)
+        logger.warning("Visual analysis skipped: %s", e)
 
     if profile.style is None and profile.editing is None:
-        raise RuntimeError(f"Nada para analisar em '{creator}': sem transcrições nem vídeos.")
+        raise RuntimeError(f"Nothing to analyze in '{creator}': no transcriptions or videos.")
 
     path = store.save_profile(profile)
-    logger.info("Perfil de '%s' salvo em %s", creator, path)
+    logger.info("Profile for '%s' saved to %s", creator, path)
     return profile

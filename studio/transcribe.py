@@ -51,13 +51,13 @@ def transcribe_audio(audio_path: Path, client: Groq, model: str) -> str:
 def process_new_videos() -> dict[str, list[dict]]:
     settings = get_settings()
     if not settings.groq_api_key:
-        raise RuntimeError("GROQ_API_KEY não configurada — defina-a no .env")
+        raise RuntimeError("GROQ_API_KEY not configured — set it in the .env")
 
     client = Groq(api_key=settings.groq_api_key)
     transcriptions = load_transcriptions()
 
     if not settings.videos_dir.exists():
-        logger.warning("Pasta de vídeos não encontrada: %s", settings.videos_dir)
+        logger.warning("Videos folder not found: %s", settings.videos_dir)
         return transcriptions
 
     for creator_dir in sorted(settings.videos_dir.iterdir()):
@@ -72,7 +72,7 @@ def process_new_videos() -> dict[str, list[dict]]:
             if video_file.name in existing:
                 continue
 
-            logger.info("Transcrevendo %s/%s", creator, video_file.name)
+            logger.info("Transcribing %s/%s", creator, video_file.name)
             with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
                 audio_path = Path(tmp.name)
 
@@ -83,16 +83,16 @@ def process_new_videos() -> dict[str, list[dict]]:
                 words = len(text.split())
                 if words < settings.min_transcription_words:
                     logger.warning(
-                        "Transcrição curta demais (%d palavras), ignorada: %s", words, video_file.name
+                        "Transcription too short (%d words), ignored: %s", words, video_file.name
                     )
                     continue
 
                 transcriptions[creator].append({"video": video_file.name, "transcription": text})
                 save_transcriptions(transcriptions)  # incremental save per video
-                logger.info("[OK] %s transcrito (%d palavras)", video_file.name, words)
+                logger.info("[OK] %s transcribed (%d words)", video_file.name, words)
 
             except Exception:
-                logger.exception("[ERRO] Falha ao transcrever %s", video_file.name)
+                logger.exception("[ERROR] Failed to transcribe %s", video_file.name)
             finally:
                 audio_path.unlink(missing_ok=True)
 

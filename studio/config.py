@@ -55,7 +55,7 @@ class Settings(BaseSettings):
 
     # Google Gemini
     google_api_key: str | None = None
-    gemini_model_id: str = "gemini-2.0-flash"  # Llama/Granite equivalentes rápidos e multimodais
+    gemini_model_id: str = "gemini-2.0-flash"  # fast multimodal Llama/Granite equivalents
 
     # Groq Whisper (audio transcription)
     groq_api_key: str | None = None
@@ -92,8 +92,8 @@ class Settings(BaseSettings):
             "IBM_WATSONX_API_KEY": self.ibm_watsonx_api_key,
             "IBM_WATSONX_PROJECT_ID": self.ibm_watsonx_project_id,
             "IBM_WATSONX_URL": self.ibm_watsonx_url,
-            "GOOGLE_API_KEY": self.google_api_key,  # Agno e o SDK do Gemini leem daqui
-            "GEMINI_API_KEY": self.google_api_key,  # Fallback de convenção
+            "GOOGLE_API_KEY": self.google_api_key,  # Agno and the Gemini SDK read from here
+            "GEMINI_API_KEY": self.google_api_key,  # Convention fallback
         }
         for key, value in mapping.items():
             if value:

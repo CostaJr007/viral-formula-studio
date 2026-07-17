@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 SCENE_THRESHOLD = 0.3
 
+# Portuguese stopwords — matches the language of the source transcriptions
+# (the analyzed creators speak Portuguese). Changing this set changes the
+# measured n-grams, so it stays as-is on purpose.
 _STOPWORDS_PT = {
     "a", "o", "e", "é", "de", "da", "do", "das", "dos", "em", "no", "na", "nos", "nas", "um", "uma",
     "que", "pra", "para", "com", "se", "eu", "você", "ele", "ela", "isso", "esse", "essa", "isto",
@@ -71,9 +74,9 @@ def editing_metrics(creator: str, max_videos: int | None = None) -> dict:
             per_video.append({"video": video.name, **metrics})
             total_cuts += metrics["cuts"]
             total_duration += metrics["duration_s"]
-            logger.info("Medido %s: %d cortes (%.1f/min)", video.name, metrics["cuts"], metrics["cuts_per_min"])
+            logger.info("Measured %s: %d cuts (%.1f/min)", video.name, metrics["cuts"], metrics["cuts_per_min"])
         except Exception:
-            logger.exception("Falha ao medir cortes de %s", video.name)
+            logger.exception("Failed to measure cuts of %s", video.name)
 
     if not per_video:
         return {}
@@ -101,7 +104,7 @@ def speech_metrics(creator: str, max_videos: int | None = None) -> dict:
         try:
             duration = get_video_duration(video_path)
         except Exception:
-            logger.exception("Falha ao medir duração de %s", video_path.name)
+            logger.exception("Failed to measure duration of %s", video_path.name)
             continue
 
         words = len(item["transcription"].split())
@@ -137,7 +140,7 @@ def signature_ngrams(creator: str, n: int = 3, top_k: int = 10, min_count: int =
 
 def measure_creator(creator: str, max_videos: int | None = None) -> dict:
     """Full deterministic measurement pass for a creator (no LLM)."""
-    logger.info("Medindo '%s' (cortes, ritmo de fala, expressões)...", creator)
+    logger.info("Measuring '%s' (cuts, speech rate, expressions)...", creator)
     return {
         "editing": editing_metrics(creator, max_videos),
         "speech": speech_metrics(creator, max_videos),

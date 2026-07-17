@@ -104,11 +104,13 @@ IBM_WATSONX_URL=https://us-south.ml.cloud.ibm.com
 Run:
 
 ```bash
-uv run python app.py     # web UI -> http://localhost:7860
-uv run python main.py    # terminal CLI (same engine)
+uv run python api.py      # FastAPI backend -> http://localhost:8000 (docs at /docs)
+cd frontend && npm install && npm run dev   # React UI -> http://localhost:3000
 ```
 
-Flow: **1 · Criador** (paste up to 5 links → analyze) → **2 · Perfil** (measured formula) → **3 · Ganchos** (10 hooks) → **4 · Copy** (orchestrated script).
+Alternative local UIs (same engine): `uv run python app.py` (Gradio, :7860) or `uv run python main.py` (terminal CLI).
+
+Flow: **1 · Creator** (paste up to 5 links → analyze) → **2 · Profile** (measured formula) → **3 · Hooks** (10 hooks) → **4 · Copy** (orchestrated script).
 
 ## Project Structure
 
@@ -128,9 +130,11 @@ studio/
 ├── dossier.py         # agent: profiles + facts -> viralization playbook (commentator)
 ├── create.py          # guided flow: 10 hooks -> pick -> orchestrated <=200-word copy
 └── pipeline.py        # per-creator orchestration (runs once, cached)
-app.py                 # Gradio web UI (4-step wizard)
+app.py                 # Gradio web UI (quick local demos)
+api.py                 # FastAPI backend for the React frontend
 agent.py               # optional Agno AgentOS interface
 main.py                # terminal CLI
+frontend/              # React 19 + Vite + TanStack Start + Tailwind UI (4-step wizard)
 tests/                 # 20 tests (schemas, store, real ffmpeg metrics, ingestion, creation)
 data/                  # transcripts + cached creator profiles
 ```

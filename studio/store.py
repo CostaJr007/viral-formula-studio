@@ -21,7 +21,7 @@ def load_transcriptions() -> dict[str, list[dict]]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        logger.error("Arquivo de transcrições corrompido: %s", path)
+        logger.error("Corrupted transcriptions file: %s", path)
         return {}
 
 

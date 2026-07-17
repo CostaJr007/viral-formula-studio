@@ -76,7 +76,7 @@ def fetch_captions(url: str, out_dir: Path) -> str | None:
             info = ydl.extract_info(url, download=True)
             base = Path(ydl.prepare_filename(info))
     except Exception:
-        logger.exception("Falha ao buscar legendas de %s", url)
+        logger.exception("Failed to fetch captions for %s", url)
         return None
 
     for vtt in sorted(out_dir.glob(f"{base.stem}.*.vtt")):
@@ -113,7 +113,7 @@ def download_video(url: str, out_dir: Path) -> Path:
 def _transcribe_with_whisper(video_path: Path) -> str | None:
     settings = get_settings()
     if not settings.groq_api_key:
-        logger.warning("GROQ_API_KEY ausente — impossível transcrever %s sem legendas.", video_path.name)
+        logger.warning("GROQ_API_KEY missing — cannot transcribe %s without captions.", video_path.name)
         return None
     client = Groq(api_key=settings.groq_api_key)
     audio_path = video_path.with_suffix(".mp3")
@@ -121,11 +121,11 @@ def _transcribe_with_whisper(video_path: Path) -> str | None:
         extract_audio(video_path, audio_path)
         text = transcribe_audio(audio_path, client, settings.groq_whisper_model).strip()
         if len(text.split()) < settings.min_transcription_words:
-            logger.warning("Transcrição curta demais, ignorada: %s", video_path.name)
+            logger.warning("Transcription too short, ignored: %s", video_path.name)
             return None
         return text
     except Exception:
-        logger.exception("Whisper falhou para %s", video_path.name)
+        logger.exception("Whisper failed for %s", video_path.name)
         return None
     finally:
         audio_path.unlink(missing_ok=True)
@@ -152,41 +152,41 @@ def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> di
             report["skipped"].append(url)
             continue
 
-        logger.info("Ingerindo: %s", url)
+        logger.info("Ingesting: %s", url)
         try:
             meta = probe(url)
         except Exception as e:
             hint = (
-                "Instagram bloqueou o acesso anônimo — baixe o Reel manualmente para videos/"
-                f"{creator}/ e rode a análise."
+                "Instagram blocked anonymous access — download the Reel manually into videos/"
+                f"{creator}/ and run the analysis."
                 if "instagram.com" in url
                 else str(e)[:150]
             )
-            logger.warning("Falha ao acessar %s: %s", url, hint)
+            logger.warning("Failed to access %s: %s", url, hint)
             report["failed"].append({"url": url, "reason": hint})
             continue
 
         try:
             video_path = download_video(url, creator_dir)
         except Exception as e:
-            logger.warning("Falha no download de %s: %s", url, str(e)[:150])
+            logger.warning("Download failed for %s: %s", url, str(e)[:150])
             report["failed"].append({"url": url, "reason": str(e)[:150]})
             continue
 
         if video_path.name in existing:
-            logger.info("Já transcrito, pulando: %s", video_path.name)
+            logger.info("Already transcribed, skipping: %s", video_path.name)
             report["skipped"].append(url)
             continue
 
         # Captions first (free); Whisper as fallback
         text = fetch_captions(url, creator_dir) or _transcribe_with_whisper(video_path)
         if text is None:
-            report["failed"].append({"url": url, "reason": "sem legendas e transcrição indisponível"})
+            report["failed"].append({"url": url, "reason": "no captions and transcription unavailable"})
             continue
 
         transcriptions[creator].append({"video": video_path.name, "transcription": text})
         store.save_transcriptions(transcriptions)  # incremental save
-        logger.info("[OK] %s ingerido (%s, %ds)", video_path.name, meta["uploader"], meta["duration"])
+        logger.info("[OK] %s ingested (%s, %ds)", video_path.name, meta["uploader"], meta["duration"])
         report["ok"].append(url)
 
     return report

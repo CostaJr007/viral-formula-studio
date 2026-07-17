@@ -25,81 +25,85 @@ MAX_COPY_WORDS = 200
 
 
 class Hook(BaseModel):
-    text: str = Field(description="O gancho, pronto para os primeiros 3 segundos")
-    pattern: str = Field(description="Qual padrão de gancho do criador este segue")
+    text: str = Field(description="The hook, ready for the first 3 seconds")
+    pattern: str = Field(description="Which of the creator's hook patterns this follows")
 
 
 class HookList(BaseModel):
-    hooks: list[Hook] = Field(description="Exatamente 10 ganchos")
+    hooks: list[Hook] = Field(description="Exactly 10 hooks")
 
 
 class VideoCopy(BaseModel):
     script: str = Field(
-        description="Copy completa em markdown com blocos [GANCHO] / [DESENVOLVIMENTO] / [FECHO], "
-        f"máximo {MAX_COPY_WORDS} palavras no total"
+        description="Complete copy in markdown with [HOOK] / [DEVELOPMENT] / [CLOSING] blocks, "
+        f"maximum {MAX_COPY_WORDS} words in total"
     )
     editing_directions: list[str] = Field(
-        description="Direções de edição por bloco, usando os NÚMEROS MEDIDOS do criador (cortes/min, take, texto na tela)"
+        description="Per-block editing directions, using the creator's MEASURED NUMBERS (cuts/min, shot length, on-screen text)"
     )
     data_notes: str = Field(
-        description="O que é fato verificado (com fonte) e o que o usuário precisa confirmar/preencher antes de gravar"
+        description="What is verified fact (with source) and what the user needs to confirm/fill in before recording"
     )
 
 
 HOOKS_INSTRUCTIONS = """
-Você é um estrategista de ganchos para vídeos curtos.
+You are a hook strategist for short videos.
 
-Você recebe: (1) o perfil de um criador — padrões de gancho, tom, expressões e
-MÉTRICAS medidas dos vídeos dele — e (2) fatos verificados sobre o tema do usuário.
+You receive: (1) a creator's profile — hook patterns, tone, expressions and
+METRICS measured from their videos — and (2) verified facts about the user's
+theme.
 
-Sua tarefa: gerar EXATAMENTE 10 ganchos para os primeiros 3 segundos do vídeo do
-usuário, aplicando os padrões de gancho do criador ao tema.
+Your task: generate EXACTLY 10 hooks for the first 3 seconds of the user's
+video, applying the creator's hook patterns to the theme.
 
-Regras:
-- Cada gancho deve seguir visivelmente um dos padrões do criador (campo `pattern`).
-- Frases curtas e faláveis — são para serem DITAS em até 3 segundos.
-- Só use fatos do bloco FATOS VERIFICADOS; nunca invente números ou rankings.
-- Escreva para a voz do USUÁRIO, no idioma do usuário — nunca copie frases do criador.
-- Varie os padrões: não gere 10 ganchos iguais.
+Rules:
+- Each hook must visibly follow one of the creator's patterns (`pattern` field).
+- Short, speakable phrases — they are meant to be SAID in up to 3 seconds.
+- Only use facts from the VERIFIED FACTS block; never invent numbers or rankings.
+- Write for the USER's voice, in the user's language — never copy the creator's
+  phrases.
+- Vary the patterns: do not generate 10 identical hooks.
 """
 
 COPY_INSTRUCTIONS = f"""
-Você é um roteirista e diretor de vídeos curtos especializado em retenção.
+You are a scriptwriter and director of short videos specialized in retention.
 
-Você recebe: (1) o perfil MEDIDO de um criador (estrutura de copy, tom, ritmo em
-palavras/minuto, gramática de edição), (2) fatos verificados sobre o tema, e
-(3) o gancho que o usuário escolheu.
+You receive: (1) a creator's MEASURED profile (copy structure, tone, rhythm in
+words/minute, editing grammar), (2) verified facts about the theme, and
+(3) the hook the user chose.
 
-Sua tarefa: orquestrar o vídeo completo do usuário em torno desse gancho.
+Your task: orchestrate the user's complete video around that hook.
 
-Regras de estrutura:
-- O script tem NO MÁXIMO {MAX_COPY_WORDS} palavras (vídeo de ~1 minuto no ritmo
-  medido do criador). Blocos: [GANCHO] (o escolhido, palavra por palavra),
-  [DESENVOLVIMENTO] (estrutura de copy do criador aplicada ao tema),
-  [FECHO] (resultado + CTA compatível com o estilo dele).
-- Estrutura dopaminérgica: cada frase precisa justificar a próxima; sem enrolação.
-- Só use fatos do bloco FATOS VERIFICADOS. Onde faltar dado, deixe um placeholder
-  claro [INSIRA: ...] em vez de inventar — e liste esses pontos em data_notes.
-- editing_directions: use os NÚMEROS MEDIDOS (ex.: "corte a cada ~3,1s",
-  "texto na tela inferior destacando o número") — nunca direção vaga.
-- Responda em português.
+Structure rules:
+- The script has AT MOST {MAX_COPY_WORDS} words (~1 minute video at the
+  creator's measured rhythm). Blocks: [HOOK] (the chosen one, word for word),
+  [DEVELOPMENT] (the creator's copy structure applied to the theme),
+  [CLOSING] (result + CTA compatible with their style).
+- Dopaminergic structure: each sentence must justify the next; no filler.
+- Only use facts from the VERIFIED FACTS block. Where data is missing, leave a
+  clear [INSERT: ...] placeholder instead of inventing — and list those points
+  in data_notes.
+- editing_directions: use the MEASURED NUMBERS (e.g. "cut every ~3.1s",
+  "on-screen text at the bottom highlighting the number") — never vague
+  direction.
+- Respond in English.
 """
 
 
 def _profile_or_raise(creator: str):
     profile = store.load_profile(creator)
     if profile is None or (profile.style is None and profile.editing is None):
-        raise ValueError(f"Perfil de '{creator}' não encontrado. Rode a análise primeiro.")
+        raise ValueError(f"Profile for '{creator}' not found. Run the analysis first.")
     return profile
 
 
 def _facts_block(research: ResearchReport | None) -> str:
     if research is None:
         return (
-            "\nFATOS VERIFICADOS: indisponíveis (fact-check falhou). "
-            "NÃO afirme nenhum fato sobre o tema — use placeholders [INSIRA: ...]."
+            "\nVERIFIED FACTS: unavailable (fact-check failed). "
+            "Do NOT state any fact about the theme — use [INSERT: ...] placeholders."
         )
-    return f"\nFATOS VERIFICADOS SOBRE O TEMA (única fonte factual — JSON):\n{research.model_dump_json(indent=2)}"
+    return f"\nVERIFIED FACTS ABOUT THE THEME (single factual source — JSON):\n{research.model_dump_json(indent=2)}"
 
 
 def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None = None) -> HookList:
@@ -110,17 +114,17 @@ def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None 
 
     agent = create_agent(
         name=f"hook_strategist_{creator}",
-        description="Estrategista de ganchos baseado na fórmula medida de criadores.",
+        description="Hook strategist based on creators' measured formulas.",
         instructions=HOOKS_INSTRUCTIONS,
         output_schema=HookList,
     )
-    logger.info("Gerando 10 ganchos de '%s' para '%s'...", creator, theme)
+    logger.info("Generating 10 hooks from '%s' for '%s'...", creator, theme)
     response = agent.run(
-        f"Perfil do criador (evidência medida — JSON):\n{profile.model_dump_json(indent=2)}\n"
-        f"{_facts_block(research)}\n\nTema do usuário: {theme}\n\nGere os 10 ganchos."
+        f"Creator profile (measured evidence — JSON):\n{profile.model_dump_json(indent=2)}\n"
+        f"{_facts_block(research)}\n\nUser's theme: {theme}\n\nGenerate the 10 hooks."
     )
     if not isinstance(response.content, HookList):
-        raise RuntimeError(f"Geração de ganchos falhou — resposta do modelo: {str(response.content)[:200]}")
+        raise RuntimeError(f"Hook generation failed — model response: {str(response.content)[:200]}")
     return response.content
 
 
@@ -134,17 +138,17 @@ def generate_copy(
 
     agent = create_agent(
         name=f"copy_director_{creator}",
-        description="Roteirista e diretor de vídeos curtos — copy dopaminérgica baseada em dados medidos.",
+        description="Scriptwriter and director of short videos — dopaminergic copy based on measured data.",
         instructions=COPY_INSTRUCTIONS,
         output_schema=VideoCopy,
     )
-    logger.info("Gerando copy de '%s' x '%s' com o gancho escolhido...", creator, theme)
+    logger.info("Generating copy for '%s' x '%s' with the chosen hook...", creator, theme)
     response = agent.run(
-        f"Perfil do criador (evidência medida — JSON):\n{profile.model_dump_json(indent=2)}\n"
+        f"Creator profile (measured evidence — JSON):\n{profile.model_dump_json(indent=2)}\n"
         f"{_facts_block(research)}\n\n"
-        f'Tema do usuário: {theme}\nGancho escolhido pelo usuário: "{chosen_hook}"\n\n'
-        "Orquestre o vídeo completo."
+        f'User\'s theme: {theme}\nHook chosen by the user: "{chosen_hook}"\n\n'
+        "Orchestrate the complete video."
     )
     if not isinstance(response.content, VideoCopy):
-        raise RuntimeError(f"Geração da copy falhou — resposta do modelo: {str(response.content)[:200]}")
+        raise RuntimeError(f"Copy generation failed — model response: {str(response.content)[:200]}")
     return response.content

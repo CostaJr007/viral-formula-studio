@@ -16,18 +16,18 @@ from .schemas import ResearchReport
 logger = logging.getLogger(__name__)
 
 INSTRUCTIONS = """
-Você é um pesquisador de fatos (fact-checker) para um estúdio de conteúdo.
+You are a fact researcher (fact-checker) for a content studio.
 
-Sua tarefa: dado um tema, buscar na web os fatos mais relevantes e RECENTES sobre ele,
-sempre com a fonte de cada fato. O relatório será usado como ÚNICA fonte de verdade
-para a etapa seguinte de escrita — então precisão vale mais que quantidade.
+Your task: given a theme, search the web for the most relevant and RECENT facts about it,
+always with the source of each fact. The report will be used as the SINGLE source of truth
+for the following writing stage — so precision matters more than quantity.
 
-Regras de honestidade (CRÍTICO):
-- Inclua em `facts` apenas o que foi de fato encontrado nas buscas, com a URL da fonte.
-- Números, rankings, datas e versões só entram se aparecerem explicitamente na fonte.
-- Tudo que for relevante mas não pôde ser confirmado vai para `unconfirmed`.
-- Se o tema for muito recente e houver pouca informação, diga isso no summary.
-- Responda em português (as fontes podem ser em qualquer idioma).
+Honesty rules (CRITICAL):
+- Include in `facts` only what was actually found in the searches, with the source URL.
+- Numbers, rankings, dates and versions only go in if they appear explicitly in the source.
+- Everything relevant that could not be confirmed goes to `unconfirmed`.
+- If the theme is very recent and there is little information, say so in the summary.
+- Respond in English (the sources may be in any language).
 """
 
 
@@ -35,7 +35,7 @@ def research_theme(theme: str) -> ResearchReport | None:
     """Search verified facts about the theme. Returns None on any failure (graceful degradation)."""
     settings = get_settings()
     if not settings.tavily_api_key:
-        logger.warning("TAVILY_API_KEY ausente — dossiê seguirá no modo estrutural (sem fact-check).")
+        logger.warning("TAVILY_API_KEY missing — dossier will proceed in structural mode (no fact-check).")
         return None
 
     try:
@@ -43,20 +43,20 @@ def research_theme(theme: str) -> ResearchReport | None:
 
         agent = create_agent(
             name="fact_checker",
-            description="Pesquisador de fatos com fontes — o estágio scout do pipeline.",
+            description="Fact researcher with sources — the pipeline's scout stage.",
             instructions=INSTRUCTIONS,
             output_schema=ResearchReport,
             tools=[TavilyTools()],
         )
-        logger.info("Fact-check: pesquisando '%s'...", theme)
-        response = agent.run(f"Pesquise e verifique os fatos sobre: {theme}")
+        logger.info("Fact-check: researching '%s'...", theme)
+        response = agent.run(f"Research and verify the facts about: {theme}")
 
         if not isinstance(response.content, ResearchReport):
-            raise RuntimeError(f"retorno inesperado do fact-check: {str(response.content)[:200]}")
-        logger.info("Fact-check: %d fatos verificados, %d não confirmados.",
+            raise RuntimeError(f"unexpected fact-check return: {str(response.content)[:200]}")
+        logger.info("Fact-check: %d facts verified, %d unconfirmed.",
                     len(response.content.facts), len(response.content.unconfirmed))
         return response.content
 
     except Exception:
-        logger.exception("Fact-check falhou — dossiê seguirá sem ele (degradação graciosa).")
+        logger.exception("Fact-check failed — dossier will proceed without it (graceful degradation).")
         return None

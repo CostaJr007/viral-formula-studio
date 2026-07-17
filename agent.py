@@ -16,42 +16,42 @@ from studio.pipeline import analyze_creator
 
 
 def list_creators_tool() -> str:
-    """Lista os criadores disponíveis para análise e geração de dossiê."""
+    """Lists the creators available for analysis and dossier generation."""
     creators = store.list_creators()
     if not creators:
-        return "Nenhum criador encontrado. Adicione vídeos em videos/<criador>/ e rode a análise."
-    return "Criadores disponíveis: " + ", ".join(creators)
+        return "No creators found. Add videos to videos/<creator>/ and run the analysis."
+    return "Available creators: " + ", ".join(creators)
 
 
 def analyze_creator_tool(creator: str) -> str:
-    """Roda a análise completa (estilo textual + gramática de edição) de um criador e salva o perfil."""
+    """Runs the full analysis (textual style + editing grammar) of a creator and saves the profile."""
     profile = analyze_creator(creator, transcribe=False)
     return (
-        f"Perfil de '{profile.creator}' atualizado: {profile.videos_analyzed} vídeos, "
-        f"estilo={'ok' if profile.style else 'pendente'}, edição={'ok' if profile.editing else 'pendente'}."
+        f"Profile for '{profile.creator}' updated: {profile.videos_analyzed} videos, "
+        f"style={'ok' if profile.style else 'pending'}, editing={'ok' if profile.editing else 'pending'}."
     )
 
 
 def dossier_tool(creator: str, theme: str) -> str:
-    """Gera o dossiê completo de viralização de um criador aplicado ao tema do usuário."""
+    """Generates a creator's complete viralization dossier applied to the user's theme."""
     return generate_dossier(creator, theme)
 
 
 INSTRUCTIONS = """
-Você é o estrategista do Viral Formula Studio: um sistema de engenharia reversa
-da fórmula de viralização de criadores de conteúdo.
+You are the strategist of Viral Formula Studio: a reverse-engineering system
+for content creators' viralization formulas.
 
-Seu papel: ajudar o usuário a (1) analisar um criador e (2) gerar o dossiê da
-fórmula dele — copy, ganchos, gramática de edição e persuasão — transposta para
-o tema do usuário.
+Your role: help the user (1) analyze a creator and (2) generate the dossier of
+their formula — copy, hooks, editing grammar and persuasion — transposed to the
+user's theme.
 
-Princípios:
-- INSPIRAÇÃO, NÃO IMITAÇÃO: decodificamos a técnica para o usuário aplicar com a
-  própria voz. Nunca entregamos conteúdo para copiar.
-- HONESTIDADE: toda afirmação vem de evidência real (transcrições e frames).
-  Quando a evidência for limitada, dizemos isso.
-- Se o criador ainda não tiver perfil, use a ferramenta de análise antes de gerar
-  o dossiê.
+Principles:
+- INSPIRATION, NOT IMITATION: we decode the technique so the user can apply it
+  with their own voice. We never deliver content to copy.
+- HONESTY: every statement comes from real evidence (transcriptions and frames).
+  When the evidence is limited, we say so.
+- If the creator has no profile yet, use the analysis tool before generating
+  the dossier.
 """
 
 settings = get_settings()
@@ -59,7 +59,7 @@ settings = get_settings()
 studio_agent = Agent(
     model=get_model(),
     name="viral_formula_studio",
-    description="Engenharia reversa da fórmula de viralização de criadores.",
+    description="Reverse engineering of content creators' viralization formulas.",
     instructions=INSTRUCTIONS,
     tools=[list_creators_tool, analyze_creator_tool, dossier_tool],
     add_history_to_context=True,
