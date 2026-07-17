@@ -1,0 +1,48 @@
+{
+  "creator": "kallaway",
+  "videos_analyzed": 5,
+  "style": {
+    "tone": "Entusiasmado e visionário",
+    "sentence_rhythm": "Curto e direto, frequentemente com sentenças impactantes ou provocativas.",
+    "persona": "Explorador das inovações tecnológicas",
+    "hook_patterns": [
+      {
+        "pattern": "Começar com uma afirmação surpreendente ou visionária.",
+        "why_it_works": "Imediatamente instiga a curiosidade e planta uma promessa de algo grande ou inesperado que continuará no conteúdo.",
+        "example": "\"Apple's doing something for the first time with the iPhone 16. Visual intelligence. It's pretty sick.\""
+      },
+      {
+        "pattern": "Iniciar com uma visão direta do futuro próximo.",
+        "why_it_works": "Projeta o ouvinte à frente, criando um senso de urgência e antecipação sobre mudanças iminentes.",
+        "example": "\"This is the future of online shopping. And I don't think people realize how easy AI shopping is about to get.\""
+      }
+    ],
+    "copy_structure": "Começa com uma afirmação forte ou visão de futuro, apresenta o desenvolvimento de modo dinâmico com exemplos práticos e visualizações vívidas, e encerra com implicações e projeções sobre a relevância futura do tópico.",
+    "signature_expressions": [
+      "Here's what's crazy",
+      "Think of it like",
+      "Here's the playbook",
+      "The craziest part is",
+      "In essence"
+    ],
+    "persuasion_tactics": [
+      "Provoque a curiosidade com visões de futuro e inovações transformadoras.",
+      "Utilize provas de conceito com exemplos concretos e visualizações de uso prático.",
+      "Construa urgência destacando mudanças iminentes e oportunidades de estar na vanguarda."
+    ],
+    "evidence_notes": "A estrutura de CTA específica não está clara nas transcrições disponíveis. Não há menção explícita a pedidos para seguir, compartilhar ou conter chamadas diretas para ação além do convite implícito para acompanhar as novidades tecnológicas."
+  },
+  "editing": {
+    "cut_cadence": "Alterna entre close e detalhes de tela/fotos externas a cada 2-3 segundos.",
+    "shot_types": "Close no rosto do apresentador, tela dividida mostrando apresentações ou aplicativos.",
+    "text_overlay_style": "Texto na tela em amarelo/laranja, centralizado na parte inferior, destacando palavras-chave.",
+    "b_roll_usage": "Imagens de apresentação, apps, cenas de filmes e memes usados entre cortes para ilustrar pontos.",
+    "visual_identity": "Cenário com iluminação controlada, fundo desfocado com itens decorativos, uso de boné como marca.",
+    "retention_tricks": [
+      "Zooms repentinos no rosto",
+      "Mudanças rápidas de cena",
+      "Transições com b-roll contextualizado"
+    ],
+    "evidence_notes": "Não foi possível determinar o uso de música ou efeitos sonoros específicos apenas com os frames."
+  }
+}

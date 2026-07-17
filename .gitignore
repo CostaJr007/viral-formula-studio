@@ -1,0 +1,22 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime data / caches
+tmp/
+data/frames/
+output/
+*.log
+
+# Creator videos are user-supplied content (large + third-party content)
+# and are ingested per machine — never committed to the public repo
+videos/
+
+# OS / editor junk
+.DS_Store
+__MACOSX/
+.idea/

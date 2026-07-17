@@ -1,0 +1,182 @@
+{
+  "creator": "jeffnippard",
+  "videos_analyzed": 5,
+  "metrics": {
+    "editing": {
+      "videos_measured": 5,
+      "total_cuts": 67,
+      "total_duration_s": 224.2,
+      "avg_cuts_per_min": 17.9,
+      "avg_shot_length_s": 3.1,
+      "per_video": [
+        {
+          "video": "17842309335381738.mp4",
+          "duration_s": 54.4,
+          "cuts": 15,
+          "cuts_per_min": 16.5,
+          "avg_shot_length_s": 3.4
+        },
+        {
+          "video": "17842468737477371.mp4",
+          "duration_s": 45.4,
+          "cuts": 13,
+          "cuts_per_min": 17.2,
+          "avg_shot_length_s": 3.2
+        },
+        {
+          "video": "17851219347097994.mp4",
+          "duration_s": 52.2,
+          "cuts": 21,
+          "cuts_per_min": 24.1,
+          "avg_shot_length_s": 2.4
+        },
+        {
+          "video": "17868688932285872.mp4",
+          "duration_s": 44.5,
+          "cuts": 10,
+          "cuts_per_min": 13.5,
+          "avg_shot_length_s": 4.0
+        },
+        {
+          "video": "17878704669293882.mp4",
+          "duration_s": 27.7,
+          "cuts": 8,
+          "cuts_per_min": 17.3,
+          "avg_shot_length_s": 3.1
+        }
+      ]
+    },
+    "speech": {
+      "avg_wpm": 179.3,
+      "per_video": [
+        {
+          "video": "17878704669293882.mp4",
+          "words": 4,
+          "duration_s": 27.7,
+          "wpm": 8.7
+        },
+        {
+          "video": "17851219347097994.mp4",
+          "words": 216,
+          "duration_s": 52.2,
+          "wpm": 248.2
+        },
+        {
+          "video": "17905932135051230.mp4",
+          "words": 176,
+          "duration_s": 58.3,
+          "wpm": 181.1
+        },
+        {
+          "video": "17907069840105647.mp4",
+          "words": 200,
+          "duration_s": 53.4,
+          "wpm": 224.7
+        },
+        {
+          "video": "17842309335381738.mp4",
+          "words": 212,
+          "duration_s": 54.4,
+          "wpm": 233.6
+        }
+      ]
+    },
+    "signature_ngrams": [
+      {
+        "ngram": "you need to",
+        "count": 4
+      },
+      {
+        "ngram": "the science guy",
+        "count": 4
+      },
+      {
+        "ngram": "need to get",
+        "count": 3
+      },
+      {
+        "ngram": "put on pounds",
+        "count": 3
+      },
+      {
+        "ngram": "on pounds of",
+        "count": 3
+      },
+      {
+        "ngram": "the leg extension",
+        "count": 3
+      },
+      {
+        "ngram": "build more muscle",
+        "count": 3
+      },
+      {
+        "ngram": "your risk of",
+        "count": 3
+      },
+      {
+        "ngram": "this will target",
+        "count": 2
+      },
+      {
+        "ngram": "will target slightly",
+        "count": 2
+      }
+    ]
+  },
+  "style": {
+    "tone": "Didático e motivacional",
+    "sentence_rhythm": "Frases curtas a médias, geralmente diretas e objetivas, com uma média de 179.3 palavras por minuto",
+    "persona": "Mentor técnico e motivador",
+    "hook_patterns": [
+      {
+        "pattern": "Exposição de um desafio ou competição pessoal",
+        "why_it_works": "Cria curiosidade e investe emocionalmente a audiência, querendo saber o resultado final do desafio",
+        "example": "\"This is my brother Brad, and he's the only person in our family who doesn't lift, until now.\""
+      },
+      {
+        "pattern": "Listagem de dicas práticas",
+        "why_it_works": "Oferece valor imediato e tangível, convencendo a audiência a continuar assistindo para aprender mais dicas",
+        "example": "\"Squat checklist. If you take all five, you have a perfect squat.\""
+      },
+      {
+        "pattern": "Afirmações surpreendentes ou contrárias ao senso comum",
+        "why_it_works": "Desafia o conhecimento prévio da audiência, motivando-a a continuar assistindo para descobrir a justificativa",
+        "example": "\"Turns out, leg extensions are actually much better for growing the big rectus femoris head of the quads than squats.\""
+      }
+    ],
+    "copy_structure": "Os vídeos geralmente começam com a apresentação de um problema ou pergunta interessante, seguida por uma série de soluções ou dicas práticas. Muitas vezes termina com a revisão ou resumo dos tópicos abordados e resultados alcançados.",
+    "signature_expressions": [
+      "you need to",
+      "the science guy",
+      "need to get",
+      "put on pounds",
+      "on pounds of",
+      "the leg extension",
+      "build more muscle",
+      "your risk of",
+      "this will target",
+      "will target slightly"
+    ],
+    "persuasion_tactics": [
+      "Prova social, usando exemplos pessoais para demonstrar eficácia",
+      "Apelo para autoridade científica, mencionando estudos para justificar escolhas de exercícios",
+      "Motivação por resultado, apresentando resultados tangíveis e mensuráveis",
+      "Desafios ou competições para engajar a audiência emocionalmente"
+    ],
+    "evidence_notes": "Não há evidência suficiente sobre como ele encerra especificamente os vídeos, além de um resumo ou revisão do conteúdo."
+  },
+  "editing": {
+    "cut_cadence": "Cortes frequentes com uma média de 17,9 cortes por minuto, variando de 13,5 a 24,1, indicando uso de jump cuts a cada 3,1 segundos em média.",
+    "shot_types": "Predominantemente planos médios de exercícios em academias e close-ups para mostrar detalhes das técnicas.",
+    "text_overlay_style": "Uso consistente de sobreposição de texto para títulos de exercícios e legenda explicativa na parte inferior do vídeo, normalmente em branco para contraste.",
+    "b_roll_usage": "Incorpora alguns gráficos de pesquisa e close-ups de equipamentos para complementar a explicação dos exercícios.",
+    "visual_identity": "Cenários de academia com iluminação clara, cores neutras e foco no equipamento de treino.",
+    "retention_tricks": [
+      "Jump cuts",
+      "Textos rápidos e claros",
+      "Zooms suaves para atenção aos detalhes"
+    ],
+    "evidence_notes": "A presença de música, sons de fundo ou efeitos sonoros não pode ser analisada através dos frames."
+  }
+}
