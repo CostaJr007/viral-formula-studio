@@ -1,0 +1,16 @@
+# API image
+.venv
+__pycache__
+*.pyc
+.env
+data/frames
+output
+tmp
+videos
+frontend
+tests
+*.log
+
+# Frontend image context (frontend/.dockerignore not used by Railway root builds)
+node_modules
+dist
