@@ -1,6 +1,6 @@
 # Viral Formula Studio
 
-**Multimodal reverse engineering of a content creator's viral formula.** Give it a creator and your topic — it studies real evidence from the creator's videos (transcripts + frames) and delivers a complete, actionable playbook: copy structure, hook formulas, editing grammar and persuasion tactics, transposed to *your* theme, in *your* voice.
+**Multimodal reverse engineering of a content creator's viral formula.** Give it a creator (5 short-video links) and your topic — it studies real evidence from the creator's videos (transcripts + frames + deterministic measurements) and delivers a complete, actionable playbook: hook formulas, copy structure, editing grammar and persuasion tactics, transposed to *your* theme, in *your* voice.
 
 > Inspiration, not imitation. Every great creator started by studying someone. We hand you the notebook that used to take months to build.
 
@@ -14,137 +14,141 @@ Creators, marketers and small businesses all face the same question: *why does t
 
 The answer exists — but extracting it today is manual and slow: watch dozens of videos, pause, take notes, guess at patterns in the writing, the hooks, the editing rhythm. Existing AI tools skip the study entirely: they generate generic copy that sounds like everyone and no one.
 
-There is no tool that **decodes a specific creator's technique from real evidence** and turns it into a playbook you can apply to your own content.
+There is no tool that **decodes a specific creator's technique from real, measurable evidence** and turns it into a playbook you can apply to your own content.
 
 ## Our Solution
 
-Viral Formula Studio is an analysis engine, not a content generator. You provide:
+Viral Formula Studio is an analysis engine, not a content generator. You provide **a creator** (up to 5 short-video links, analyzed once) and **your topic**. It returns the complete viralization playbook, grounded in measured evidence:
 
-1. **A creator** (their videos, analyzed once), and
-2. **Your topic.**
-
-It returns the **complete viralization dossier** — the creator's formula, grounded in real evidence and transposed to your topic:
-
-- **Who the voice is** — tone, rhythm, persona
-- **The hook formula** — their recurring hook patterns, *why* each one works, and 5 hook suggestions for your topic written for *your* voice
-- **The copy structure** — their beginning-middle-end map, transposed into a script skeleton for your theme
-- **The editing grammar** — cut cadence, framing, on-screen text, b-roll usage, visual identity, retention tricks (extracted from real video frames)
-- **Persuasion & CTA** — how they convert attention into action
-- **Action plan** — a practical checklist to shoot and edit your video applying the formula
+| Feature | What it does | Engine |
+| --- | --- | --- |
+| Link ingestion | Downloads public short videos (YouTube Shorts/TikTok), captions-first transcription, Whisper fallback | yt-dlp + Groq Whisper |
+| Deterministic metrics | **Measures** cuts/min, avg shot length, words/min, repeated signature expressions (no LLM) | ffmpeg + Python |
+| Style analysis | Reverse-engineers the copy/hook fingerprint from real transcripts | LLM (structured output) |
+| Editing analysis | Decodes the editing grammar from real video frames | Multimodal LLM |
+| Fact-check (scout) | Gathers verified facts about your topic, each with a source URL | Tavily + LLM |
+| Viralization dossier | The creator's formula transposed to your topic: voice, hooks, copy structure, editing, persuasion, action plan | Voice model |
+| Guided creation | 10 hooks → you pick one → full ≤200-word video copy with editing directions | Voice model |
 
 The same decoded formula also explains why a video *sells*: organic content built on a proven formula becomes a pre-tested ad creative — the organic-to-paid bridge used by top creators.
 
-## How It Works — AI Approach & Architecture
+## AI & Technical Approach
+
+### AI collaboration workflow
+
+This project is developed with **IBM Bob** as the AI development partner, following the spec-driven workflow from the challenge labs: the product was specified up front (scope, dossier contract, honesty rules), and Bob was used in Ask/Plan modes to explore the legacy codebase, design the architecture and implement it module by module — with the human owner reviewing every accept/reject decision.
+
+### Core IBM technology
+
+**IBM Granite on watsonx.ai is the single voice of the product** for the submission. The codebase is provider-agnostic through one factory (`studio/factory.py`): switching providers is a one-line config change (`MODEL_PROVIDER=watsonx`), no agent code changes. watsonx currently offers no Granite vision model, so the frame-analysis stage runs on a supporting vision model while Granite writes everything the user reads — a hybrid pattern with a non-IBM model in a supporting role and Granite as the on-screen voice.
+
+### Live APIs
+
+| API | Purpose |
+| --- | --- |
+| IBM watsonx.ai (Granite) | Core AI — style/editing analysis and dossier synthesis (submission) |
+| OpenAI (GPT-4o) | Prototyping provider + automatic fallback if watsonx fails |
+| Groq Whisper | Audio transcription for videos without captions |
+| Tavily | Web fact-check (scout stage) with source URLs |
+
+### Why the output is trustworthy
 
 ```
-videos/<creator>/*.mp4
-        │
-        ├─ audio ──> Groq Whisper (retry, incremental saves) ──> transcripts
-        │                                                            │
-        └─ ffmpeg ──> 480p frame samples ────────────────┐           │
-                                                         ▼           ▼
-                              STAGE 1 — EVIDENCE EXTRACTION (runs once per creator)
-                              ┌─────────────────────────────────────────────┐
-                              │ EditingProfile (vision model, structured)   │
-                              │ CreatorStyle  (text model, structured)      │
-                              │  -> cached as data/profiles/<creator>.json  │
-                              └─────────────────────────────────────────────┘
-                                                         │
-                              STAGE 2 — SCOUT (per request): web fact-check
-                              Verified facts about the topic, each with a
-                              source URL (Tavily). Unavailable? The dossier
-                              degrades to structural mode — it never dies.
-                                                         │
-                              STAGE 3 — COMMENTATOR (per request)
-                                                         ▼
-                    DOSSIER: creator formula x your topic, written by the
-                    voice model, grounded ONLY in the injected evidence —
-                    facts cite their sources, weak sections say so.
+STAGE 0 — MEASURE (no LLM): cuts/min, shot length, words/min, n-grams
+STAGE 1 — EVIDENCE (cached): CreatorStyle (text) + EditingProfile (frames)
+STAGE 2 — SCOUT: verified facts about the topic, with sources
+STAGE 3 — COMMENTATOR: dossier/copy grounded ONLY in injected evidence
 ```
 
-- **Measured, not guessed** — a deterministic layer (`studio/metrics.py`) computes real numbers from the files before any LLM runs: cuts/minute and average shot length (ffmpeg scene detection), words/minute (transcript ÷ duration), and repeated signature expressions with counts. The LLM stages *interpret* these measurements instead of estimating them, and the dossier cites them ("measured: 21.3 cuts/min") — proof the output is data-based, not improvised copy.
-- **Scout → commentator pipeline** — fact-gathering (web search) is separated from explanation (the dossier), so the writing model never leans on training memory for facts about the topic.
-- **Structured outputs everywhere** — every analysis step returns a validated Pydantic model (`CreatorStyle`, `EditingProfile`, `ResearchReport`), never free text. Profiles are computed once and cached, so dossiers are fast and cheap.
-- **Ground truth injection** — the synthesis stage receives *only* the extracted profiles and the verified-facts report, never open-ended questions about the creator or the topic.
-- **Honesty rules** — every analysis prompt instructs the model to declare what the evidence could *not* support (`evidence_notes`, `unconfirmed`); weak sections are flagged `[limited evidence]` instead of being embellished.
-- **Graceful degradation** — no video files, no search key, provider down: each stage degrades explicitly (missing visual section, structural mode, OpenAI fallback) instead of failing or fabricating.
-- **Resilience** — native retries on every model call (rate limits) plus an automatic cross-provider fallback.
+- **Measured, not guessed** — the LLM interprets deterministic measurements instead of estimating them; the dossier cites them ("measured: 17.9 cuts/min").
+- **Ground truth injection** — synthesis receives only the extracted profiles and verified facts, never open-ended questions about the creator or topic.
+- **Honesty rules** — every prompt instructs the model to declare what evidence could NOT support (`evidence_notes`, `unconfirmed`); weak sections are flagged `[limited evidence]` instead of embellished. Unverifiable data becomes an explicit `[INSERT: ...]` placeholder, never a fabrication.
+- **Graceful degradation** — no captions → Whisper; no search → structural mode; provider down → cross-provider fallback with retries. The feature degrades, it never dies.
+- **Security & hygiene** — keys only in `.env` (never committed), no client-side exposure, telemetry disabled, per-URL failure isolation, corrupted profiles self-heal.
 
-## Core IBM Technology
+## Tech Stack
 
-**IBM Granite on watsonx.ai is the single voice of the product.** The entire codebase is provider-agnostic through one factory (`studio/factory.py`); switching from the prototyping provider to IBM is a one-line config change — no agent code changes:
+- **Python 3.12** · uv (dependency management)
+- **Agno 2.7.3** (agent framework) · **Gradio** (web UI)
+- **ffmpeg/ffprobe** (audio extraction, frame sampling, scene-cut detection)
+- **yt-dlp** + curl-cffi (link ingestion) · **Groq Whisper** (transcription)
+- **Pydantic** (structured outputs everywhere) · **pytest + ruff** (20 tests, lint-clean)
 
-```bash
-# .env
-MODEL_PROVIDER=watsonx
-WATSONX_MODEL_ID=ibm/granite-3-8b-instruct
-IBM_WATSONX_API_KEY=...
-IBM_WATSONX_PROJECT_ID=...
-```
+## Why This Matters
 
-Both analysis stages and the final dossier run on the configured provider. Prototyping uses OpenAI's multimodal GPT-4o. On watsonx.ai, **IBM Granite is the voice** (text analysis + dossier synthesis), while the frame-analysis stage runs on a supporting vision model (`meta-llama/llama-3-2-11b-vision-instruct`) — watsonx currently offers no Granite vision model. Same hybrid pattern as proven submissions: a non-IBM model in a supporting role, Granite as the single on-screen voice.
-
-## How IBM Bob Was Used
-
-This project was developed with **IBM Bob** as the AI development partner, following the spec-driven workflow from the challenge labs: the product was specified up front (scope, dossier contract, honesty rules), and Bob was used in Ask/Plan modes to explore the legacy codebase, design the new architecture and implement it module by module, with the human owner reviewing every accept/reject decision.
-
-## Responsible AI — Inspiration, Not Imitation
-
-- **Technique, not content.** The dossier decodes *why* something works and how to apply it in your own voice — it never hands over ready-made lines to copy from the creator. Studying a master's technique is how every artist learns; we automate the study, not the plagiarism.
-- **Evidence or silence.** The system states plainly when evidence is insufficient rather than fabricating patterns about a real person.
-- **Consent-aware demos.** Demos run on creators' content used with permission or our own; the tool analyzes technique and never redistributes source content.
+The creator economy runs on a craft that today is tacit and manual: understanding *why* a video works. Viral Formula Studio turns that craft into explicit, measurable, transferable knowledge — so a small business or a new creator can learn in minutes what used to take months of study. It reimagines the creative workflow not by replacing the human creator, but by making the masters' technique learnable: the formula migrates, the voice stays yours.
 
 ## Running Locally
 
 Prerequisites: Python 3.12+, [uv](https://docs.astral.sh/uv/), ffmpeg on PATH.
 
 ```bash
+git clone https://github.com/CostaJr007/viral-formula-studio.git
+cd viral-formula-studio
 uv sync
-cp .env.example .env   # fill in your keys (see .env.example)
 ```
 
-1. Add a creator — either way:
-   - **By link (recommended):** `python main.py` → option **3** → paste YouTube Shorts / TikTok video URLs (captions-first transcription, Whisper fallback; downloads are low-res on purpose — frames/metrics only).
-   - **Manually:** drop mp4 files into `videos/<creator_name>/`, then run option **1**.
-2. Generate a dossier: `python main.py` → option **2** → type your topic
+Create a `.env` file (see `.env.example`):
 
-> **Platform honesty:** YouTube (incl. Shorts) and TikTok work via public links. Instagram has **no official link access** — ingestion is best-effort and may require login cookies; if it fails, the app tells you to drop the Reels manually into `videos/<creator>/` (one-time per creator).
+```bash
+MODEL_PROVIDER=openai            # or watsonx (IBM submission)
+OPENAI_API_KEY=your_openai_key
+GROQ_API_KEY=your_groq_key       # transcription fallback
+TAVILY_API_KEY=your_tavily_key   # fact-check stage
+# IBM watsonx.ai (Granite) — for the submission:
+IBM_WATSONX_API_KEY=your_ibm_key
+IBM_WATSONX_PROJECT_ID=your_project_id
+IBM_WATSONX_URL=https://us-south.ml.cloud.ibm.com
+```
 
-Optional web UI (Agno AgentOS): `python agent.py` → http://localhost:8000
+Run:
 
-Dossiers are saved to `output/`.
+```bash
+uv run python app.py     # web UI -> http://localhost:7860
+uv run python main.py    # terminal CLI (same engine)
+```
+
+Flow: **1 · Criador** (paste up to 5 links → analyze) → **2 · Perfil** (measured formula) → **3 · Ganchos** (10 hooks) → **4 · Copy** (orchestrated script).
 
 ## Project Structure
 
 ```
 studio/
 ├── config.py          # pydantic-settings: keys, paths, provider switch (single source of truth)
-├── factory.py         # the ONLY place that knows the LLM provider (OpenAI | watsonx)
-├── schemas.py         # CreatorStyle / EditingProfile / CreatorProfile (Pydantic contracts)
+├── factory.py         # the ONLY place that knows the LLM provider + fallback + retries
+├── schemas.py         # CreatorStyle / EditingProfile / ResearchReport (Pydantic contracts)
 ├── store.py           # JSON persistence (transcripts, cached profiles)
-├── transcribe.py      # Groq Whisper pipeline (retry + incremental saves)
+├── ingest.py          # link ingestion: yt-dlp, captions-first, Whisper fallback
+├── transcribe.py      # local-folder transcription pipeline (incremental saves)
 ├── frames.py          # ffmpeg frame sampling (480p, uniform)
 ├── metrics.py         # deterministic measurements: cuts/min, words/min, n-grams (no LLM)
 ├── analyze_text.py    # agent: transcripts + metrics -> CreatorStyle
-├── analyze_visual.py  # agent: frames -> EditingProfile (multimodal)
-├── research.py        # agent: web fact-check on the topic -> ResearchReport (scout)
-├── dossier.py         # agent: profiles + facts + topic -> final playbook (commentator)
+├── analyze_visual.py  # agent: frames + metrics -> EditingProfile (multimodal)
+├── research.py        # agent: web fact-check -> ResearchReport (scout)
+├── dossier.py         # agent: profiles + facts -> viralization playbook (commentator)
+├── create.py          # guided flow: 10 hooks -> pick -> orchestrated <=200-word copy
 └── pipeline.py        # per-creator orchestration (runs once, cached)
-main.py                # CLI
-agent.py               # optional AgentOS web UI
-tests/                 # pytest (schemas, store, real ffmpeg extraction)
-data/                  # transcripts, profiles, frame cache
+app.py                 # Gradio web UI (4-step wizard)
+agent.py               # optional Agno AgentOS interface
+main.py                # terminal CLI
+tests/                 # 20 tests (schemas, store, real ffmpeg metrics, ingestion, creation)
+data/                  # transcripts + cached creator profiles
 ```
 
 ## Testing
 
 ```bash
-uv run pytest      # 9 tests, incl. real ffmpeg frame extraction (no API keys needed)
-uv run ruff check .
+uv run pytest        # 20 tests, incl. real ffmpeg cut detection (no API keys needed)
+uv run ruff check .  # lint
 ```
 
 ## Roadmap
 
-- **Granite vision** for the frame-analysis stage, once a Granite multimodal model lands on watsonx.
-- **Deploy** + 3-minute demo video for the submission.
-- ~~Link-based ingestion (yt-dlp)~~ — **shipped**: option 3 in the CLI (YouTube Shorts / TikTok; Instagram best-effort with manual-upload fallback).
+- Granite vision for the frame-analysis stage, once a Granite multimodal model lands on watsonx
+- Public deploy + 3-minute demo video
+- OCR of on-screen text and color-palette analysis (deterministic layer v2)
+
+## License
+
+© 2026 Costa Jr. All rights reserved.
+This project is shared publicly for review as part of the IBM AI Builders Challenge (July 2026). No permission is granted to copy, modify, redistribute, or reuse the code or content without the author's explicit written consent.
