@@ -48,7 +48,9 @@ class Settings(BaseSettings):
     ibm_watsonx_api_key: str | None = None
     ibm_watsonx_project_id: str | None = None
     ibm_watsonx_url: str = "https://us-south.ml.cloud.ibm.com"
-    watsonx_model_id: str = "ibm/granite-3-8b-instruct"
+    # granite-3-8b-instruct lacks tools/structured-output support on watsonx;
+    # granite-4-h-small supports both (verified live)
+    watsonx_model_id: str = "ibm/granite-4-h-small"
     # watsonx has no Granite vision model in the current regions; the frame-analysis
     # stage uses this supporting vision model while Granite stays the product's voice
     watsonx_vision_model_id: str = "meta-llama/llama-3-2-11b-vision-instruct"

@@ -42,11 +42,11 @@ Key modules:
 
 ## 🔌 Switching to IBM (submission strategy)
 
-1. Fill in `.env`: `MODEL_PROVIDER=watsonx`, `IBM_WATSONX_API_KEY`, `IBM_WATSONX_PROJECT_ID`, `IBM_WATSONX_URL`, `WATSONX_MODEL_ID` (default `ibm/granite-3-8b-instruct`).
+1. Fill in `.env`: `MODEL_PROVIDER=watsonx`, `IBM_WATSONX_API_KEY`, `IBM_WATSONX_PROJECT_ID`, `IBM_WATSONX_URL`, `WATSONX_MODEL_ID` (default `ibm/granite-4-h-small`).
 2. The `ibm-watsonx-ai` SDK is already a dependency. Agno 2.7.3 has `agno.models.ibm.WatsonX`.
 3. No agent changes — they all receive the model via `factory.get_model()` / `factory.get_vision_model()`.
 4. **Automatic fallback (implemented and tested):** with any provider ≠ openai and an `OPENAI_API_KEY` present, agno attaches GPT-4o as a fallback (`fallback_models`). If watsonx fails (frozen account, Lite-plan 429s, outage), the agent continues on OpenAI. Tested on 07/17: `MODEL_PROVIDER=watsonx` with a frozen account → the response came via `gpt-4o` automatically.
-5. **Real models on watsonx (verified via API on 07/17/2026):** there is NO Granite with vision in the us-south/au-syd/eu-de regions. Voice = `ibm/granite-3-8b-instruct` (us-south); frame analysis = `meta-llama/llama-3-2-11b-vision-instruct` (supporting role — same hybrid pattern as the winner: a non-IBM model supports, Granite is the voice). The id `ibm/granite-vision-4-1-4b` is a HALLUCINATION — do not use.
+5. **Real models on watsonx (verified live 07/17/2026):** voice = `ibm/granite-4-h-small` — Granite 3 8B **does not support** tools/structured output on watsonx (the API error lists supported models; Granite 4 is among them, and it ran fact-check tool-calling + HookList structured output natively). There is NO Granite with vision in the current regions: frame analysis = `meta-llama/llama-3-2-11b-vision-instruct` (supporting role — same hybrid pattern as the winner: a non-IBM model supports, Granite is the voice). The id `ibm/granite-vision-4-1-4b` is a HALLUCINATION — do not use.
 6. Attention: watsonx Lite has a per-minute concurrency limit (429 errors) — retry with backoff is mandatory on calls.
 7. **CURRENT BLOCKER:** IBM Cloud account frozen (`frozen: true` in the IAM token, verified on two keys). Expected errors while frozen: "Failed to verify user profile existence" and "Failed to find the IBMid member in project". Resolve at cloud.ibm.com (Pay-As-You-Go upgrade / verification / support) and re-test.
 
