@@ -1,8 +1,11 @@
-"""In-memory IP-based rate limiter — lightweight, no external dependencies.
+"""In-memory rate limiter — lightweight, no external dependencies.
 
-Tracks ingest requests per IP with a rolling 1-hour window.
-Max 3 analyses per IP per hour — enough for demo use without risking
-abuse on the Lite-plan watsonx instance (token caps, RPM limits).
+Two limits per IP (rolling 1-hour window):
+  1. Max 3 distinct creator analyses  (POST /api/ingest)
+  2. Max 3 dossier/PDF exports per creator  (POST /api/dossier)
+
+Hooks and copy endpoints are unconstrained — they're transient steps
+within the flow and don't hit external LLMs independently in practice.
 """
 
 from __future__ import annotations
@@ -11,38 +14,54 @@ import time
 from collections import defaultdict
 
 WINDOW_S = 3600  # 1 hour
-MAX_REQUESTS = 3
+MAX_CREATORS = 3
+MAX_DOSSIERS_PER_CREATOR = 3
 
 
 class RateLimiter:
-    def __init__(self, max_requests: int = MAX_REQUESTS, window_s: int = WINDOW_S) -> None:
-        self._max = max_requests
-        self._window = window_s
-        self._hits: dict[str, list[float]] = defaultdict(list)
+    def __init__(self) -> None:
+        # ip -> set of creator names analyzed
+        self._creators: dict[str, set[str]] = defaultdict(set)
+        # ip -> {creator -> [timestamps]}
+        self._dossiers: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
 
-    def check(self, ip: str) -> bool:
-        """Return True if the IP is allowed, False if rate-limited."""
-        now = time.time()
-        cutoff = now - self._window
+    def _purge_dossiers(self, ip: str, creator: str) -> None:
+        cutoff = time.time() - WINDOW_S
+        self._dossiers[ip][creator] = [
+            t for t in self._dossiers[ip][creator] if t > cutoff
+        ]
 
-        # Purge expired timestamps
-        self._hits[ip] = [t for t in self._hits[ip] if t > cutoff]
+    # --- ingest ---
 
-        if len(self._hits[ip]) >= self._max:
+    def check_ingest(self, ip: str, creator: str) -> bool:
+        """Return True if this creator can be analyzed (≤3 unique creators per IP)."""
+        creator = creator.lower()
+        if creator in self._creators[ip]:
+            return True  # already analyzed — re-ingest same creator is fine
+        if len(self._creators[ip]) >= MAX_CREATORS:
             return False
-
-        self._hits[ip].append(now)
+        self._creators[ip].add(creator)
         return True
 
-    def remaining(self, ip: str) -> int:
-        """How many requests remain in the current window."""
-        cutoff = time.time() - self._window
-        self._hits[ip] = [t for t in self._hits[ip] if t > cutoff]
-        return max(0, self._max - len(self._hits[ip]))
+    def remaining_creators(self, ip: str) -> int:
+        return max(0, MAX_CREATORS - len(self._creators[ip]))
 
-    def reset(self, ip: str) -> None:
-        self._hits.pop(ip, None)
+    # --- dossier ---
+
+    def check_dossier(self, ip: str, creator: str) -> bool:
+        """Return True if a dossier can be exported for this creator (≤3 per creator)."""
+        creator = creator.lower()
+        self._purge_dossiers(ip, creator)
+        if len(self._dossiers[ip][creator]) >= MAX_DOSSIERS_PER_CREATOR:
+            return False
+        self._dossiers[ip][creator].append(time.time())
+        return True
+
+    def remaining_dossiers(self, ip: str, creator: str) -> int:
+        creator = creator.lower()
+        self._purge_dossiers(ip, creator)
+        return max(0, MAX_DOSSIERS_PER_CREATOR - len(self._dossiers[ip][creator]))
 
 
-# Singleton used by the API layer
+# Singleton
 limiter = RateLimiter()

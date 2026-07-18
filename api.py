@@ -90,9 +90,10 @@ def health() -> dict:
 def usage(request: Request) -> dict:
     ip = request.client.host if request.client else "unknown"
     return {
-        "remaining": limiter.remaining(ip),
-        "limit": limiter._max,
-        "window_minutes": limiter._window // 60,
+        "remaining_creators": limiter.remaining_creators(ip),
+        "max_creators": 3,
+        "max_dossiers_per_creator": 3,
+        "window_minutes": 60,
     }
 
 
@@ -147,17 +148,17 @@ async def _run_ingest_job(job_id: str, creator: str, urls: list[str]) -> None:
 async def start_ingest(req: IngestRequest, request: Request) -> dict:
     ip = request.client.host if request.client else "unknown"
 
-    if not limiter.check(ip):
-        remaining = limiter.remaining(ip)
+    if not limiter.check_ingest(ip, req.creator):
+        remaining = limiter.remaining_creators(ip)
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit: max 3 analyses per hour. {remaining} remaining. Try again later.",
+            detail=f"Rate limit: max 3 distinct creators per IP. {remaining} slots remaining.",
         )
 
     job_id = uuid.uuid4().hex[:12]
     JOBS[job_id] = {"status": "queued", "creator": req.creator}
     asyncio.create_task(_run_ingest_job(job_id, req.creator, req.urls))
-    return {"job_id": job_id, "remaining": limiter.remaining(ip)}
+    return {"job_id": job_id, "remaining_creators": limiter.remaining_creators(ip)}
 
 
 @app.get("/api/jobs/{job_id}")
@@ -169,14 +170,8 @@ def job_status(job_id: str) -> dict:
 
 
 def _check_rate(request: Request) -> None:
-    """All LLM-calling endpoints share one limit: 3 calls/IP/hour."""
-    ip = request.client.host if request.client else "unknown"
-    if not limiter.check(ip):
-        remaining = limiter.remaining(ip)
-        raise HTTPException(
-            status_code=429,
-            detail=f"Rate limit: max 3 AI calls per hour. {remaining} remaining.",
-        )
+    """Shared rate-limit helper. Not currently used — hooks/copy are unconstrained."""
+    pass
 
 
 @app.get("/api/profile/{creator}")
@@ -188,8 +183,7 @@ def get_profile(creator: str) -> dict:
 
 
 @app.post("/api/hooks")
-async def hooks(req: HooksRequest, request: Request) -> dict:
-    _check_rate(request)
+async def hooks(req: HooksRequest) -> dict:
     try:
         hook_list = await asyncio.to_thread(generate_hooks, req.creator, req.topic, profile=req.profile)
     except ValueError as e:
@@ -198,8 +192,7 @@ async def hooks(req: HooksRequest, request: Request) -> dict:
 
 
 @app.post("/api/copy")
-async def copy(req: CopyRequest, request: Request) -> dict:
-    _check_rate(request)
+async def copy(req: CopyRequest) -> dict:
     try:
         result = await asyncio.to_thread(generate_copy, req.creator, req.topic, req.hook, profile=req.profile)
     except ValueError as e:
@@ -209,7 +202,13 @@ async def copy(req: CopyRequest, request: Request) -> dict:
 
 @app.post("/api/dossier")
 async def dossier(req: DossierRequest, request: Request) -> dict:
-    _check_rate(request)
+    ip = request.client.host if request.client else "unknown"
+    if not limiter.check_dossier(ip, req.creator):
+        remaining = limiter.remaining_dossiers(ip, req.creator)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit: max 3 dossier/PDF exports per creator. {remaining} remaining for '{req.creator}'.",
+        )
     try:
         markdown = await asyncio.to_thread(generate_dossier, req.creator, req.topic, profile_data=req.profile)
     except ValueError as e:
