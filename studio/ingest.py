@@ -153,6 +153,39 @@ def _transcribe_with_whisper(video_path: Path) -> str | None:
         audio_path.unlink(missing_ok=True)
 
 
+def _fix_transcription_coherence(text: str) -> str:
+    """Use Granite 4 to fix garbled words and restore coherence in auto-captions.
+
+Regex catches known patterns (HTML entities, broken contractions). But
+transcription artifacts are unpredictable — stuttering ("th th there"),
+misrecognition ("wnt" → "went"), garbled segments. An LLM understands
+context and fixes what regex can't.
+
+Falls back to the regex-cleaned text if the LLM is unavailable.
+"""
+    try:
+        from .factory import get_model
+        from agno.agent import Agent
+
+        agent = Agent(
+            model=get_model(),
+            name="transcription_cleaner",
+            description="Cleans auto-generated transcripts while preserving meaning.",
+            instructions=(
+                "You are a transcript cleaner. Fix garbled words, broken sentences, "
+                "stuttering, transcription artifacts, and HTML entities. Preserve the "
+                "original meaning, tone, and word count as closely as possible. "
+                "Return ONLY the cleaned text — no explanations, no headers."
+            ),
+        )
+        response = agent.run(f"Clean this transcript:\n\n{text}")
+        if isinstance(response.content, str) and len(response.content.strip()) > 10:
+            return response.content.strip()
+    except Exception:
+        logger.warning("Transcription coherence fix failed — using regex-cleaned text.")
+    return text
+
+
 def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> dict:
     """Ingest a list of video URLs for a creator. Returns a per-URL status report."""
     settings = get_settings()
@@ -206,7 +239,11 @@ def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> di
             report["failed"].append({"url": url, "reason": "no captions and transcription unavailable"})
             continue
 
-        transcriptions[creator].append({"video": video_path.name, "transcription": _clean_transcription(text)})
+        # Clean: regex first (fast, catches known patterns), then LLM for coherence
+        cleaned = _clean_transcription(text)
+        fixed = _fix_transcription_coherence(cleaned)
+
+        transcriptions[creator].append({"video": video_path.name, "transcription": fixed})
         store.save_transcriptions(transcriptions)  # incremental save
         logger.info("[OK] %s ingested (%s, %ds)", video_path.name, meta["uploader"], meta["duration"])
         report["ok"].append(url)
