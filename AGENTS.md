@@ -12,10 +12,11 @@ Positioning: **inspiration, not imitation** — the formula migrates, the user's
 ## Layout
 
 - `studio/` — Python engine (the product brain). All analysis logic lives here.
-- `api.py` — FastAPI layer exposing the engine to the web frontend.
+- `api.py` — FastAPI layer exposing the engine to the React frontend.
+  Rate-limited (IP-based, 3 analyses/hour via `studio/limits.py`).
 - `frontend/` — React 19 + Vite + TanStack Start + Tailwind 4 UI (4-step wizard).
 - `app.py` — legacy Gradio UI (kept for quick local demos).
-- `main.py` — terminal CLI. `tests/` — pytest suite. `data/` — transcripts + cached profiles.
+- `main.py` — terminal CLI. `tests/` — pytest suite (25 tests). `data/` — transcripts + cached profiles.
 
 ## Non-negotiable rules
 
