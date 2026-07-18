@@ -48,7 +48,8 @@ def list_creators() -> list[str]:
 
 
 def profile_path(creator: str) -> Path:
-    return get_settings().profiles_dir / f"{creator}.json"
+    # Normalize: lowercase to avoid "TEST" vs "test" creating separate profiles
+    return get_settings().profiles_dir / f"{creator.lower()}.json"
 
 
 def load_profile(creator: str) -> CreatorProfile | None:

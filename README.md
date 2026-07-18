@@ -80,6 +80,26 @@ Every output is grounded in **measured evidence**, not guesswork:
 - **Honesty rules** — every prompt requires `evidence_notes`, `unconfirmed`, and `[INSERT: ...]` placeholders
 - **Graceful degradation** — no captions → Whisper; no search → structural mode; provider down → automatic fallback
 
+## Any Creator, Any Language
+
+The pipeline is **language-agnostic and geography-independent** — it masters creators
+from any country, in any language:
+
+- **Transcription:** Whisper Large v3 Turbo handles 99+ languages natively (English,
+  Portuguese, Spanish, Japanese, Arabic, Hindi, and more). YouTube auto-captions are
+  tried first in the video's original language.
+- **Text analysis:** Granite 4 reads transcriptions in the creator's native language
+  and extracts style patterns that transcend language — tone, sentence rhythm, hook
+  structure, and persuasion tactics work the same whether the creator speaks Portuguese,
+  Korean, or English.
+- **Visual analysis:** Editing grammar (cuts/min, framing, text overlays) is
+  language-independent — the vision model reads frames, not audio.
+- **Output:** All analysis is delivered in English, while the creator's original
+  expressions and signature phrases are preserved in their native language.
+
+The system doesn't translate — it understands the creator's technique in whatever
+language they speak, and transposes it onto your topic.
+
 ## Tech Stack
 
 | Layer | Technology |

@@ -92,6 +92,7 @@ Structure rules:
 
 
 def _profile_or_raise(creator: str):
+    creator = creator.lower()  # normalize: case-insensitive
     profile = store.load_profile(creator)
     if profile is None or (profile.style is None and profile.editing is None):
         raise ValueError(f"Profile for '{creator}' not found. Run the analysis first.")
