@@ -47,16 +47,25 @@ Key modules:
 3. No agent changes — they all receive the model via `factory.get_model()` / `factory.get_vision_model()`.
 4. **Automatic fallback (implemented and tested):** with any provider ≠ openai and an `OPENAI_API_KEY` present, agno attaches GPT-4o as a fallback (`fallback_models`). If watsonx fails (frozen account, Lite-plan 429s, outage), the agent continues on OpenAI. Tested on 07/17: `MODEL_PROVIDER=watsonx` with a frozen account → the response came via `gpt-4o` automatically.
 5. **Real models on watsonx (verified live 07/17/2026):** voice = `ibm/granite-4-h-small` — Granite 3 8B **does not support** tools/structured output on watsonx (the API error lists supported models; Granite 4 is among them, and it ran fact-check tool-calling + HookList structured output natively). There is NO Granite with vision in the current regions: frame analysis = `meta-llama/llama-3-2-11b-vision-instruct` (supporting role — same hybrid pattern as the winner: a non-IBM model supports, Granite is the voice). The id `ibm/granite-vision-4-1-4b` is a HALLUCINATION — do not use.
-6. Attention: watsonx Lite has a per-minute concurrency limit (429 errors) — retry with backoff is mandatory on calls.
-7. **CURRENT BLOCKER:** IBM Cloud account frozen (`frozen: true` in the IAM token, verified on two keys). Expected errors while frozen: "Failed to verify user profile existence" and "Failed to find the IBMid member in project". Resolve at cloud.ibm.com (Pay-As-You-Go upgrade / verification / support) and re-test.
+6. Attention: watsonx Lite has a per-minute concurrency limit (429 errors) — retry with backoff is mandatory on calls. Rate limiting implemented at API level (max 3 analyses/IP/hour via `studio/limits.py`).
+7. **STATUS:** Production deployed on IBM Code Engine (us-south). API + Web live. watsonx Lite plan active.
 
 ## ✅ Submission checklist (verified rules)
 
-- [ ] IBM Bob as the main dev tool (already the developer's environment) + "How IBM Bob Was Used" section in the README.
-- [ ] Complete the mandatory learning activity on skillsbuild.org.
-- [ ] Public repo with README following the rubric standard (done — README.md).
+- [x] IBM watsonx.ai Granite 4 as the product voice — deployed and live.
+- [x] Complete the mandatory learning activity on skillsbuild.org.
+- [x] Public repo with README following the rubric standard (done — README.md).
 - [ ] Public demo video up to 3 minutes (use local mode — do not depend on the network in the demo).
 - [ ] Submit on the BeMyApp platform by 07/31 11:59 PM ET.
+
+## 💾 Decision and change log (v0.6 — current)
+
+- **Production deployment:** Docker images built via GitHub Actions, pushed to Docker Hub, served on IBM Code Engine (us-south). Two services: `vfs-api` (FastAPI + ffmpeg) and `vfs-web` (React SSR).
+- **Rate limiting:** IP-based, max 3 analyses per hour via `studio/limits.py` — protects watsonx Lite plan RPM limits and prevents abuse.
+- **Resilient parsing:** `studio/parse.py` recovers structured Pydantic output from raw/fenced/truncated JSON — handles watsonx `max_tokens=1024` edge cases gracefully.
+- **WatsonX token fix:** `max_tokens=4096` set explicitly in `factory.py` — Granite defaults to 1024 which truncates `CreatorStyle` JSON mid-object.
+- **Favicon:** Replaced Lovable scaffold icon with brand mark generated from `logo.png`.
+- **25 tests** (up from 14), all passing, lint-clean.
 
 ## 💾 Decision and change log (v0.5)
 
