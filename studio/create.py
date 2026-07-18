@@ -187,4 +187,5 @@ def generate_copy(
         "Generate the COMPLETE SHOOTING SCRIPT. Every block must have all 5 fields: "
         "[TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY IT WORKS]. "
         "Use the creator's measured cuts/min, shot types, and editing grammar from the profile."
+    )
     return coerce_structured(response.content, VideoCopy, stage="Copy generation")
