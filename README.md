@@ -65,7 +65,7 @@ Every output is grounded in **measured evidence**, not guesswork:
 | Stage | Model | What It Does | Runs On |
 |---|---|---|---|
 | 🎤 Transcription | Whisper Large v3 Turbo | Audio → text (captions-first, Whisper fallback) | Groq |
-| 📊 Metrics | Python + ffmpeg | Deterministic: cuts/min, WPM, n-grams (no AI) | — |
+| 📊 Metrics | Python + ffmpeg | Deterministic: cuts/min, WPM, n-grams (no LLM needed) | IBM Code Engine (container) |
 | ✍️ Text Analysis | **Granite 4** (`ibm/granite-4-h-small`) | Decodes creator's tone, hooks, copy structure | IBM watsonx.ai |
 | 👁️ Visual Analysis | Llama 3.2 11B Vision | Reads video frames, decodes editing grammar | IBM watsonx.ai (hosted) |
 | 🔍 Fact-Check | **Granite 4** + Tavily | Web search → verified facts with sources | IBM watsonx.ai |
