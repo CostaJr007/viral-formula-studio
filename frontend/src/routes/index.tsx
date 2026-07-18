@@ -106,11 +106,12 @@ type CopyResult = {
   word_count: number;
 };
 
-type StepId = "creator" | "profile" | "hooks" | "copy";
+type StepId = "creator" | "profile" | "topic-select" | "hooks" | "copy";
 
 const STEPS: { id: StepId; label: string; hint: string; icon: typeof LinkIcon }[] = [
   { id: "creator", label: "Creator", hint: "5 Shorts / TikTok links", icon: LinkIcon },
   { id: "profile", label: "Profile", hint: "measured formula", icon: Gauge },
+  { id: "topic-select", label: "Topic", hint: "your theme", icon: Target },
   { id: "hooks", label: "Hooks", hint: "10 derived hooks", icon: Target },
   { id: "copy", label: "Copy", hint: "script ≤200 words", icon: Wand2 },
 ];
@@ -272,7 +273,8 @@ function Studio() {
     setPickedHook(null);
     setCopyResult(null);
     setDossierCache(null);
-    setStep("hooks");  // goes to hooks step where they can change topic
+    setHooks([]);
+    setStep("topic-select");
   }
 
   function restart() {
@@ -439,6 +441,14 @@ function Studio() {
             )}
 
             {step === "profile" && <ProfileStep profile={profile} onNext={goHooks} />}
+
+            {step === "topic-select" && (
+              <TopicSelectStep
+                topic={topic || "your topic"}
+                setTopic={setTopic}
+                onGenerate={(t) => goHooks(t)}
+              />
+            )}
 
             {step === "hooks" && (
               <HooksStep
@@ -898,6 +908,55 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ---------------- Step 2.5: Topic Select ---------------- */
+
+function TopicSelectStep({
+  topic,
+  setTopic,
+  onGenerate,
+}: {
+  topic: string;
+  setTopic: (v: string) => void;
+  onGenerate: (t: string) => void;
+}) {
+  const [localTopic, setLocalTopic] = useState(topic);
+
+  return (
+    <div className="space-y-10 max-w-2xl mx-auto">
+      <header className="space-y-4 text-center">
+        <Badge variant="outline" className="gap-1.5 mx-auto">
+          <Target className="h-3 w-3" /> New Topic
+        </Badge>
+        <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
+          What's your <span className="text-gradient">new topic</span>?
+        </h1>
+        <p className="text-muted-foreground text-lg leading-relaxed">
+          Same creator, new theme. The AI already knows the creator's formula — just
+          tell it what to write about this time.
+        </p>
+      </header>
+
+      <Card className="p-8 bg-card/70 backdrop-blur-sm space-y-6 text-center">
+        <Textarea
+          value={localTopic}
+          onChange={(e) => { setLocalTopic(e.target.value); setTopic(e.target.value); }}
+          placeholder="e.g. intermittent fasting benefits"
+          rows={3}
+          className="bg-background/60 text-lg text-center resize-none"
+        />
+        <Button
+          size="lg"
+          disabled={localTopic.trim().length < 3}
+          onClick={() => onGenerate(localTopic)}
+          className="min-w-[220px] shadow-glow"
+        >
+          Generate 10 hooks <ArrowRight className="h-4 w-4" />
+        </Button>
+      </Card>
     </div>
   );
 }
