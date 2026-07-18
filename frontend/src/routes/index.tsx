@@ -8,6 +8,7 @@ import {
   Copy as CopyIcon,
   Download,
   Eye,
+  FileText,
   Globe,
   Loader2,
   Film,
@@ -226,6 +227,27 @@ function Studio() {
     }
   }
 
+  async function exportPdfReport() {
+    setError(null);
+    try {
+      const data = await apiPost<{ markdown: string }>("/api/dossier", {
+        creator: creatorName.trim(),
+        topic: topic.trim(),
+        profile: profile ?? undefined,
+      });
+      // Convert basic markdown to print-friendly HTML
+      const safeTitle = `Viral Formula Studio — ${creatorName.trim()} × ${topic.trim()}`;
+      const html = markdownToPrintHtml(data.markdown, safeTitle);
+      const w = window.open("", "_blank");
+      if (!w) { setError("Popup blocked — allow popups for PDF export."); return; }
+      w.document.write(html);
+      w.document.close();
+      w.onload = () => w.print();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   function restart() {
     setStep("creator");
     setProfile(null);
@@ -408,6 +430,7 @@ function Studio() {
                 result={copyResult}
                 onGenerate={generateCopy}
                 onExport={exportDossier}
+                onExportPdf={exportPdfReport}
                 onRestart={restart}
               />
             )}
@@ -934,12 +957,47 @@ function HooksStep({
 
 /* ---------------- Step 4: Copy ---------------- */
 
+function markdownToPrintHtml(md: string, title: string): string {
+  // Simple markdown-to-HTML for print-friendly PDF export
+  let html = md
+    .replace(/### (.+)/g, "<h3>$1</h3>")
+    .replace(/## (.+)/g, "<h2>$1</h2>")
+    .replace(/# (.+)/g, "<h1>$1</h1>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\n- (.+)/g, "\n<li>$1</li>")
+    .replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>")
+    .replace(/\|(.+)\|/g, (m) => m.replace(/\|/g, " "))  // rough table → text
+    .replace(/<br>/g, "")
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+
+  html = `<p>${html}</p>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+  @page { margin: 2cm; size: A4; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11pt; line-height: 1.6; color: #1a1a1a; max-width: 700px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 20pt; color: #0d0f1f; border-bottom: 3px solid #0f62fe; padding-bottom: 8px; }
+  h2 { font-size: 14pt; color: #0f62fe; margin-top: 28px; }
+  h3 { font-size: 12pt; color: #333; }
+  strong { color: #0d0f1f; }
+  code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-size: 10pt; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  p { margin: 8px 0; }
+  @media print { body { padding: 0; } }
+</style></head><body>${html}</body></html>`;
+}
+
 function CopyStep({
   hook,
   generating,
   result,
   onGenerate,
   onExport,
+  onExportPdf,
   onRestart,
 }: {
   hook: string;
@@ -947,6 +1005,7 @@ function CopyStep({
   result: CopyResult | null;
   onGenerate: () => void;
   onExport: () => void;
+  onExportPdf: () => void;
   onRestart: () => void;
 }) {
   return (
@@ -1048,8 +1107,11 @@ function CopyStep({
             <Button variant="outline" onClick={onRestart}>
               Study another creator
             </Button>
+            <Button variant="outline" className="shadow-glow" onClick={onExportPdf}>
+              PDF <FileText className="h-4 w-4 ml-1.5" />
+            </Button>
             <Button className="shadow-glow" onClick={onExport}>
-              Export dossier <Download className="h-4 w-4" />
+              Export .md <Download className="h-4 w-4 ml-1.5" />
             </Button>
           </div>
         </div>
