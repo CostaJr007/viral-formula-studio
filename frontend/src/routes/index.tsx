@@ -172,18 +172,21 @@ function Studio() {
   }
 
   async function goHooks(newTopic?: string) {
+    console.log("[goHooks] called, topic:", topic, "profile:", !!profile, "creatorName:", creatorName);
     const theme = (newTopic ?? topic).trim();
     if (newTopic) setTopic(newTopic);
     setError(null);
     setHooksLoading(true);
     setPickedHook(null);
-    setStep("hooks");  // advance immediately so the user sees loading
+    setStep("hooks");
+    console.log("[goHooks] advancing to hooks step");
     try {
       const data = await apiPost<{ hooks: Hook[] }>("/api/hooks", {
         creator: creatorName.trim(),
         topic: theme,
         profile: profile ?? undefined,
       });
+      console.log("[goHooks] received", data.hooks?.length, "hooks");
       setHooks(data.hooks);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -860,9 +863,14 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNext(); }}
+          onClick={(e) => { 
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            console.log("[Button] clicked, calling onNext");
+            onNext(); 
+          }}
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium cursor-pointer bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 rounded-md px-8 min-w-[220px] shadow-glow"
-          style={{ zIndex: 50, position: "relative" }}
+          style={{ zIndex: 50, position: "relative", cursor: "pointer" }}
         >
           Generate 10 hooks
           <ArrowRight className="h-4 w-4" />
