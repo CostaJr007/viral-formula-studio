@@ -227,9 +227,18 @@ function Studio() {
     return data.markdown;
   }
 
+  function fullReport(): string {
+    const dossier = dossierCache ?? "";
+    const script = copyResult?.script ?? "";
+    const header = `# Viral Formula Studio — Full Report\n\n**Creator:** ${creatorName.trim()}  \n**Topic:** ${topic.trim()}\n\n---\n\n`;
+    const dossierSection = dossier ? `\n\n---\n\n## 📋 Viralization Dossier\n\n${dossier}` : "";
+    const scriptSection = script ? `\n\n---\n\n## 🎬 Shooting Script\n\n${script}\n\n---\n\n## 🎥 Editing Directions\n\n${(copyResult?.editing_directions ?? []).map((d: string) => `- ${d}`).join("\n")}\n\n**Data notes:** ${copyResult?.data_notes ?? ""}` : "";
+    return header + scriptSection + dossierSection;
+  }
+
   async function exportDossier() {
     try {
-      const md = await fetchDossier();
+      const md = fullReport();
       const blob = new Blob([md], { type: "text/markdown" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -245,7 +254,8 @@ function Studio() {
   async function exportPdfReport() {
     setError(null);
     try {
-      const md = await fetchDossier();
+      await fetchDossier();  // ensure cached
+      const md = fullReport();
       const safeTitle = `Viral Formula Studio — ${creatorName.trim()} × ${topic.trim()}`;
       const html = markdownToPrintHtml(md, safeTitle);
       const w = window.open("", "_blank");
