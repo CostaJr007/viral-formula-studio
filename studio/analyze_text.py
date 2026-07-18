@@ -10,6 +10,7 @@ import logging
 from . import store
 from .config import get_settings
 from .factory import create_agent
+from .parse import coerce_structured
 from .schemas import CreatorStyle
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,4 @@ def analyze_style(creator: str, max_videos: int | None = None, metrics: dict | N
         f"Analyze the real transcriptions of creator '{creator}' below and extract their "
         f"copywriting fingerprint:\n\n{text}{metrics_block}"
     )
-    if not isinstance(response.content, CreatorStyle):
-        # Agno returns the provider's error text as content instead of raising
-        raise RuntimeError(f"Textual analysis failed — model response: {str(response.content)[:200]}")
-    return response.content
+    return coerce_structured(response.content, CreatorStyle, stage="Textual analysis")

@@ -70,12 +70,22 @@ class DossierRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@app.get("/api/health")
-def health() -> dict:
+def _health_payload() -> dict:
     from studio.config import get_settings
 
     settings = get_settings()
     return {"status": "ok", "provider": settings.model_provider}
+
+
+@app.get("/api/health")
+def health() -> dict:
+    return _health_payload()
+
+
+@app.get("/health")
+def health_alias() -> dict:
+    """Alias for load balancers / keep-warm pings that probe /health."""
+    return _health_payload()
 
 
 @app.get("/api/creators")

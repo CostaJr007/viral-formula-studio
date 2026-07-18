@@ -224,23 +224,32 @@ function Studio() {
   return (
     <div className="min-h-screen flex bg-background text-foreground">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-72 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
-        <div className="p-6 flex items-center gap-3">
-          <img src={logoUrl} alt="" className="h-9 w-9" />
+      <aside className="hidden md:flex w-72 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground relative">
+        <div className="absolute inset-0 bg-grid opacity-40 pointer-events-none" />
+        <div className="relative p-6 flex items-center gap-3">
+          <div className="relative">
+            <div className="absolute -inset-1 rounded-xl bg-primary/30 blur-md" />
+            <img src={logoUrl} alt="" className="relative h-9 w-9" />
+          </div>
           <div className="leading-tight">
             <div className="font-display font-semibold text-[15px]">Viral Formula</div>
-            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
               Studio
             </div>
           </div>
         </div>
 
-        <Separator className="bg-sidebar-border" />
+        <Separator className="bg-sidebar-border relative" />
 
-        <nav className="p-4 space-y-1">
-          <div className="px-2 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        <nav className="relative p-4">
+          <div className="px-2 pb-3 text-[10px] uppercase tracking-[0.24em] text-muted-foreground flex items-center gap-2">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
             Workflow
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
           </div>
+          <div className="relative">
+            <span className="absolute left-[26px] top-4 bottom-4 w-px bg-gradient-to-b from-border via-border to-transparent" />
+            <div className="space-y-1 relative">
           {STEPS.map((s, i) => {
             const active = s.id === step;
             const done = i < stepIndex || (s.id === "creator" && profile !== null);
@@ -251,49 +260,55 @@ function Studio() {
                 onClick={() => (s.id === "creator" || profile !== null ? setStep(s.id) : null)}
                 disabled={s.id !== "creator" && profile === null}
                 className={cn(
-                  "w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-all group",
-                  active && "bg-sidebar-accent shadow-glow",
+                  "w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-all group relative",
+                  active && "bg-sidebar-accent shadow-glow ring-1 ring-primary/40",
                   !active &&
                     "hover:bg-sidebar-accent/60 disabled:opacity-40 disabled:cursor-not-allowed",
                 )}
               >
                 <span
                   className={cn(
-                    "mt-0.5 flex h-6 w-6 items-center justify-center rounded-md border text-[11px] font-medium",
+                    "mt-0.5 flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] font-mono font-medium shrink-0 transition-all",
                     active
-                      ? "border-primary bg-primary text-primary-foreground"
+                      ? "border-primary bg-primary text-primary-foreground shadow-glow"
                       : done
                         ? "border-success/60 bg-success/20 text-success"
-                        : "border-border text-muted-foreground",
+                        : "border-border bg-background text-muted-foreground",
                   )}
                 >
-                  {done && !active ? <Check className="h-3 w-3" /> : i + 1}
+                  {done && !active ? <Check className="h-3.5 w-3.5" /> : String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="flex-1">
+                <span className="flex-1 min-w-0">
                   <span className="flex items-center gap-2 text-sm font-medium">
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="h-3.5 w-3.5 opacity-80" />
                     {s.label}
                   </span>
                   <span className="block text-xs text-muted-foreground mt-0.5">{s.hint}</span>
                 </span>
+                {active && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                )}
               </button>
             );
           })}
+            </div>
+          </div>
         </nav>
 
-        <div className="mt-auto p-4 space-y-3">
-          <Card className="bg-sidebar-accent/40 border-sidebar-border p-4">
-            <div className="flex items-center gap-2 text-xs font-medium">
+        <div className="relative mt-auto p-4 space-y-3">
+          <Card className="bg-sidebar-accent/40 border-sidebar-border p-4 relative overflow-hidden">
+            <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-primary/20 blur-2xl" />
+            <div className="relative flex items-center gap-2 text-xs font-medium">
               <Sparkle className="h-3.5 w-3.5 text-primary" />
               Powered by IBM Granite
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+            <p className="relative text-[11px] text-muted-foreground mt-2 leading-relaxed">
               Multimodal analysis with watsonx.ai. Whisper for transcription, Tavily for
               fact checking.
             </p>
           </Card>
-          <div className="text-[10px] text-muted-foreground px-2">
-            IBM AI Builders Challenge · 2026
+          <div className="text-[10px] text-muted-foreground px-2 font-mono uppercase tracking-widest">
+            IBM AI Builders · 2026
           </div>
         </div>
       </aside>
@@ -301,21 +316,28 @@ function Studio() {
       {/* Main */}
       <main className="flex-1 min-w-0 relative">
         <div className="absolute inset-0 bg-hero pointer-events-none" />
+        <div className="absolute inset-0 bg-grid pointer-events-none opacity-60" />
 
         <div className="relative">
           {/* Top bar */}
-          <div className="border-b border-border/60 backdrop-blur-sm bg-background/60 sticky top-0 z-10">
+          <div className="border-b border-border/60 backdrop-blur-md bg-background/70 sticky top-0 z-10">
             <div className="max-w-5xl mx-auto px-6 md:px-10 py-4 flex items-center gap-4">
               <div className="md:hidden flex items-center gap-2">
                 <img src={logoUrl} alt="" className="h-7 w-7" />
                 <span className="font-display font-semibold">Viral Formula</span>
               </div>
-              <div className="flex-1">
-                <Progress value={progress} className="h-1" />
+              <div className="flex-1 flex items-center gap-3">
+                <span className="hidden sm:inline text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground tabular-nums">
+                  {String(stepIndex + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
+                </span>
+                <Progress value={progress} className="h-1 flex-1" />
+                <span className="hidden sm:inline text-[10px] font-mono uppercase tracking-[0.2em] text-primary tabular-nums">
+                  {Math.round(progress)}%
+                </span>
               </div>
-              <Badge variant="outline" className="hidden sm:inline-flex gap-1.5">
+              <Badge variant="outline" className="hidden sm:inline-flex gap-1.5 border-success/40 bg-success/5">
                 <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                engine · online
+                Granite · online
               </Badge>
             </div>
           </div>

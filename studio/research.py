@@ -11,6 +11,7 @@ import logging
 
 from .config import get_settings
 from .factory import create_agent
+from .parse import coerce_structured
 from .schemas import ResearchReport
 
 logger = logging.getLogger(__name__)
@@ -51,11 +52,13 @@ def research_theme(theme: str) -> ResearchReport | None:
         logger.info("Fact-check: researching '%s'...", theme)
         response = agent.run(f"Research and verify the facts about: {theme}")
 
-        if not isinstance(response.content, ResearchReport):
-            raise RuntimeError(f"unexpected fact-check return: {str(response.content)[:200]}")
-        logger.info("Fact-check: %d facts verified, %d unconfirmed.",
-                    len(response.content.facts), len(response.content.unconfirmed))
-        return response.content
+        report = coerce_structured(response.content, ResearchReport, stage="Fact-check")
+        logger.info(
+            "Fact-check: %d facts verified, %d unconfirmed.",
+            len(report.facts),
+            len(report.unconfirmed),
+        )
+        return report
 
     except Exception:
         logger.exception("Fact-check failed — dossier will proceed without it (graceful degradation).")

@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # watsonx has no Granite vision model in the current regions; the frame-analysis
     # stage uses this supporting vision model while Granite stays the product's voice
     watsonx_vision_model_id: str = "meta-llama/llama-3-2-11b-vision-instruct"
+    # Unspecified max_tokens falls back to 1024 on watsonx and truncates long
+    # structured JSON (hook lists, dossiers). 4096 is enough for our schemas.
+    watsonx_max_tokens: int = 4096
 
     # Google Gemini
     google_api_key: str | None = None

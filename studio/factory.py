@@ -24,11 +24,16 @@ def _build_model(model_id: str, vision: bool) -> Model:
         from agno.models.ibm import WatsonX  # requires the ibm-watsonx-ai SDK
 
         resolved = settings.watsonx_vision_model_id if vision else settings.watsonx_model_id
+        # granite-4-h-small defaults to max_tokens=1024 when unspecified, which
+        # truncates CreatorStyle / HookList JSON mid-object and crashes the
+        # pipeline with "Textual analysis failed — model response: { ...".
         return WatsonX(
             id=resolved,
             api_key=settings.ibm_watsonx_api_key,
             project_id=settings.ibm_watsonx_project_id,
             url=settings.ibm_watsonx_url,
+            max_tokens=settings.watsonx_max_tokens,
+            temperature=0.2,
         )
 
     if settings.model_provider == "gemini":

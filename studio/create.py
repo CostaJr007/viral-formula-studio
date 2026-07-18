@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from . import store
 from .factory import create_agent
+from .parse import coerce_structured
 from .research import research_theme
 from .schemas import ResearchReport
 
@@ -123,9 +124,7 @@ def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None 
         f"Creator profile (measured evidence — JSON):\n{profile.model_dump_json(indent=2)}\n"
         f"{_facts_block(research)}\n\nUser's theme: {theme}\n\nGenerate the 10 hooks."
     )
-    if not isinstance(response.content, HookList):
-        raise RuntimeError(f"Hook generation failed — model response: {str(response.content)[:200]}")
-    return response.content
+    return coerce_structured(response.content, HookList, stage="Hook generation")
 
 
 def generate_copy(
@@ -149,6 +148,4 @@ def generate_copy(
         f'User\'s theme: {theme}\nHook chosen by the user: "{chosen_hook}"\n\n'
         "Orchestrate the complete video."
     )
-    if not isinstance(response.content, VideoCopy):
-        raise RuntimeError(f"Copy generation failed — model response: {str(response.content)[:200]}")
-    return response.content
+    return coerce_structured(response.content, VideoCopy, stage="Copy generation")

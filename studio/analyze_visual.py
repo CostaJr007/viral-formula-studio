@@ -14,6 +14,7 @@ from agno.media import Image
 
 from .factory import create_agent
 from .frames import extract_frames_for_creator
+from .parse import coerce_structured
 from .schemas import EditingProfile
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,4 @@ def analyze_editing(creator: str, max_videos: int | None = None, metrics: dict |
         f"creator '{creator}'. Decode their editing grammar.{metrics_block}",
         images=[Image(filepath=frame) for frame in frames],
     )
-    if not isinstance(response.content, EditingProfile):
-        # Agno returns the provider's error text as content instead of raising
-        raise RuntimeError(f"Visual analysis failed — model response: {str(response.content)[:200]}")
-    return response.content
+    return coerce_structured(response.content, EditingProfile, stage="Visual analysis")
