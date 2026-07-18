@@ -36,8 +36,9 @@ class HookList(BaseModel):
 
 class VideoCopy(BaseModel):
     script: str = Field(
-        description="Complete copy in markdown with [HOOK] / [DEVELOPMENT] / [CLOSING] blocks, "
-        f"maximum {MAX_COPY_WORDS} words in total"
+        description="Shooting script with timeline. Each block shows: [TIMESTAMP] | [SHOT TYPE] | "
+        '[TEXT TO SAY] | [CUT/TRANSITION] | [WHY IT WORKS — psychology or editing reason]. '
+        f"Maximum {MAX_COPY_WORDS} words total across all spoken text."
     )
     editing_directions: list[str] = Field(
         description="Per-block editing directions, using the creator's MEASURED NUMBERS (cuts/min, shot length, on-screen text)"
@@ -78,26 +79,38 @@ Rules:
 """
 
 COPY_INSTRUCTIONS = f"""
-You are a scriptwriter and director of short videos specialized in retention.
+You are a scriptwriter and director of short videos specialized in retention
+psychology and viral editing grammar.
 
 You receive: (1) a creator's MEASURED profile (copy structure, tone, rhythm in
-words/minute, editing grammar), (2) verified facts about the theme, and
-(3) the hook the user chose.
+words/minute, editing grammar — cuts per minute, shot types, text overlays),
+(2) verified facts about the theme, and (3) the hook the user chose.
 
-Your task: orchestrate the user's complete video around that hook.
+Your task: orchestrate a COMPLETE SHOOTING SCRIPT — not just words to say, but
+exactly HOW to shoot and edit each moment, and WHY each technique works.
 
-Structure rules:
-- The script has AT MOST {MAX_COPY_WORDS} words (~1 minute video at the
-  creator's measured rhythm). Blocks: [HOOK] (the chosen one, word for word),
-  [DEVELOPMENT] (the creator's copy structure applied to the theme),
-  [CLOSING] (result + CTA compatible with their style).
-- Dopaminergic structure: each sentence must justify the next; no filler.
-- Only use facts from the VERIFIED FACTS block. Where data is missing, leave a
-  clear [INSERT: ...] placeholder instead of inventing — and list those points
-  in data_notes.
-- editing_directions: use the MEASURED NUMBERS (e.g. "cut every ~3.1s",
-  "on-screen text at the bottom highlighting the number") — never vague
-  direction.
+FORMAT — Every block in the script must follow this structure:
+```
+[TIMESTAMP] | [SHOT TYPE] | [TEXT TO SAY] | [EDITING] | [WHY IT WORKS]
+```
+
+EXAMPLE:
+```
+0:00-0:03 | CLOSE-UP face | "You think you can survive on only meat?" | Jump cut, bold text overlay | Shock question — breaks viewer's assumption, forces attention in first 3 seconds
+0:03-0:07 | MEDIUM shot | "I tried it for 30 days. Here's what happened." | Slow zoom in | Personal proof — builds curiosity and establishes authority
+0:07-0:12 | B-ROLL (meal prep) | (no speech — music only) | Cut every 1.1s, text: "DAY 1" | Fast cuts keep energy; text anchors the timeline
+```
+
+RULES:
+- Total spoken words ≤ {MAX_COPY_WORDS} across all blocks.
+- Every block MUST include all 5 fields: timestamp, shot, text, editing, psychology.
+- SHOT TYPES must match the creator's measured grammar (e.g. "CLOSE-UP face",
+  "MEDIUM shot", "SPLIT-SCREEN", "B-ROLL", "TEXT OVERLAY").
+- EDITING must use MEASURED NUMBERS: cut cadence (~X cuts/min, every ~Y seconds),
+  specific transitions (jump cut, zoom, text pop-in). Never vague.
+- WHY IT WORKS must explain the retention psychology or editing principle.
+  Use terms like: pattern interrupt, curiosity gap, social proof, authority,
+  dopamine loop, visual anchor, pacing rhythm, contrast, payoff.
 - Respond in English.
 """
 
@@ -167,9 +180,11 @@ def generate_copy(
     )
     logger.info("Generating copy for '%s' x '%s' with the chosen hook...", creator, theme)
     response = agent.run(
-        f"Creator profile (measured evidence — JSON):\n{profile_obj.model_dump_json(indent=2)}\n"
+        f"CREATOR PROFILE (measured evidence — JSON):\n{profile_obj.model_dump_json(indent=2)}\n"
         f"{_facts_block(research)}\n\n"
-        f'User\'s theme: {theme}\nHook chosen by the user: "{chosen_hook}"\n\n'
-        "Orchestrate the complete video."
-    )
+        f'USER THEME: {theme}\n'
+        f'CHOSEN HOOK: "{chosen_hook}"\n\n'
+        "Generate the COMPLETE SHOOTING SCRIPT. Every block must have all 5 fields: "
+        "[TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY IT WORKS]. "
+        "Use the creator's measured cuts/min, shot types, and editing grammar from the profile."
     return coerce_structured(response.content, VideoCopy, stage="Copy generation")

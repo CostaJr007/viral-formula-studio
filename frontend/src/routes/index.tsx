@@ -129,6 +129,7 @@ function Studio() {
   const [pickedHook, setPickedHook] = useState<number | null>(null);
   const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
   const [generatingCopy, setGeneratingCopy] = useState(false);
+  const [dossierCache, setDossierCache] = useState<string | null>(null);
 
   const validLinks = links.filter((l) => l.trim().startsWith("http"));
   const canAnalyze = creatorName.trim().length >= 2 && validLinks.length >= 1 && topic.trim().length >= 3;
@@ -215,14 +216,21 @@ function Studio() {
     }
   }
 
+  async function fetchDossier(): Promise<string> {
+    if (dossierCache) return dossierCache;
+    const data = await apiPost<{ markdown: string }>("/api/dossier", {
+      creator: creatorName.trim(),
+      topic: topic.trim(),
+      profile: profile ?? undefined,
+    });
+    setDossierCache(data.markdown);
+    return data.markdown;
+  }
+
   async function exportDossier() {
     try {
-      const data = await apiPost<{ markdown: string }>("/api/dossier", {
-        creator: creatorName.trim(),
-        topic: topic.trim(),
-        profile: profile ?? undefined,
-      });
-      const blob = new Blob([data.markdown], { type: "text/markdown" });
+      const md = await fetchDossier();
+      const blob = new Blob([md], { type: "text/markdown" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -237,14 +245,9 @@ function Studio() {
   async function exportPdfReport() {
     setError(null);
     try {
-      const data = await apiPost<{ markdown: string }>("/api/dossier", {
-        creator: creatorName.trim(),
-        topic: topic.trim(),
-        profile: profile ?? undefined,
-      });
-      // Convert basic markdown to print-friendly HTML
+      const md = await fetchDossier();
       const safeTitle = `Viral Formula Studio — ${creatorName.trim()} × ${topic.trim()}`;
-      const html = markdownToPrintHtml(data.markdown, safeTitle);
+      const html = markdownToPrintHtml(md, safeTitle);
       const w = window.open("", "_blank");
       if (!w) { setError("Popup blocked — allow popups for PDF export."); return; }
       w.document.write(html);
@@ -255,12 +258,20 @@ function Studio() {
     }
   }
 
+  function newTopic() {
+    setPickedHook(null);
+    setCopyResult(null);
+    setDossierCache(null);
+    setStep("hooks");  // goes to hooks step where they can change topic
+  }
+
   function restart() {
     setStep("creator");
     setProfile(null);
     setHooks([]);
     setPickedHook(null);
     setCopyResult(null);
+    setDossierCache(null);
     setError(null);
   }
 
@@ -440,6 +451,7 @@ function Studio() {
                 onGenerate={generateCopy}
                 onExport={exportDossier}
                 onExportPdf={exportPdfReport}
+                onNewTopic={newTopic}
                 onRestart={restart}
               />
             )}
@@ -1055,6 +1067,7 @@ function CopyStep({
   onGenerate,
   onExport,
   onExportPdf,
+  onNewTopic,
   onRestart,
 }: {
   hook: string;
@@ -1063,6 +1076,7 @@ function CopyStep({
   onGenerate: () => void;
   onExport: () => void;
   onExportPdf: () => void;
+  onNewTopic: () => void;
   onRestart: () => void;
 }) {
   return (
@@ -1120,7 +1134,7 @@ function CopyStep({
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
                 <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                  script · {result.word_count} words
+                  🎬 shooting script · {result.word_count} words
                 </span>
               </div>
               <Button
@@ -1133,7 +1147,7 @@ function CopyStep({
               </Button>
             </div>
             <Separator />
-            <div className="whitespace-pre-wrap text-[15px] leading-[1.75] font-sans">
+            <div className="whitespace-pre-wrap text-[13px] leading-[1.7] font-mono bg-secondary/30 rounded-lg p-4 max-h-[500px] overflow-y-auto">
               {result.script}
             </div>
           </Card>
@@ -1160,16 +1174,21 @@ function CopyStep({
             </div>
           </Card>
 
-          <div className="lg:col-span-5 flex flex-wrap gap-3 justify-end pt-2">
-            <Button variant="outline" onClick={onRestart}>
-              Study another creator
+          <div className="lg:col-span-5 flex flex-wrap gap-3 justify-between pt-2">
+            <Button variant="outline" size="sm" onClick={onRestart}>
+              <RotateCcw className="h-3.5 w-3.5 mr-1" /> New creator
             </Button>
-            <Button variant="outline" className="shadow-glow" onClick={onExportPdf}>
-              PDF <FileText className="h-4 w-4 ml-1.5" />
-            </Button>
-            <Button className="shadow-glow" onClick={onExport}>
-              Export .md <Download className="h-4 w-4 ml-1.5" />
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={onNewTopic} className="shadow-glow">
+                <Wand2 className="h-4 w-4 mr-1.5" /> New Topic (same creator)
+              </Button>
+              <Button variant="outline" onClick={onExportPdf}>
+                PDF <FileText className="h-4 w-4 ml-1.5" />
+              </Button>
+              <Button className="shadow-glow" onClick={onExport}>
+                Export .md <Download className="h-4 w-4 ml-1.5" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
