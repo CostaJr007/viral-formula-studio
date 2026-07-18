@@ -84,7 +84,7 @@ Key modules:
 - **Winner's pattern (kickoff-buddy) adopted:** scout→commentator pipeline. `studio/research.py` fact-checks the theme via Tavily (facts with sources + "unconfirmed"); `dossier.py` only states what is in that block and cites the sources. No key/failure → degrades to structural mode ("the feature degrades, it never dies").
 - **Model resilience:** `retries=3` native to agno on all agents + `fallback_models` (OpenAI covers watsonx failure — tested with the frozen account: the response came via gpt-4o automatically).
 - **Security/hygiene:** keys only in `.env` (gitignored), `.env` beats machine variables (the 401 bug), agno telemetry off (`AGNO_TELEMETRY=false`), corrupted profiles self-regenerate, guards against API-error-returned-as-text.
-- **Real test (07/17):** kallaway × "Kimi 3" dossier WITH fact-check — 3 verified facts with sources cited inline (llm-stats.com, YouTube, technotrenz.com) vs. structural version without sources. Approved.
+- **Real test (07/17):** kallaway × "trending topic" dossier WITH fact-check — 3 verified facts with sources cited inline (llm-stats.com, YouTube, technotrenz.com) vs. structural version without sources. Approved.
 
 ## 💾 Decision and change log (v0.2)
 

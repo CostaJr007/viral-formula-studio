@@ -1,6 +1,6 @@
 # Deploy Guide (IBM Cloud) — Viral Formula Studio
 
-**Full IBM stack:** IBM Bob (dev) + Granite 4 on watsonx.ai (voice) + **IBM Cloud Code Engine (hosting)**.
+**Full IBM stack:** Granite 4 on watsonx.ai (voice) + Llama 3.2 Vision on watsonx.ai (multimodal) + **IBM Cloud Code Engine (hosting)**.
 Verified working on 07/17/2026: Code Engine API accessible and resource group `Default` is ACTIVE.
 
 ## Architecture

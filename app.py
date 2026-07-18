@@ -205,7 +205,7 @@ with gr.Blocks(title="Viral Formula Studio") as demo:
         gr.Markdown('<div class="step-title">10 hooks in the creator\'s formula</div>')
         with gr.Row():
             hooks_creator = gr.Dropdown(label="Creator", choices=store.list_creators(), scale=1)
-            theme_input = gr.Textbox(label="Your theme", placeholder="e.g.: the Kimi 3 launch", scale=2)
+            theme_input = gr.Textbox(label="Your theme", placeholder="e.g.: a trending topic in your niche", scale=2)
         hooks_btn = gr.Button("Generate 10 hooks", variant="primary", elem_classes="primary")
         hooks_status = gr.Markdown()
         hooks_radio = gr.Radio(label="Pick the winning hook", choices=[])

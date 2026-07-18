@@ -7,7 +7,7 @@ from studio.schemas import Fact, ResearchReport
 def test_research_report_schema():
     report = ResearchReport(
         summary="Resumo do tema.",
-        facts=[Fact(claim="Kimi 3 lidera o ranking X.", source="https://exemplo.com/a")],
+        facts=[Fact(claim="A trending topic leads industry rankings.", source="https://exemplo.com/a")],
         unconfirmed=["Data exata de lançamento."],
     )
     assert report.facts[0].source.startswith("https://")

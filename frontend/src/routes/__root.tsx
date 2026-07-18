@@ -99,7 +99,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      // Brand mark from src/assets/logo.png — replaces the Lovable scaffold icon
+      // Brand mark generated from src/assets/logo.png
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon", sizes: "any" },
       { rel: "icon", href: "/favicon-32.png", type: "image/png", sizes: "32x32" },
       { rel: "icon", href: "/favicon-16.png", type: "image/png", sizes: "16x16" },
