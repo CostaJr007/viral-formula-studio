@@ -2,15 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   ArrowRight,
+  Brain,
+  Camera,
   Check,
   Copy as CopyIcon,
   Download,
+  Eye,
   Globe,
   Loader2,
   Film,
   Gauge,
   Link as LinkIcon,
   Mic,
+  Music,
   Play,
   RotateCcw,
   Scissors,
@@ -19,6 +23,7 @@ import {
   Trash2,
   Wand2,
   Waves,
+  Youtube,
   Zap,
 } from "lucide-react";
 
@@ -449,11 +454,48 @@ function CreatorStep({
           you want to study.
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
-          The studio pulls public data, transcribes (captions first, Whisper as
-          fallback) and measures the editing grammar — cuts/min, WPM and signature
-          n-grams. <strong className="text-foreground">No guessing.</strong>
+          The AI watches the creator's Shorts, learns their editing rhythm, hook
+          patterns and narrative cadence — then transposes that formula onto your topic.
+          <strong className="text-foreground"> No templates. No guessing.</strong>
         </p>
+
+        {/* Supported platforms */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground mr-1">Accepts</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1 text-xs">
+            <Youtube className="h-3.5 w-3.5 text-red-400" />
+            YouTube Shorts
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1 text-xs">
+            <Music className="h-3.5 w-3.5 text-pink-400" />
+            TikTok
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1 text-xs">
+            <Camera className="h-3.5 w-3.5 text-purple-400" />
+            Instagram Reels
+          </span>
+        </div>
       </header>
+
+      {/* How AI learns — 3 cards */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        {[
+          { icon: Eye, label: "Watch", text: "AI ingests up to 5 Shorts from any public creator profile — downloads, extracts frames and transcribes captions.", color: "text-blue-400" },
+          { icon: Brain, label: "Learn", text: "Reverse-engineers the creator's formula: cuts/min, WPM, hook patterns, tone, editing grammar — measured, not guessed.", color: "text-primary" },
+          { icon: Wand2, label: "Create", text: "Generates your script (≤200 words) with hooks and editing directions transposed from the creator's proven style.", color: "text-green-400" },
+        ].map(({ icon: Icon, label, text, color }) => (
+          <Card key={label} className="p-5 bg-card/60 backdrop-blur-sm border-border/50 space-y-3 relative overflow-hidden">
+            <div className="absolute -top-6 -right-6 h-16 w-16 rounded-full bg-primary/10 blur-xl" />
+            <div className="relative flex items-center gap-3">
+              <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/60", color)}>
+                <Icon className="h-5 w-5" />
+              </span>
+              <span className="font-display font-semibold text-sm">{label}</span>
+            </div>
+            <p className="relative text-xs text-muted-foreground leading-relaxed">{text}</p>
+          </Card>
+        ))}
+      </div>
 
       {analyzing ? (
         <AnalysisProgress jobStatus={jobStatus} />
