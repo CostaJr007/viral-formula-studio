@@ -68,6 +68,13 @@ CRITICAL — THEME ENFORCEMENT:
   like…", "Want to…?"). Use their STRUCTURE with the user's theme, never the
   creator's original words.
 
+ANTI-GARBAGE RULES:
+- NEVER output hooks containing garbled transcription artifacts like "gt gt",
+  "gt i", "let s", "i said how", broken punctuation, or HTML entities.
+- If a signature expression contains such noise, use its CLEAN STRUCTURE only.
+- The word "gt" alone is NEVER a valid hook word — it is transcription noise.
+- Every hook must read as natural, spoken English (or the user's language).
+
 Rules:
 - Each hook must visibly follow one of the creator's patterns (`pattern` field).
 - Short, speakable phrases — they are meant to be SAID in up to 3 seconds.

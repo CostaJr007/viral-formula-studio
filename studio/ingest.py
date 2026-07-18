@@ -33,6 +33,28 @@ logger = logging.getLogger(__name__)
 CAPTION_LANGS = ["pt", "pt-BR", "en", "en-US", "en-GB"]
 
 
+def _clean_transcription(text: str) -> str:
+    """Remove common transcription artifacts that pollute hooks and analysis."""
+    import re
+
+    # YouTube auto-caption HTML entities
+    text = text.replace("&gt;", "").replace("&lt;", "").replace("&amp;", "&")
+    # Standalone "gt" tokens (usually from "&gt;" being stripped incorrectly)
+    text = re.sub(r'\bgt\b\s+', '', text)
+    text = re.sub(r'\s+\bgt\b', '', text)
+    # Fix broken contractions: "let s" -> "let's", "don t" -> "don't"
+    text = re.sub(r"\blet\s+s\b", "let's", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bdon\s+t\b", "don't", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bcan\s+t\b", "can't", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bwon\s+t\b", "won't", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bain\s+t\b", "ain't", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b(i|you|he|she|it|we|they)\s+(ll|ve|re|d|m)\b",
+                  r"\1'\2", text, flags=re.IGNORECASE)
+    # Collapse multiple spaces
+    text = re.sub(r'\s{2,}', ' ', text)
+    return text.strip()
+
+
 def _base_opts(out_dir: Path) -> dict:
     return {
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
@@ -184,7 +206,7 @@ def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> di
             report["failed"].append({"url": url, "reason": "no captions and transcription unavailable"})
             continue
 
-        transcriptions[creator].append({"video": video_path.name, "transcription": text})
+        transcriptions[creator].append({"video": video_path.name, "transcription": _clean_transcription(text)})
         store.save_transcriptions(transcriptions)  # incremental save
         logger.info("[OK] %s ingested (%s, %ds)", video_path.name, meta["uploader"], meta["duration"])
         report["ok"].append(url)
