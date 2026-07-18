@@ -14,8 +14,8 @@ import time
 from collections import defaultdict
 
 WINDOW_S = 3600  # 1 hour
-MAX_CREATORS = 3
-MAX_DOSSIERS_PER_CREATOR = 3
+MAX_CREATORS = 8
+MAX_DOSSIERS_PER_CREATOR = 8
 
 
 class RateLimiter:

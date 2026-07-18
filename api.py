@@ -91,8 +91,8 @@ def usage(request: Request) -> dict:
     ip = request.client.host if request.client else "unknown"
     return {
         "remaining_creators": limiter.remaining_creators(ip),
-        "max_creators": 3,
-        "max_dossiers_per_creator": 3,
+        "max_creators": 8,
+        "max_dossiers_per_creator": 8,
         "window_minutes": 60,
     }
 
