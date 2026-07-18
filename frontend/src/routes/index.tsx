@@ -5,11 +5,14 @@ import {
   Check,
   Copy as CopyIcon,
   Download,
+  Globe,
+  Loader2,
   Film,
   Gauge,
   Link as LinkIcon,
-  Loader2,
+  Mic,
   Play,
+  RotateCcw,
   Scissors,
   Sparkle,
   Target,
@@ -339,6 +342,17 @@ function Studio() {
                 <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
                 Granite · online
               </Badge>
+              {profile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={restart}
+                  className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">New</span>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -438,6 +452,10 @@ function CreatorStep({
         </p>
       </header>
 
+      {analyzing ? (
+        <AnalysisProgress jobStatus={jobStatus} />
+      ) : (
+        <>
       <div className="grid lg:grid-cols-5 gap-6">
         <Card className="lg:col-span-3 p-6 md:p-7 space-y-5 bg-card/70 backdrop-blur-sm">
           <div className="flex items-center justify-between">
@@ -545,20 +563,85 @@ function CreatorStep({
           onClick={runAnalysis}
           className="min-w-[220px] shadow-glow"
         >
-          {analyzing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {jobStatus ?? "Working…"}
-            </>
-          ) : (
-            <>
-              Decode formula
-              <ArrowRight className="h-4 w-4" />
-            </>
-          )}
+          Decode formula
+          <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
+        </>
+      )}
     </div>
+  );
+}
+
+/* ---------------- Analysis progress (phased) ---------------- */
+
+const ANALYSIS_PHASES = [
+  { key: "download", label: "Downloading videos", sub: "Pulling public Shorts / TikTok data", icon: Globe },
+  { key: "transcribe", label: "Transcribing", sub: "Captions first, Whisper as fallback", icon: Mic },
+  { key: "analyze", label: "Analyzing style & editing", sub: "Measuring cuts/min, WPM, and running LLM analysis", icon: Sparkle },
+] as const;
+
+type PhaseKey = (typeof ANALYSIS_PHASES)[number]["key"];
+
+function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
+  const phase: PhaseKey = jobStatus === "analyzing" ? "analyze" : jobStatus === "ingesting" ? "transcribe" : "download";
+
+  return (
+    <Card className="p-8 md:p-10 bg-card/70 backdrop-blur-sm text-center space-y-8 max-w-2xl mx-auto">
+      <div className="space-y-2">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+          <Loader2 className="h-7 w-7 animate-spin" />
+        </div>
+        <h2 className="font-display text-xl font-semibold mt-4">Decoding the formula</h2>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto">
+          This takes ~30–90 seconds depending on video count. The engine pulls, transcribes, measures and analyzes each one.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {ANALYSIS_PHASES.map((p, i) => {
+          const idx = ANALYSIS_PHASES.findIndex((x) => x.key === phase);
+          const done = i < idx;
+          const active = i === idx;
+          const pending = i > idx;
+          const Icon = p.icon;
+
+          return (
+            <div
+              key={p.key}
+              className={cn(
+                "flex items-center gap-4 p-4 rounded-xl border transition-all",
+                active && "border-primary/50 bg-primary/5 shadow-glow",
+                done && "border-success/30 bg-success/5",
+                pending && "border-border/40 bg-secondary/20 opacity-50",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-lg shrink-0 transition-all",
+                  active && "bg-primary text-primary-foreground",
+                  done && "bg-success/20 text-success",
+                  pending && "bg-secondary text-muted-foreground",
+                )}
+              >
+                {done ? <Check className="h-4 w-4" /> : active ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+              </span>
+              <div className="text-left flex-1 min-w-0">
+                <div className={cn("text-sm font-medium", active && "text-foreground", done && "text-foreground", pending && "text-muted-foreground")}>
+                  {p.label}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">{p.sub}</div>
+              </div>
+              {done && <Check className="h-4 w-4 text-success shrink-0" />}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground font-mono">
+        {jobStatus === "analyzing" ? "LLM interpreting measurements — this is the longest step" : "Processing…"}
+      </p>
+    </Card>
   );
 }
 
