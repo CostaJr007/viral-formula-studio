@@ -327,28 +327,27 @@ function Studio() {
       {/* Main */}
       <main className="flex-1 min-w-0 relative">
         <div className="absolute inset-0 bg-hero pointer-events-none" />
-        <div className="absolute inset-0 bg-grid pointer-events-none opacity-60" />
+        <div className="absolute inset-0 bg-grid pointer-events-none opacity-60 hidden sm:block" />
 
         <div className="relative">
           {/* Top bar */}
           <div className="border-b border-border/60 backdrop-blur-md bg-background/70 sticky top-0 z-10">
-            <div className="max-w-5xl mx-auto px-6 md:px-10 py-4 flex items-center gap-4">
-              <div className="md:hidden flex items-center gap-2">
-                <img src={logoUrl} alt="" className="h-7 w-7" />
-                <span className="font-display font-semibold">Viral Formula</span>
+            <div className="max-w-5xl mx-auto px-4 md:px-10 py-3 md:py-4 flex items-center gap-3 md:gap-4">
+              <div className="md:hidden flex items-center gap-2 shrink-0">
+                <img src={logoUrl} alt="" className="h-6 w-6" />
               </div>
-              <div className="flex-1 flex items-center gap-3">
-                <span className="hidden sm:inline text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground tabular-nums">
-                  {String(stepIndex + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
+              <div className="flex-1 flex items-center gap-2 md:gap-3">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground tabular-nums shrink-0">
+                  {String(stepIndex + 1).padStart(2, "0")}/{String(STEPS.length).padStart(2, "0")}
                 </span>
                 <Progress value={progress} className="h-1 flex-1" />
                 <span className="hidden sm:inline text-[10px] font-mono uppercase tracking-[0.2em] text-primary tabular-nums">
                   {Math.round(progress)}%
                 </span>
               </div>
-              <Badge variant="outline" className="hidden sm:inline-flex gap-1.5 border-success/40 bg-success/5">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                Granite · online
+              <Badge variant="outline" className="shrink-0 gap-1.5 border-success/40 bg-success/5 text-[10px] px-2 py-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse hidden sm:inline" />
+                Granite
               </Badge>
               {profile && (
                 <Button
@@ -364,7 +363,7 @@ function Studio() {
             </div>
           </div>
 
-          <div className="max-w-5xl mx-auto px-6 md:px-10 py-10 md:py-14">
+          <div className="max-w-5xl mx-auto px-4 md:px-10 py-6 md:py-14">
             {error && (
               <Card className="mb-6 p-4 border-destructive/50 bg-destructive/10 text-sm text-destructive-foreground">
                 {error}
@@ -449,7 +448,7 @@ function CreatorStep({
         <Badge variant="outline" className="gap-1.5">
           <Waves className="h-3 w-3" /> Step 1 of 4
         </Badge>
-        <h1 className="text-4xl md:text-5xl font-display font-semibold leading-[1.05]">
+        <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
           Paste up to 5 videos <span className="text-gradient">from the creator</span>{" "}
           you want to study.
         </h1>
@@ -478,7 +477,7 @@ function CreatorStep({
       </header>
 
       {/* How AI learns — 3 cards */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { icon: Eye, label: "Watch", text: "AI ingests up to 5 Shorts from any public creator profile — downloads, extracts frames and transcribes captions.", color: "text-blue-400" },
           { icon: Brain, label: "Learn", text: "Reverse-engineers the creator's formula: cuts/min, WPM, hook patterns, tone, editing grammar — measured, not guessed.", color: "text-primary" },
@@ -502,7 +501,7 @@ function CreatorStep({
       ) : (
         <>
       <div className="grid lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-3 p-6 md:p-7 space-y-5 bg-card/70 backdrop-blur-sm">
+        <Card className="lg:col-span-3 p-4 md:p-7 space-y-4 md:space-y-5 bg-card/70 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
               <div className="font-display font-medium text-sm">Reference creator links</div>
@@ -510,7 +509,7 @@ function CreatorStep({
                 Public YouTube Shorts, TikTok or Reels.
               </div>
             </div>
-            <span className="font-mono text-xs text-muted-foreground tabular-nums">
+            <span className="font-mono text-xs text-muted-foreground tabular-nums shrink-0 ml-2">
               {filled} / 5
             </span>
           </div>
@@ -524,17 +523,17 @@ function CreatorStep({
               value={creatorName}
               onChange={(e) => setCreatorName(e.target.value)}
               placeholder="e.g. jeffnippard"
-              className="mt-2 bg-background/60"
+              className="mt-2 bg-background/60 h-10"
             />
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2 md:space-y-2.5">
             {links.map((link, i) => (
               <div key={i} className="flex items-center gap-2 group">
-                <span className="font-mono text-[11px] text-muted-foreground w-6 text-right">
+                <span className="font-mono text-[11px] text-muted-foreground w-5 md:w-6 text-right shrink-0">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <div className="relative flex-1">
+                <div className="relative flex-1 min-w-0">
                   <LinkIcon className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={link}
@@ -544,7 +543,7 @@ function CreatorStep({
                       setLinks(next);
                     }}
                     placeholder="https://www.youtube.com/shorts/..."
-                    className="pl-9 bg-background/60 font-mono text-xs"
+                    className="pl-9 bg-background/60 font-mono text-xs h-10"
                   />
                 </div>
                 {link && (
@@ -554,7 +553,7 @@ function CreatorStep({
                       next[i] = "";
                       setLinks(next);
                     }}
-                    className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition"
+                    className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition shrink-0"
                     aria-label="Clear"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -565,7 +564,7 @@ function CreatorStep({
           </div>
         </Card>
 
-        <Card className="lg:col-span-2 p-6 md:p-7 space-y-5 bg-card/70 backdrop-blur-sm">
+        <Card className="lg:col-span-2 p-4 md:p-7 space-y-4 md:space-y-5 bg-card/70 backdrop-blur-sm">
           <div>
             <Label htmlFor="topic" className="font-display font-medium text-sm">
               Your topic
@@ -632,7 +631,7 @@ function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
   const phase: PhaseKey = jobStatus === "analyzing" ? "analyze" : jobStatus === "ingesting" ? "transcribe" : "download";
 
   return (
-    <Card className="p-8 md:p-10 bg-card/70 backdrop-blur-sm text-center space-y-8 max-w-2xl mx-auto">
+    <Card className="p-6 md:p-10 bg-card/70 backdrop-blur-sm text-center space-y-6 md:space-y-8 max-w-2xl mx-auto">
       <div className="space-y-2">
         <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
           <Loader2 className="h-7 w-7 animate-spin" />
@@ -712,7 +711,7 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
         <Badge variant="outline" className="gap-1.5">
           <Gauge className="h-3 w-3" /> Step 2 of 4
         </Badge>
-        <h1 className="text-4xl md:text-5xl font-display font-semibold leading-[1.05]">
+        <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
           Formula <span className="text-gradient">measured</span>, not guessed.
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
@@ -722,7 +721,7 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
         </p>
       </header>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {metricCards.map((m) => (
           <Card key={m.label} className="p-5 bg-card/70 relative overflow-hidden">
             <div className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
@@ -859,7 +858,7 @@ function HooksStep({
         <Badge variant="outline" className="gap-1.5">
           <Target className="h-3 w-3" /> Step 3 of 4
         </Badge>
-        <h1 className="text-4xl md:text-5xl font-display font-semibold leading-[1.05]">
+        <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
           10 hooks <span className="text-gradient">in the creator's technique</span>, on
           your topic.
         </h1>
@@ -953,7 +952,7 @@ function CopyStep({
         <Badge variant="outline" className="gap-1.5">
           <Wand2 className="h-3 w-3" /> Step 4 of 4
         </Badge>
-        <h1 className="text-4xl md:text-5xl font-display font-semibold leading-[1.05]">
+        <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
           Your script, <span className="text-gradient">ready to shoot</span>.
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
