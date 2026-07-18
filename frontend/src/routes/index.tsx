@@ -174,19 +174,20 @@ function Studio() {
   async function goHooks(newTopic?: string) {
     const theme = (newTopic ?? topic).trim();
     if (newTopic) setTopic(newTopic);
-    setStep("hooks");
-    setHooksLoading(true);
     setError(null);
+    setHooksLoading(true);
     setPickedHook(null);
+    setStep("hooks");  // advance immediately so the user sees loading
     try {
       const data = await apiPost<{ hooks: Hook[] }>("/api/hooks", {
         creator: creatorName.trim(),
         topic: theme,
-        profile: profile ?? undefined,  // pass cached profile to survive container restarts
+        profile: profile ?? undefined,
       });
       setHooks(data.hooks);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setStep("profile");  // go back on error
     } finally {
       setHooksLoading(false);
     }
