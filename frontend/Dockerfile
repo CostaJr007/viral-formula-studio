@@ -7,7 +7,7 @@ RUN npm ci --no-audit --no-fund
 
 COPY . .
 # VITE_API_URL is inlined at build time (points to the API service URL)
-ARG VITE_API_URL=http://localhost:8000
+ARG VITE_API_URL=https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
