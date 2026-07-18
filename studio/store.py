@@ -48,8 +48,17 @@ def list_creators() -> list[str]:
 
 
 def profile_path(creator: str) -> Path:
-    # Normalize: lowercase to avoid "TEST" vs "test" creating separate profiles
-    return get_settings().profiles_dir / f"{creator.lower()}.json"
+    # Normalize: lowercase to avoid "TEST" vs "test" creating separate profiles.
+    # But seed files may use original case (e.g., "Bryan.json") — fall back.
+    settings = get_settings()
+    lower = settings.profiles_dir / f"{creator.lower()}.json"
+    if lower.exists():
+        return lower
+    original = settings.profiles_dir / f"{creator}.json"
+    if original.exists():
+        return original
+    # Neither exists — return lowercase path for saving new profiles
+    return lower
 
 
 def load_profile(creator: str) -> CreatorProfile | None:
@@ -60,6 +69,7 @@ def load_profile(creator: str) -> CreatorProfile | None:
 
 
 def save_profile(profile: CreatorProfile) -> Path:
-    path = profile_path(profile.creator)
+    # Always save as lowercase to keep the filesystem consistent
+    path = get_settings().profiles_dir / f"{profile.creator.lower()}.json"
     path.write_text(profile.model_dump_json(indent=2), encoding="utf-8")
     return path
