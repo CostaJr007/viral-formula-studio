@@ -25,26 +25,42 @@ class RateLimiter:
         # ip -> {creator -> [timestamps]}
         self._dossiers: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
 
+    @staticmethod
+    def _is_seed(creator: str) -> bool:
+        from .config import get_settings
+
+        return (get_settings().profiles_dir / f"{creator.lower()}.json").exists()
+
     def _purge_dossiers(self, ip: str, creator: str) -> None:
         cutoff = time.time() - WINDOW_S
         self._dossiers[ip][creator] = [
             t for t in self._dossiers[ip][creator] if t > cutoff
         ]
 
+    def _new_count(self, ip: str) -> int:
+        """How many non-seed creators this IP has analyzed."""
+        return sum(1 for c in self._creators[ip] if not self._is_seed(c))
+
     # --- ingest ---
 
     def check_ingest(self, ip: str, creator: str) -> bool:
-        """Return True if this creator can be analyzed (≤3 unique creators per IP)."""
+        """Return True if allowed. Seed creators are free, new ones capped at 3."""
         creator = creator.lower()
         if creator in self._creators[ip]:
-            return True  # already analyzed — re-ingest same creator is fine
-        if len(self._creators[ip]) >= MAX_CREATORS:
+            return True
+
+        if self._is_seed(creator):
+            self._creators[ip].add(creator)
+            return True
+
+        if self._new_count(ip) >= MAX_CREATORS:
             return False
+
         self._creators[ip].add(creator)
         return True
 
     def remaining_creators(self, ip: str) -> int:
-        return max(0, MAX_CREATORS - len(self._creators[ip]))
+        return max(0, MAX_CREATORS - self._new_count(ip))
 
     # --- dossier ---
 
