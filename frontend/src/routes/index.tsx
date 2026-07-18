@@ -49,6 +49,9 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
   });
   if (!res.ok) {
     const detail = await res.text();
+    if (res.status === 429) {
+      throw new Error(`Rate limit reached: ${detail.slice(0, 200)}`);
+    }
     throw new Error(detail.slice(0, 300) || `HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
@@ -132,7 +135,7 @@ function Studio() {
     setError(null);
     setJobStatus("Queuing ingestion…");
     try {
-      const { job_id } = await apiPost<{ job_id: string }>("/api/ingest", {
+      const { job_id } = await apiPost<{ job_id: string; remaining?: number }>("/api/ingest", {
         creator: creatorName.trim(),
         urls: validLinks,
       });

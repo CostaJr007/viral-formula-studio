@@ -11,7 +11,7 @@ import logging
 import os
 import uuid
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -19,6 +19,7 @@ from studio import store
 from studio.create import generate_copy, generate_hooks
 from studio.dossier import generate_dossier
 from studio.ingest import ingest_urls
+from studio.limits import limiter
 from studio.pipeline import analyze_creator
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -82,6 +83,16 @@ def health() -> dict:
     return _health_payload()
 
 
+@app.get("/api/usage")
+def usage(request: Request) -> dict:
+    ip = request.client.host if request.client else "unknown"
+    return {
+        "remaining": limiter.remaining(ip),
+        "limit": limiter._max,
+        "window_minutes": limiter._window // 60,
+    }
+
+
 @app.get("/health")
 def health_alias() -> dict:
     """Alias for load balancers / keep-warm pings that probe /health."""
@@ -130,11 +141,20 @@ async def _run_ingest_job(job_id: str, creator: str, urls: list[str]) -> None:
 
 
 @app.post("/api/ingest", status_code=202)
-async def start_ingest(req: IngestRequest) -> dict:
+async def start_ingest(req: IngestRequest, request: Request) -> dict:
+    ip = request.client.host if request.client else "unknown"
+
+    if not limiter.check(ip):
+        remaining = limiter.remaining(ip)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit: max 3 analyses per hour. {remaining} remaining. Try again later.",
+        )
+
     job_id = uuid.uuid4().hex[:12]
     JOBS[job_id] = {"status": "queued", "creator": req.creator}
     asyncio.create_task(_run_ingest_job(job_id, req.creator, req.urls))
-    return {"job_id": job_id}
+    return {"job_id": job_id, "remaining": limiter.remaining(ip)}
 
 
 @app.get("/api/jobs/{job_id}")
