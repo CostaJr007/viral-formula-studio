@@ -6,6 +6,17 @@ This document guides you — or **any future AI** — through the system archite
 
 **Theme:** "Reimagine Creative Industries with AI". **Deadline:** 07/31, 11:59 PM ET.
 
+## 🤖 How IBM Bob Was Used
+
+IBM Bob was the AI development partner throughout the entire project lifecycle:
+
+- **Architecture design:** Bob was used in Ask/Plan modes to analyze the legacy codebase, propose the modular engine structure (studio/), and design the scout→commentator pipeline pattern inspired by previous challenge winners.
+- **Implementation:** Bob assisted module by module — from the deterministic metrics layer (ffmpeg scene detection) through text/visual analysis agents to the FastAPI backend and React frontend. Each module was reviewed and accepted by the developer.
+- **Debugging & optimization:** Bob helped diagnose the watsonx `max_tokens=1024` truncation issue, designed the resilient `coerce_structured()` parser in `studio/parse.py`, and optimized the IBM Code Engine deployment configuration.
+- **Documentation:** Bob contributed to the technical documentation structure, ensuring the README follows the challenge rubric and clearly explains the multimodal AI architecture.
+
+All code decisions were made by the human developer; Bob served as a spec-driven assistant that accelerated the build process while maintaining code quality and architectural consistency.
+
 The product is a **reverse-engineering engine for a creator's viralization formula**:
 
 - **Input:** a creator + a user theme.

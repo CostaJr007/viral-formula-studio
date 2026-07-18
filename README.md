@@ -25,6 +25,7 @@ This project runs end-to-end on the **IBM Cloud ecosystem**:
 | **IBM watsonx.ai** | Multimodal AI — Llama 3.2 11B Vision reads video frames for editing analysis | us-south (Dallas) |
 | **IBM Cloud Code Engine** | Serverless hosting — two containerized apps (API + Web), auto-scaling | us-south (Dallas) |
 | **IBM Cloud Container Registry** | Stores Docker images built by CI/CD pipeline | us-south (Dallas) |
+| **IBM Bob** | AI-powered development assistant — used throughout the build process for architecture design, code review, and debugging | — |
 
 Granite 4 (`ibm/granite-4-h-small`) is the **single voice** of the product.
 Every sentence the user reads — from the creator's style fingerprint to the final
