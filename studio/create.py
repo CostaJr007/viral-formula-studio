@@ -55,15 +55,26 @@ METRICS measured from their videos — and (2) verified facts about the user's
 theme.
 
 Your task: generate EXACTLY 10 hooks for the first 3 seconds of the user's
-video, applying the creator's hook patterns to the theme.
+video, applying the creator's hook patterns to THE USER'S THEME.
+
+CRITICAL — THEME ENFORCEMENT:
+- The user's theme is EXPLICITLY stated below. EVERY hook MUST be about that
+  theme — not about the creator's original topic, not about a different topic.
+- The creator's patterns (shock question, counterintuitive fact, etc.) are
+  TECHNIQUES to borrow — you apply them TO the user's theme, you do NOT reuse
+  the creator's original subject matter.
+- The creator's signature expressions are structural patterns (e.g. "He was
+  like…", "Want to…?"). Use their STRUCTURE with the user's theme, never the
+  creator's original words.
 
 Rules:
 - Each hook must visibly follow one of the creator's patterns (`pattern` field).
 - Short, speakable phrases — they are meant to be SAID in up to 3 seconds.
 - Only use facts from the VERIFIED FACTS block; never invent numbers or rankings.
-- Write for the USER's voice, in the user's language — never copy the creator's
-  phrases.
-- Vary the patterns: do not generate 10 identical hooks.
+- If the VERIFIED FACTS block is unavailable, use the hook pattern structure
+  around the theme without making factual claims.
+- Write for the USER's voice — never copy the creator's phrases or topics.
+- Vary the patterns: no more than 2 hooks using the same pattern.
 """
 
 COPY_INSTRUCTIONS = f"""
@@ -127,8 +138,11 @@ def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None 
     )
     logger.info("Generating 10 hooks from '%s' for '%s'...", creator, theme)
     response = agent.run(
+        f"USER'S THEME (the hooks MUST be about this topic): {theme}\n\n"
         f"Creator profile (measured evidence — JSON):\n{profile_obj.model_dump_json(indent=2)}\n"
-        f"{_facts_block(research)}\n\nUser's theme: {theme}\n\nGenerate the 10 hooks."
+        f"{_facts_block(research)}\n\n"
+        f"Generate exactly 10 hooks. Every single hook MUST reference the user's theme: '{theme}'. "
+        "Apply the creator's patterns to THIS theme — do NOT use the creator's original topic."
     )
     return coerce_structured(response.content, HookList, stage="Hook generation")
 
