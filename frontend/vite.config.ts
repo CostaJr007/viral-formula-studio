@@ -10,4 +10,6 @@ const target = process.env.TANSTACK_TARGET;
 export default defineConfig({
   plugins: [tsConfigPaths(), tailwindcss(), tanstackStart(target ? { target } : {}), viteReact()],
   server: { port: 3000 },
+  // vite preview blocks unknown Host headers by default; the public CE domain must be allowed
+  preview: { allowedHosts: true },
 });

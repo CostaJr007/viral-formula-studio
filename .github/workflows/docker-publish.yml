@@ -9,6 +9,8 @@ on:
       - "api.py"
       - "pyproject.toml"
       - "uv.lock"
+      - "data/**"
+      - "frontend/**"
       - ".github/workflows/docker-publish.yml"
   workflow_dispatch:
 

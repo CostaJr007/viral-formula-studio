@@ -14,8 +14,10 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY studio ./studio
 COPY api.py ./
-# data/ is intentionally NOT copied: profiles and transcripts are runtime artifacts
-# (seed them at runtime or ingest through the UI).
+# Seed data so the demo works instantly: pre-analyzed creator profiles + transcripts
+# (videos themselves stay out; cached profiles are all the dossier/hooks/copy flow needs).
+COPY data/profiles ./data/profiles
+COPY data/transcriptions.json ./data/transcriptions.json
 
 ENV PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
