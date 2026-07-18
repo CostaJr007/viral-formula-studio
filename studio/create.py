@@ -108,9 +108,14 @@ def _facts_block(research: ResearchReport | None) -> str:
     return f"\nVERIFIED FACTS ABOUT THE THEME (single factual source — JSON):\n{research.model_dump_json(indent=2)}"
 
 
-def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None = None) -> HookList:
+def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None = None, profile: dict | None = None) -> HookList:
     """Step 1: 10 hooks from the creator's formula + verified facts."""
-    profile = _profile_or_raise(creator)
+    if profile is not None:
+        # Use the profile passed from the frontend (survives container restarts)
+        profile_obj = store.CreatorProfile.model_validate(profile)
+    else:
+        profile_obj = _profile_or_raise(creator)
+
     if research is None:
         research = research_theme(theme)
 
@@ -122,17 +127,21 @@ def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None 
     )
     logger.info("Generating 10 hooks from '%s' for '%s'...", creator, theme)
     response = agent.run(
-        f"Creator profile (measured evidence — JSON):\n{profile.model_dump_json(indent=2)}\n"
+        f"Creator profile (measured evidence — JSON):\n{profile_obj.model_dump_json(indent=2)}\n"
         f"{_facts_block(research)}\n\nUser's theme: {theme}\n\nGenerate the 10 hooks."
     )
     return coerce_structured(response.content, HookList, stage="Hook generation")
 
 
 def generate_copy(
-    creator: str, theme: str, chosen_hook: str, *, research: ResearchReport | None = None
+    creator: str, theme: str, chosen_hook: str, *, research: ResearchReport | None = None, profile: dict | None = None
 ) -> VideoCopy:
     """Step 2: full orchestrated copy (<=200 words) around the user's chosen hook."""
-    profile = _profile_or_raise(creator)
+    if profile is not None:
+        profile_obj = store.CreatorProfile.model_validate(profile)
+    else:
+        profile_obj = _profile_or_raise(creator)
+
     if research is None:
         research = research_theme(theme)
 
@@ -144,7 +153,7 @@ def generate_copy(
     )
     logger.info("Generating copy for '%s' x '%s' with the chosen hook...", creator, theme)
     response = agent.run(
-        f"Creator profile (measured evidence — JSON):\n{profile.model_dump_json(indent=2)}\n"
+        f"Creator profile (measured evidence — JSON):\n{profile_obj.model_dump_json(indent=2)}\n"
         f"{_facts_block(research)}\n\n"
         f'User\'s theme: {theme}\nHook chosen by the user: "{chosen_hook}"\n\n'
         "Orchestrate the complete video."

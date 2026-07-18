@@ -76,8 +76,11 @@ user to record and edit their own video applying the formula.
 """
 
 
-def generate_dossier(creator: str, theme: str, *, research: ResearchReport | None = None) -> str:
-    profile = store.load_profile(creator)
+def generate_dossier(creator: str, theme: str, *, research: ResearchReport | None = None, profile_data: dict | None = None) -> str:
+    if profile_data is not None:
+        profile = store.CreatorProfile.model_validate(profile_data)
+    else:
+        profile = store.load_profile(creator)
     if profile is None:
         raise ValueError(f"Profile for '{creator}' not found. Run the analysis first.")
     if profile.style is None and profile.editing is None:

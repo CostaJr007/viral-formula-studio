@@ -178,6 +178,7 @@ function Studio() {
       const data = await apiPost<{ hooks: Hook[] }>("/api/hooks", {
         creator: creatorName.trim(),
         topic: topic.trim(),
+        profile: profile ?? undefined,  // pass cached profile to survive container restarts
       });
       setHooks(data.hooks);
     } catch (e) {
@@ -196,6 +197,7 @@ function Studio() {
         creator: creatorName.trim(),
         topic: topic.trim(),
         hook: hooks[pickedHook].text,
+        profile: profile ?? undefined,
       });
       setCopyResult(result);
     } catch (e) {
@@ -210,6 +212,7 @@ function Studio() {
       const data = await apiPost<{ markdown: string }>("/api/dossier", {
         creator: creatorName.trim(),
         topic: topic.trim(),
+        profile: profile ?? undefined,
       });
       const blob = new Blob([data.markdown], { type: "text/markdown" });
       const url = URL.createObjectURL(blob);

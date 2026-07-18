@@ -53,17 +53,20 @@ class IngestRequest(BaseModel):
 class HooksRequest(BaseModel):
     creator: str = Field(min_length=1)
     topic: str = Field(min_length=3)
+    profile: dict | None = None  # optional: frontend passes cached profile to survive restarts
 
 
 class CopyRequest(BaseModel):
     creator: str = Field(min_length=1)
     topic: str = Field(min_length=3)
     hook: str = Field(min_length=5)
+    profile: dict | None = None
 
 
 class DossierRequest(BaseModel):
     creator: str = Field(min_length=1)
     topic: str = Field(min_length=3)
+    profile: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +179,7 @@ def get_profile(creator: str) -> dict:
 @app.post("/api/hooks")
 async def hooks(req: HooksRequest) -> dict:
     try:
-        hook_list = await asyncio.to_thread(generate_hooks, req.creator, req.topic)
+        hook_list = await asyncio.to_thread(generate_hooks, req.creator, req.topic, profile=req.profile)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     return {"hooks": [h.model_dump() for h in hook_list.hooks]}
@@ -185,7 +188,7 @@ async def hooks(req: HooksRequest) -> dict:
 @app.post("/api/copy")
 async def copy(req: CopyRequest) -> dict:
     try:
-        result = await asyncio.to_thread(generate_copy, req.creator, req.topic, req.hook)
+        result = await asyncio.to_thread(generate_copy, req.creator, req.topic, req.hook, profile=req.profile)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     return result.model_dump() | {"word_count": len(result.script.split())}
@@ -194,7 +197,7 @@ async def copy(req: CopyRequest) -> dict:
 @app.post("/api/dossier")
 async def dossier(req: DossierRequest) -> dict:
     try:
-        markdown = await asyncio.to_thread(generate_dossier, req.creator, req.topic)
+        markdown = await asyncio.to_thread(generate_dossier, req.creator, req.topic, profile_data=req.profile)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     return {"markdown": markdown}
