@@ -171,14 +171,17 @@ function Studio() {
     }
   }
 
-  async function goHooks() {
+  async function goHooks(newTopic?: string) {
+    const theme = (newTopic ?? topic).trim();
+    if (newTopic) setTopic(newTopic);
     setStep("hooks");
     setHooksLoading(true);
     setError(null);
+    setPickedHook(null);
     try {
       const data = await apiPost<{ hooks: Hook[] }>("/api/hooks", {
         creator: creatorName.trim(),
-        topic: topic.trim(),
+        topic: theme,
         profile: profile ?? undefined,  // pass cached profile to survive container restarts
       });
       setHooks(data.hooks);
@@ -415,10 +418,12 @@ function Studio() {
             {step === "hooks" && (
               <HooksStep
                 topic={topic || "your topic"}
+                setTopic={setTopic}
                 hooks={hooks}
                 loading={hooksLoading}
                 pickedHook={pickedHook}
                 setPickedHook={setPickedHook}
+                onRegenerate={goHooks}
                 onNext={() => setStep("copy")}
               />
             )}
@@ -865,19 +870,25 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
 
 function HooksStep({
   topic,
+  setTopic,
   hooks,
   loading,
   pickedHook,
   setPickedHook,
+  onRegenerate,
   onNext,
 }: {
   topic: string;
+  setTopic: (v: string) => void;
   hooks: Hook[];
   loading: boolean;
   pickedHook: number | null;
   setPickedHook: (i: number) => void;
+  onRegenerate: (topic: string) => void;
   onNext: () => void;
 }) {
+  const [editingTopic, setEditingTopic] = useState(false);
+
   return (
     <div className="space-y-10">
       <header className="space-y-4 max-w-3xl">
@@ -892,6 +903,38 @@ function HooksStep({
           Every hook follows a measured pattern from the creator's fingerprint. Pick one
           — it becomes the seed of the script.
         </p>
+
+        {/* Change topic inline */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {editingTopic ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="New topic..."
+                className="h-9 w-56 bg-background/60 text-sm"
+              />
+              <Button
+                size="sm"
+                disabled={topic.trim().length < 3 || loading}
+                onClick={() => { setEditingTopic(false); onRegenerate(topic); }}
+              >
+                Regenerate
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setEditingTopic(false); setTopic(topic); }}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setEditingTopic(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Wand2 className="h-3 w-3" />
+              Change topic: <span className="text-foreground font-medium">{topic}</span>
+            </button>
+          )}
+        </div>
       </header>
 
       {loading && (
