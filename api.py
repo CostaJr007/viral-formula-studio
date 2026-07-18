@@ -168,6 +168,17 @@ def job_status(job_id: str) -> dict:
     return job
 
 
+def _check_rate(request: Request) -> None:
+    """All LLM-calling endpoints share one limit: 3 calls/IP/hour."""
+    ip = request.client.host if request.client else "unknown"
+    if not limiter.check(ip):
+        remaining = limiter.remaining(ip)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit: max 3 AI calls per hour. {remaining} remaining.",
+        )
+
+
 @app.get("/api/profile/{creator}")
 def get_profile(creator: str) -> dict:
     profile = store.load_profile(creator)
@@ -177,7 +188,8 @@ def get_profile(creator: str) -> dict:
 
 
 @app.post("/api/hooks")
-async def hooks(req: HooksRequest) -> dict:
+async def hooks(req: HooksRequest, request: Request) -> dict:
+    _check_rate(request)
     try:
         hook_list = await asyncio.to_thread(generate_hooks, req.creator, req.topic, profile=req.profile)
     except ValueError as e:
@@ -186,7 +198,8 @@ async def hooks(req: HooksRequest) -> dict:
 
 
 @app.post("/api/copy")
-async def copy(req: CopyRequest) -> dict:
+async def copy(req: CopyRequest, request: Request) -> dict:
+    _check_rate(request)
     try:
         result = await asyncio.to_thread(generate_copy, req.creator, req.topic, req.hook, profile=req.profile)
     except ValueError as e:
@@ -195,7 +208,8 @@ async def copy(req: CopyRequest) -> dict:
 
 
 @app.post("/api/dossier")
-async def dossier(req: DossierRequest) -> dict:
+async def dossier(req: DossierRequest, request: Request) -> dict:
+    _check_rate(request)
     try:
         markdown = await asyncio.to_thread(generate_dossier, req.creator, req.topic, profile_data=req.profile)
     except ValueError as e:
