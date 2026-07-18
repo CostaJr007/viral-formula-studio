@@ -858,10 +858,15 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
       )}
 
       <div className="flex justify-end">
-        <Button size="lg" onClick={onNext} className="min-w-[200px] shadow-glow">
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNext(); }}
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium cursor-pointer bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 rounded-md px-8 min-w-[220px] shadow-glow"
+          style={{ zIndex: 50, position: "relative" }}
+        >
           Generate 10 hooks
           <ArrowRight className="h-4 w-4" />
-        </Button>
+        </button>
       </div>
     </div>
   );
