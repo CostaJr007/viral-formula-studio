@@ -57,7 +57,27 @@ In normal operation, all AI traffic goes through IBM watsonx.
 
 ## How It Works
 
+```mermaid
+flowchart LR
+    A["🎬 5 Shorts/TikToks/Reels"] --> B["⬇️ yt-dlp Download"]
+    B --> C["🎤 Captions or Whisper"]
+    C --> D["🧹 Regex + Granite 4 Clean"]
+    D --> E["📊 ffmpeg Metrics"]
+    E --> F["✍️ Granite 4 Text Style"]
+    F --> G["👁️ Llama 3.2 Vision Frames"]
+    G --> H["🔍 Tavily Fact-Check"]
+    H --> I["📝 Granite 4 Hooks + Copy"]
+    I --> J["📋 Styled Report"]
+
+    style A fill:#0f62fe20,stroke:#0f62fe
+    style J fill:#0f62fe20,stroke:#0f62fe
+    style F fill:#0f62fe40,stroke:#0f62fe
+    style I fill:#0f62fe40,stroke:#0f62fe
 ```
+
+**Example flow:** Creator → Profile → Topic → 10 Hooks → Pick Hook → Copy → Report
+
+**Transcription pipeline:**
 INPUT                        PIPELINE                               OUTPUT
 ─────                        ────────                               ──────
 5 Shorts/TikToks/Reels → ① Download + transcribe + clean       → Creator profile
