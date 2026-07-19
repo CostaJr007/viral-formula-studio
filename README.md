@@ -86,15 +86,57 @@ Every output is grounded in **measured evidence**:
 
 ## AI Models
 
-| Stage | Model | Runs On |
-|---|---|---|
-| 🎤 Transcription | Whisper Large v3 Turbo | Groq |
-| 📊 Metrics | Python + ffmpeg (deterministic, no AI) | IBM Code Engine |
-| ✍️ Text Analysis | **Granite 4** (`ibm/granite-4-h-small`) | IBM watsonx.ai |
-| 👁️ Visual Analysis | Llama 3.2 11B Vision | IBM watsonx.ai |
-| 🔍 Fact-Check | **Granite 4** + Tavily | IBM watsonx.ai |
-| 📝 Hooks & Copy | **Granite 4** | IBM watsonx.ai |
-| 🛡️ Fallback | GPT-4o | OpenAI |
+<table width="100%">
+  <colgroup>
+    <col style="width: 25%;">
+    <col style="width: 55%;">
+    <col style="width: 20%;">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Stage</th>
+      <th>Model</th>
+      <th>Runs On</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>🎤 Transcription</td>
+      <td>Whisper Large v3 Turbo</td>
+      <td>Groq</td>
+    </tr>
+    <tr>
+      <td>📊 Metrics</td>
+      <td>Python + ffmpeg (deterministic, no AI)</td>
+      <td>IBM Code Engine</td>
+    </tr>
+    <tr>
+      <td>✍️ Text Analysis</td>
+      <td><strong>Granite 4</strong> (<code>ibm/granite-4-h-small</code>)</td>
+      <td>IBM watsonx.ai</td>
+    </tr>
+    <tr>
+      <td>👁️ Visual Analysis</td>
+      <td>Llama 3.2 11B Vision</td>
+      <td>IBM watsonx.ai</td>
+    </tr>
+    <tr>
+      <td>🔍 Fact-Check</td>
+      <td><strong>Granite 4</strong> + Tavily</td>
+      <td>IBM watsonx.ai</td>
+    </tr>
+    <tr>
+      <td>📝 Hooks & Copy</td>
+      <td><strong>Granite 4</strong></td>
+      <td>IBM watsonx.ai</td>
+    </tr>
+    <tr>
+      <td>🛡️ Fallback</td>
+      <td>GPT-4o</td>
+      <td>OpenAI</td>
+    </tr>
+  </tbody>
+</table>
 
 ## Honesty by Design
 
