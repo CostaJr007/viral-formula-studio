@@ -158,6 +158,6 @@ IBM Code Engine:
 - ✅ **Multimodal vision:** `studio/analyze_visual.py` — Llama Vision reads frames
 - ✅ **Honesty layer:** `studio/schemas.py` — Pydantic with `evidence_notes` fields
 - ✅ **IBM stack:** `studio/factory.py` — switches between Granite 4 (primary) + GPT-4o (fallback)
-- ✅ **Serverless deploy:** `DEPLOY_IBM.md` — two Code Engine apps, zero-to-auto-scaling
+- ✅ **Serverless deploy:** `docs/deployment/DEPLOY_IBM.md` — two Code Engine apps, zero-to-auto-scaling
 - ✅ **Testing:** `tests/` — 25 pytest tests, all passing, no external APIs needed for CI/CD
 

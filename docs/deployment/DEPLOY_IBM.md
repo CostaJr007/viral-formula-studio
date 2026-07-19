@@ -73,4 +73,4 @@ ibmcloud ce application create --name vfs-api --build-source https://github.com/
 
 - **Free tier** covers demo scale; min-scale 0 avoids idle burn (accept ~30s cold starts) — set min-scale 1 on presentation day for instant responses.
 - `data/` starts empty in the containers: ingest creators through the UI at runtime.
-- If the account hits any provisioning limit (it shows `frozen` in IAM but Code Engine + watsonx are responding), Railway remains the fallback — see `DEPLOY.md`.
+- If the account hits any provisioning limit (it shows `frozen` in IAM but Code Engine + watsonx are responding), Railway remains the fallback — see [`DEPLOY.md`](DEPLOY.md).

@@ -9,11 +9,68 @@ to *your* theme, in *your* voice.
 > Inspiration, not imitation. Every great creator started by studying someone.
 > We hand you the notebook that used to take months to build.
 
-**IBM AI Builders Challenge — July 2026 · "Reimagine Creative Industries with AI"**
-
-🚀 **Live demo:** [bit.ly/viral-studio](https://bit.ly/viral-studio)
+🚀 **Live demo (production on IBM Code Engine):** [bit.ly/viral-studio](https://bit.ly/viral-studio)
 
 ![Demo](demo.gif)
+
+---
+
+## Problem Statement
+
+Content creators spend months studying successful creators before finding their own
+voice. They watch hundreds of videos, manually note hook patterns, editing rhythm,
+speech pace, persuasion triggers — and still end up guessing. Marketing teams and
+agencies lack a systematic, data-driven method to decode *why* specific short-form
+content goes viral and transpose those techniques to a new topic.
+
+Existing AI writing tools generate generic scripts from prompts with no connection
+to real creator behavior. They don't *measure* anything — they guess based on the
+model's prior training, producing hallucinated claims like "this creator uses fast
+cuts" without ever counting a single cut.
+
+---
+
+## Solution
+
+Viral Formula Studio **reverse-engineers the measurable formula behind any creator's
+viral videos** and transposes it to the user's own theme and voice.
+
+**How it works:**
+1. The user pastes up to 5 short-video links and a topic.
+2. The system **measures** (not estimates) editing cadence, speech rate, n-gram
+   frequency, and shot structure using deterministic tools (ffmpeg, Python).
+3. AI interprets those measurements — text style via Granite 4, visual editing
+   grammar via Llama 3.2 Vision — and caches a reusable creator profile.
+4. The system generates 10 hooks built from the creator's *measured* patterns,
+   a full shooting script with timestamps, shot types, editing directions, and
+   the retention psychology behind each choice.
+
+**What makes it different:**
+- **Measured, not guessed** — the AI interprets deterministic ffmpeg numbers, never
+  invents metrics. Every claim has a source.
+- **Multimodal** — text analysis (Granite 4) + frame-by-frame visual analysis
+  (Llama 3.2 Vision) + deterministic metrics (ffmpeg/Python). Three layers of
+  evidence, not just text.
+- **Honesty by design** — every output includes `evidence_notes`, `unconfirmed`
+  flags, and `[INSERT: ...]` placeholders. The system states what it doesn't know.
+- **Production-deployed** — not a prototype. Live on IBM Cloud Code Engine with
+  auto-scaling, rate limiting, and CI/CD via GitHub Actions → Docker Hub → Code Engine.
+- **Any creator, any language** — Whisper Large v3 handles 99+ languages; Granite 4
+  extracts universal style patterns from native-language transcriptions.
+
+> 📖 For a deep dive into what makes this approach unique, see
+> [docs/INNOVATION.md](docs/INNOVATION.md).
+
+---
+
+## Selected Challenge Theme
+
+**IBM AI Builders Challenge — July 2026 · "Reimagine Creative Industries with AI"**
+
+The creative industry's core bottleneck is not *generating* content — it's
+*understanding what works and why*. This project reimagines the creator workflow by
+turning weeks of manual study into a measured, evidence-based playbook generated in
+minutes, powered entirely by the IBM AI stack.
 
 ---
 
@@ -33,21 +90,6 @@ The demo comes with **3 pre-analyzed creators** — no uploads needed:
 
 ---
 
-## 🏗️ Built on IBM Cloud — 100% End-to-End
-
-| Component | IBM Service |
-|---|---|
-| **AI Engine** | IBM watsonx.ai (Granite 4 text + Llama 3.2 Vision multimodal) |
-| **Hosting** | IBM Cloud Code Engine (serverless, auto-scale) |
-| **Registry** | IBM Container Registry (CI/CD pipeline) |
-| **Developer AI** | IBM Bob (architecture, implementation, debugging) |
-
-**Every output:** Granite 4 on watsonx.ai  
-**Every frame analysis:** Llama 3.2 Vision on watsonx.ai  
-**Every deployment:** Code Engine container  
-
----
-
 ## Use Cases
 
 - **Content Creators:** Copy winning strategies from creators in your niche — hooks, pacing, editing rhythm
@@ -58,7 +100,9 @@ The demo comes with **3 pre-analyzed creators** — no uploads needed:
 
 ---
 
-## How It Works
+## AI Approach & Architecture
+
+### Pipeline Overview
 
 ```
 ┌──────────────────────┐     ┌─────────────────────────────────┐     ┌──────────────────────┐
@@ -81,33 +125,15 @@ The demo comes with **3 pre-analyzed creators** — no uploads needed:
 Raw captions → regex cleanup (HTML entities, contractions) → Granite 4 coherence fix
 ```
 
+### Four-Stage Evidence Chain
+
 Every output is grounded in **measured evidence**:
 - **Stage 0 — MEASURE (no AI):** ffmpeg computes cuts/min, shot length, words/min, n-grams
 - **Stage 1 — EVIDENCE (cached):** Granite 4 decodes text style + vision model reads frames
 - **Stage 2 — SCOUT:** Tavily + Granite 4 verify facts about the topic with source URLs
 - **Stage 3 — COMMENTATOR:** Granite 4 synthesizes a shooting script with timestamps, shot types, editing directions, and retention psychology
 
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| AI Runtime | IBM watsonx.ai (Granite 4 + Llama 3.2 Vision) |
-| Backend | Python 3.12, FastAPI, Pydantic, Agno 2.7 |
-| Frontend | React 19, Vite, TanStack Start, Tailwind 4, shadcn/ui |
-| Transcription | Groq Whisper Large v3 Turbo |
-| Media | ffmpeg/ffprobe (scene detection, frame sampling) |
-| Ingestion | yt-dlp (YouTube Shorts, TikTok, Instagram Reels) |
-| Fact-Check | Tavily Search API |
-| Hosting | IBM Cloud Code Engine (serverless containers) |
-| CI/CD | GitHub Actions → Docker Hub → Code Engine |
-| Testing | pytest (25 tests), ruff |
-| Responsive | Mobile-first design — works on phones, tablets, and desktop |
-
----
-
-## AI Models Deep Dive
+### AI Models Deep Dive
 
 <table width="100%">
   <thead>
@@ -164,6 +190,58 @@ video script — is generated by Granite on watsonx.ai.
 experiences rate limits or an outage, agents transparently fall back to OpenAI.
 In normal operation, all AI traffic goes through IBM watsonx.
 
+### 🏗️ Built on IBM Cloud — 100% End-to-End
+
+| Component | IBM Service |
+|---|---|
+| **AI Engine** | IBM watsonx.ai (Granite 4 text + Llama 3.2 Vision multimodal) |
+| **Hosting** | IBM Cloud Code Engine (serverless, auto-scale) |
+| **Registry** | IBM Container Registry (CI/CD pipeline) |
+| **Developer AI** | IBM Bob (architecture, implementation, debugging) |
+
+**Every output:** Granite 4 on watsonx.ai
+**Every frame analysis:** Llama 3.2 Vision on watsonx.ai
+**Every deployment:** Code Engine container
+
+### Production Status
+
+This is **not a prototype** — the system is deployed and serving real traffic:
+
+- **API:** `vfs-api` on IBM Code Engine (us-south), serverless, scales 0→2 instances
+- **Web:** `vfs-web` on IBM Code Engine, React 19 SSR
+- **CI/CD:** GitHub Actions → Docker Hub → Code Engine (automatic on push to `main`)
+- **Rate limiting:** IP-based, max 8 creator analyses + 8 dossier exports per IP/hour
+- **Seed data:** 3 pre-analyzed creators baked into the Docker image for instant demo
+- **Cold start:** ~30s on free tier (min-scale 0); set min-scale 1 on demo day
+
+---
+
+## How IBM Bob Was Used
+
+IBM Bob was the AI development partner throughout the entire project lifecycle —
+from architecture design through implementation, debugging, and documentation. All
+code decisions were made by the human developer; Bob served as a spec-driven
+assistant that accelerated the build process while maintaining code quality and
+architectural consistency.
+
+### Bob's Contributions by Module
+
+| Module / Decision | How Bob Helped Specifically |
+|---|---|
+| **`studio/` modular engine** | Bob analyzed the legacy codebase (flat `agents/`, `prompts/`, `transcripter.py`) in Ask/Plan modes and proposed the modular `studio/` package structure with clear separation: `config`, `factory`, `schemas`, `pipeline`, `store`, plus per-stage modules. |
+| **`studio/factory.py`** | Bob designed the provider-switch pattern (`MODEL_PROVIDER=watsonx` in `.env`) so that swapping OpenAI → Granite requires zero agent changes. Bob also designed the automatic fallback mechanism (`fallback_models`) — tested live on 07/17 when a frozen watsonx account triggered seamless GPT-4o fallback. |
+| **`studio/config.py`** | Bob identified and fixed the CWD path bug from v0.1: the old code used relative paths that broke when run from different directories. Bob anchored all paths to `Path(__file__).resolve().parent.parent` and designed the `.env`-beats-machine-env priority to prevent stale API keys from shadowing the project `.env`. |
+| **`studio/parse.py`** | Bob diagnosed the watsonx `max_tokens=1024` truncation issue — Granite's default token limit was cutting `CreatorStyle` JSON mid-object, crashing the pipeline. Bob designed the resilient `coerce_structured()` parser that recovers Pydantic output from raw strings, markdown-fenced JSON, and truncated responses. |
+| **`studio/pipeline.py`** | Bob proposed the scout → commentator pipeline pattern (inspired by the June 2026 challenge winner, Kickoff Buddy): deterministic measurements first, then LLM interpretation, then fact-check, then synthesis. This became the four-stage architecture. |
+| **`studio/schemas.py`** | Bob implemented the honesty rule: every Pydantic schema includes `evidence_notes` fields so the model must state what the available evidence could NOT support — preventing hallucinated claims about creators. |
+| **`studio/metrics.py`** | Bob assisted in building the deterministic metrics layer: ffmpeg scene detection for cuts/min, audio duration for WPM, and regex-based n-gram extraction with counts — all running before any LLM to feed measured numbers into the analysis prompts. |
+| **`studio/limits.py`** | Bob designed the IP-based rate limiter to protect the watsonx Lite plan's RPM limits in production — max 8 distinct creator analyses + 8 dossier exports per IP per hour. |
+| **`studio/ingest.py`** | Bob assisted module-by-module with the link-based ingestion flow: yt-dlp download, captions-first transcription strategy (free YouTube captions before Groq Whisper fallback), and platform-honest error handling (Instagram documented as best-effort). |
+| **watsonx `max_tokens` fix** | After the truncation crash, Bob recommended setting `max_tokens=4096` explicitly in `factory.py` — Granite defaults to 1024, which truncates structured JSON for `CreatorStyle` and `HookList` schemas. |
+| **IBM Code Engine deploy** | Bob optimized the Code Engine deployment configuration: two apps (`vfs-api` + `vfs-web`), min-scale 0 to stay within free tier, and the `ALLOWED_ORIGINS` / `VITE_API_URL` environment variable handshake between services. |
+| **Test suite** | Bob contributed to the test suite expansion from 9 tests (v0.2) to 25 tests (v0.6), including tests for real `cut_metrics`, n-gram counts, WPM calculations, resilient JSON parsing, and schema validation — all runnable without API keys. |
+| **Documentation** | Bob contributed to the technical documentation structure (README, AGENTS.md, DOCUMENTACAO_IA.md), ensuring it follows the challenge rubric and clearly explains the multimodal AI architecture. |
+
 ---
 
 ## Honesty by Design
@@ -188,6 +266,24 @@ The pipeline masters creators from any country, in any language:
 - **Seed creators** (Bryan, jeffnippard, kallaway) are exempt — unlimited demo usage
 - **WatsonX token cap:** `max_tokens=4096` prevents structured JSON truncation
 - **Resilient parsing:** `studio/parse.py` recovers Pydantic output from raw/fenced/truncated JSON
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| AI Runtime | IBM watsonx.ai (Granite 4 + Llama 3.2 Vision) |
+| Backend | Python 3.12, FastAPI, Pydantic, Agno 2.7 |
+| Frontend | React 19, Vite, TanStack Start, Tailwind 4, shadcn/ui |
+| Transcription | Groq Whisper Large v3 Turbo |
+| Media | ffmpeg/ffprobe (scene detection, frame sampling) |
+| Ingestion | yt-dlp (YouTube Shorts, TikTok, Instagram Reels) |
+| Fact-Check | Tavily Search API |
+| Hosting | IBM Cloud Code Engine (serverless containers) |
+| CI/CD | GitHub Actions → Docker Hub → Code Engine |
+| Testing | pytest (25 tests), ruff |
+| Responsive | Mobile-first design — works on phones, tablets, and desktop |
 
 ---
 
@@ -265,6 +361,20 @@ uv run ruff check .    # lint
 | `POST /api/copy` | Generate shooting script with timestamps + directions |
 | `POST /api/dossier` | Export viralization playbook |
 | `GET /api/usage` | Rate limit status |
+
+---
+
+## Documentation
+
+| Document | Description |
+|---|---|
+| [docs/INNOVATION.md](docs/INNOVATION.md) | Deep dive into what makes this approach unique — measured foundation, multimodal processing, IBM ecosystem mastery, honesty layer |
+| [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md) | Step-by-step IBM Cloud Code Engine deployment guide (production) |
+| [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md) | Railway deployment guide (alternative/fallback) |
+| [DOCUMENTACAO_IA.md](DOCUMENTACAO_IA.md) | Full project memory — architecture decisions, change log, and IBM switching strategy |
+| [AGENTS.md](AGENTS.md) | Guidance for AI agents and human contributors working on this repo |
+
+---
 
 ## License
 
