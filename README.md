@@ -38,16 +38,11 @@ The demo comes with **3 pre-analyzed creators** — no uploads needed:
 This project runs end-to-end on the **IBM Cloud ecosystem**:
 
 <table width="100%">
-  <colgroup>
-    <col style="width: 25%;">
-    <col style="width: 55%;">
-    <col style="width: 20%;">
-  </colgroup>
   <thead>
     <tr>
-      <th>Service</th>
-      <th>Role</th>
-      <th>Region</th>
+      <th width="25%">Service</th>
+      <th width="55%">Role</th>
+      <th width="20%">Region</th>
     </tr>
   </thead>
   <tbody>
@@ -82,16 +77,11 @@ This project runs end-to-end on the **IBM Cloud ecosystem**:
 ### AI Models
 
 <table width="100%">
-  <colgroup>
-    <col style="width: 25%;">
-    <col style="width: 55%;">
-    <col style="width: 20%;">
-  </colgroup>
   <thead>
     <tr>
-      <th>Stage</th>
-      <th>Model</th>
-      <th>Runs On</th>
+      <th width="25%">Stage</th>
+      <th width="55%">Model</th>
+      <th width="20%">Runs On</th>
     </tr>
   </thead>
   <tbody>
