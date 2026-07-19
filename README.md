@@ -58,28 +58,19 @@ In normal operation, all AI traffic goes through IBM watsonx.
 ## How It Works
 
 ```
-  INPUT                  PIPELINE                        OUTPUT
-  ─────                  ────────                        ──────
-
-  YouTube Shorts   ① yt-dlp download + transcribe    Creator profile
-  TikTok           ② ffmpeg measures cuts/WPM        Measured metrics
-  Instagram Reels  ③ Granite 4 analyzes text style   10 AI hooks
-                   ④ Llama 3.2 Vision reads frames   Shooting script
-                   ⑤ Tavily fact-checks topic         Editing directions
-                   ⑥ Granite 4 writes final copy      Retention psychology
+┌──────────────────────┐     ┌─────────────────────────────────┐     ┌──────────────────────┐
+│       INPUT          │     │           PIPELINE               │     │       OUTPUT         │
+├──────────────────────┤     ├─────────────────────────────────┤     ├──────────────────────┤
+│ YouTube Shorts       │ ──▶ │ ① yt-dlp download + transcribe  │ ──▶ │ Creator profile      │
+│ TikTok               │     │ ② ffmpeg cuts / WPM / n-grams   │     │ 10 AI hooks          │
+│ Instagram Reels      │     │ ③ Granite 4 text style analysis │     │ Shooting script      │
+│                      │     │ ④ Llama Vision reads frames      │     │ Editing directions   │
+│                      │     │ ⑤ Tavily fact-checks topic       │     │ Retention psychology │
+│                      │     │ ⑥ Granite 4 writes final copy    │     │                      │
+└──────────────────────┘     └─────────────────────────────────┘     └──────────────────────┘
 ```
 
 **Example flow:** Creator → Profile → Topic → 10 Hooks → Pick Hook → Copy → Report
-
-**Transcription pipeline:**
-INPUT                        PIPELINE                               OUTPUT
-─────                        ────────                               ──────
-5 Shorts/TikToks/Reels → ① Download + transcribe + clean       → Creator profile
-Your topic              → ② ffmpeg measures cuts/WPM/n-grams    → 10 AI hooks
-                            ③ Granite 4 analyzes text style       → Styled report
-                            ④ Vision model reads frames            → (script + editing
-                            ⑤ Tavily fact-checks your topic         + psychology)
-                            ⑥ Granite 4 writes shooting script
 ```
 
 ```
