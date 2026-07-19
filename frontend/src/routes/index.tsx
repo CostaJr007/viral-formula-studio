@@ -261,7 +261,9 @@ function Studio() {
         <div className="relative p-6 flex items-center gap-3">
           <div className="relative">
             <div className="absolute -inset-1 rounded-xl bg-primary/30 blur-md" />
-            <img src={logoUrl} alt="" className="relative h-9 w-9" />
+            <button onClick={restart} className="relative cursor-pointer" title="Home">
+              <img src={logoUrl} alt="Viral Formula Studio" className="relative h-9 w-9" />
+            </button>
           </div>
           <div className="leading-tight">
             <div className="font-display font-semibold text-[15px]">Viral Formula</div>
@@ -355,7 +357,9 @@ function Studio() {
           <div className="border-b border-border/60 backdrop-blur-md bg-background/70 sticky top-0 z-10">
             <div className="max-w-5xl mx-auto px-4 md:px-10 py-3 md:py-4 flex items-center gap-3 md:gap-4">
               <div className="md:hidden flex items-center gap-2 shrink-0">
-                <img src={logoUrl} alt="" className="h-6 w-6" />
+                <button onClick={restart} className="cursor-pointer" title="Home">
+                  <img src={logoUrl} alt="Viral Formula Studio" className="h-6 w-6" />
+                </button>
               </div>
               <div className="flex-1 flex items-center gap-2 md:gap-3">
                 <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground tabular-nums shrink-0">
