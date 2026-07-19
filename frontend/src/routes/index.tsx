@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   Brain,
@@ -7,7 +7,6 @@ import {
   Check,
   Copy as CopyIcon,
   Eye,
-  FileText,
   Globe,
   Loader2,
   Film,
@@ -129,8 +128,6 @@ function Studio() {
   const [pickedHook, setPickedHook] = useState<number | null>(null);
   const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
   const [generatingCopy, setGeneratingCopy] = useState(false);
-  const [dossierMd, setDossierMd] = useState<string | null>(null);
-  const [loadingDossier, setLoadingDossier] = useState(false);
 
   const validLinks = links.filter((l) => l.trim().startsWith("http"));
   const canAnalyze = creatorName.trim().length >= 2 && validLinks.length >= 1 && topic.trim().length >= 3;
@@ -217,27 +214,9 @@ function Studio() {
     }
   }
 
-  async function loadDossier() {
-    if (dossierMd) return;
-    setLoadingDossier(true);
-    try {
-      const data = await apiPost<{ markdown: string }>("/api/dossier", {
-        creator: creatorName.trim(),
-        topic: topic.trim(),
-        profile: profile ?? undefined,
-      });
-      setDossierMd(data.markdown);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoadingDossier(false);
-    }
-  }
-
   function newTopic() {
     setPickedHook(null);
     setCopyResult(null);
-    setDossierMd(null);
     setHooks([]);
     setStep("topic-select");
   }
@@ -248,7 +227,6 @@ function Studio() {
     setHooks([]);
     setPickedHook(null);
     setCopyResult(null);
-    setDossierMd(null);
     setError(null);
   }
 
@@ -433,10 +411,7 @@ function Studio() {
                 hook={pickedHook !== null && hooks[pickedHook] ? hooks[pickedHook].text : ""}
                 generating={generatingCopy}
                 result={copyResult}
-                dossierMd={dossierMd}
-                loadingDossier={loadingDossier}
                 onGenerate={generateCopy}
-                onLoadDossier={loadDossier}
                 onNewTopic={newTopic}
                 onRestart={restart}
               />
@@ -1065,27 +1040,21 @@ function CopyStep({
   hook,
   generating,
   result,
-  dossierMd,
-  loadingDossier,
   onGenerate,
-  onLoadDossier,
   onNewTopic,
   onRestart,
 }: {
   hook: string;
   generating: boolean;
   result: CopyResult | null;
-  dossierMd: string | null;
-  loadingDossier: boolean;
   onGenerate: () => void;
-  onLoadDossier: () => void;
   onNewTopic: () => void;
   onRestart: () => void;
 }) {
-  // Auto-load dossier when copy is ready
-  useEffect(() => {
-    if (result && !dossierMd && !loadingDossier) onLoadDossier();
-  }, [result, dossierMd, loadingDossier, onLoadDossier]);
+  // Parse shooting script lines into blocks
+  const blocks = result?.script
+    ? result.script.split("\n").filter((l) => l.includes("|"))
+    : [];
 
   if (!result) {
     return (
@@ -1136,15 +1105,15 @@ function CopyStep({
     );
   }
 
-  // Result ready — full inline report
+  // Result ready — styled report
   return (
-    <div className="space-y-10">
+    <div className="space-y-8 max-w-4xl mx-auto">
       {/* Top bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Badge variant="outline" className="gap-1.5">
-          <Wand2 className="h-3 w-3" /> Step 4 - Complete Report
+          <Wand2 className="h-3 w-3" /> Final Report · {result.word_count} words
         </Badge>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={onRestart}>
             <RotateCcw className="h-3.5 w-3.5 mr-1" /> New creator
           </Button>
@@ -1153,61 +1122,74 @@ function CopyStep({
           </Button>
         </div>
       </div>
-      {/* Shooting Script */}
-      <Card className="p-6 md:p-8 bg-card/70 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-            <h2 className="font-display font-semibold text-lg">Shooting Script</h2>
-            <span className="text-xs font-mono text-muted-foreground">{result.word_count} words</span>
-          </div>
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigator.clipboard?.writeText(result.script)}>
-            <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy
-          </Button>
-        </div>
-        <Separator />
-        <div className="whitespace-pre-wrap text-[13px] leading-[1.7] font-mono bg-secondary/30 rounded-lg p-4 max-h-[400px] overflow-y-auto">
-          {result.script}
-        </div>
+
+      {/* Hook banner */}
+      <Card className="p-6 bg-primary/10 border-primary/30 space-y-2">
+        <div className="text-xs uppercase tracking-widest text-primary font-mono">Your Hook</div>
+        <p className="text-lg font-display font-semibold text-foreground leading-snug">{hook}</p>
       </Card>
-      {/* Editing Directions */}
-      <Card className="p-6 md:p-8 bg-card/70 space-y-4">
-        <div className="flex items-center gap-2">
-          <Scissors className="h-4 w-4 text-primary" />
-          <h2 className="font-display font-semibold text-lg">Editing Directions</h2>
-        </div>
-        <Separator />
-        <ol className="space-y-3">
-          {result.editing_directions.map((d, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="font-mono text-xs text-primary shrink-0 pt-0.5">{String(i + 1).padStart(2, "0")}</span>
-              <span className="text-sm text-muted-foreground leading-relaxed">{d}</span>
-            </li>
-          ))}
-        </ol>
-        {result.data_notes && (
-          <><Separator /><div className="text-xs text-muted-foreground leading-relaxed">
-            <span className="text-foreground font-medium">Data notes:</span> {result.data_notes}
-          </div></>
-        )}
-      </Card>
-      {/* Dossier */}
-      {loadingDossier && (
-        <Card className="p-10 bg-card/70 text-center space-y-4">
-          <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-          <div className="text-sm text-muted-foreground">Assembling full dossier...</div>
-        </Card>
-      )}
-      {dossierMd && (
-        <Card className="p-6 md:p-8 bg-card/70 space-y-4">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" />
-            <h2 className="font-display font-semibold text-lg">Viralization Dossier</h2>
+
+      {/* Shooting script blocks */}
+      <div className="space-y-3">
+        {blocks.map((line, i) => {
+          const parts = line.split("|").map((p) => p.trim());
+          const [timestamp, shot, text, editing, why] = parts.length >= 5 ? parts : ["", line, "", "", ""];
+          return (
+            <Card key={i} className="p-5 bg-card/80 border-border/40 hover:border-primary/30 transition-colors">
+              <div className="flex items-start gap-4">
+                {/* Left: timestamp + shot type badge */}
+                <div className="shrink-0 w-20 text-center">
+                  <div className="font-mono text-xs text-primary font-semibold">{timestamp || `#${i + 1}`}</div>
+                  <div className="mt-1">
+                    <span className="inline-block text-[10px] font-mono uppercase tracking-wider bg-secondary/60 text-muted-foreground rounded-full px-2 py-0.5">
+                      {shot || "SHOT"}
+                    </span>
+                  </div>
+                </div>
+                {/* Center: spoken text */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm leading-relaxed text-foreground/90">{text || line}</p>
+                </div>
+                {/* Right: editing + psychology */}
+                <div className="shrink-0 w-40 hidden md:block space-y-1">
+                  {editing && (
+                    <div className="flex items-start gap-1">
+                      <Scissors className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                      <span className="text-[11px] text-muted-foreground leading-tight">{editing}</span>
+                    </div>
+                  )}
+                  {why && (
+                    <div className="flex items-start gap-1">
+                      <Zap className="h-3 w-3 text-yellow-400 mt-0.5 shrink-0" />
+                      <span className="text-[11px] text-muted-foreground leading-tight">{why}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Editing directions summary */}
+      {result.editing_directions.length > 0 && (
+        <Card className="p-6 bg-card/70 space-y-4">
+          <h3 className="font-display font-semibold text-sm flex items-center gap-2">
+            <Film className="h-4 w-4 text-primary" /> Editing Quick Reference
+          </h3>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {result.editing_directions.map((d, i) => (
+              <div key={i} className="flex gap-2 text-xs text-muted-foreground bg-secondary/40 rounded-lg p-3">
+                <span className="font-mono text-primary shrink-0">{String(i + 1).padStart(2, "0")}</span>
+                <span className="leading-relaxed">{d}</span>
+              </div>
+            ))}
           </div>
-          <Separator />
-          <div className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed max-h-[600px] overflow-y-auto">
-            {dossierMd}
-          </div>
+          {result.data_notes && (
+            <div className="text-[11px] text-muted-foreground/70 italic border-t border-border/40 pt-3">
+              {result.data_notes}
+            </div>
+          )}
         </Card>
       )}
     </div>
