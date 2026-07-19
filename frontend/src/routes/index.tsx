@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowRight,
   Brain,
   Camera,
   Check,
   Copy as CopyIcon,
-  Download,
   Eye,
   FileText,
   Globe,
@@ -130,7 +129,8 @@ function Studio() {
   const [pickedHook, setPickedHook] = useState<number | null>(null);
   const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
   const [generatingCopy, setGeneratingCopy] = useState(false);
-  const [dossierCache, setDossierCache] = useState<string | null>(null);
+  const [dossierMd, setDossierMd] = useState<string | null>(null);
+  const [loadingDossier, setLoadingDossier] = useState(false);
 
   const validLinks = links.filter((l) => l.trim().startsWith("http"));
   const canAnalyze = creatorName.trim().length >= 2 && validLinks.length >= 1 && topic.trim().length >= 3;
@@ -217,62 +217,27 @@ function Studio() {
     }
   }
 
-  async function fetchDossier(): Promise<string> {
-    if (dossierCache) return dossierCache;
-    const data = await apiPost<{ markdown: string }>("/api/dossier", {
-      creator: creatorName.trim(),
-      topic: topic.trim(),
-      profile: profile ?? undefined,
-    });
-    setDossierCache(data.markdown);
-    return data.markdown;
-  }
-
-  function fullReport(): string {
-    const dossier = dossierCache ?? "";
-    const script = copyResult?.script ?? "";
-    const header = `# Viral Formula Studio — Full Report\n\n**Creator:** ${creatorName.trim()}  \n**Topic:** ${topic.trim()}\n\n---\n\n`;
-    const dossierSection = dossier ? `\n\n---\n\n## 📋 Viralization Dossier\n\n${dossier}` : "";
-    const scriptSection = script ? `\n\n---\n\n## 🎬 Shooting Script\n\n${script}\n\n---\n\n## 🎥 Editing Directions\n\n${(copyResult?.editing_directions ?? []).map((d: string) => `- ${d}`).join("\n")}\n\n**Data notes:** ${copyResult?.data_notes ?? ""}` : "";
-    return header + scriptSection + dossierSection;
-  }
-
-  async function exportDossier() {
+  async function loadDossier() {
+    if (dossierMd) return;
+    setLoadingDossier(true);
     try {
-      const md = fullReport();
-      const blob = new Blob([md], { type: "text/markdown" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `dossier_${creatorName.trim()}.md`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const data = await apiPost<{ markdown: string }>("/api/dossier", {
+        creator: creatorName.trim(),
+        topic: topic.trim(),
+        profile: profile ?? undefined,
+      });
+      setDossierMd(data.markdown);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  async function exportPdfReport() {
-    setError(null);
-    try {
-      await fetchDossier();  // ensure cached
-      const md = fullReport();
-      const safeTitle = `Viral Formula Studio — ${creatorName.trim()} × ${topic.trim()}`;
-      const html = markdownToPrintHtml(md, safeTitle);
-      const w = window.open("", "_blank");
-      if (!w) { setError("Popup blocked — allow popups for PDF export."); return; }
-      w.document.write(html);
-      w.document.close();
-      w.onload = () => w.print();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoadingDossier(false);
     }
   }
 
   function newTopic() {
     setPickedHook(null);
     setCopyResult(null);
-    setDossierCache(null);
+    setDossierMd(null);
     setHooks([]);
     setStep("topic-select");
   }
@@ -283,7 +248,7 @@ function Studio() {
     setHooks([]);
     setPickedHook(null);
     setCopyResult(null);
-    setDossierCache(null);
+    setDossierMd(null);
     setError(null);
   }
 
@@ -468,9 +433,10 @@ function Studio() {
                 hook={pickedHook !== null && hooks[pickedHook] ? hooks[pickedHook].text : ""}
                 generating={generatingCopy}
                 result={copyResult}
+                dossierMd={dossierMd}
+                loadingDossier={loadingDossier}
                 onGenerate={generateCopy}
-                onExport={exportDossier}
-                onExportPdf={exportPdfReport}
+                onLoadDossier={loadDossier}
                 onNewTopic={newTopic}
                 onRestart={restart}
               />
@@ -1095,60 +1061,34 @@ function HooksStep({
 
 /* ---------------- Step 4: Copy ---------------- */
 
-function markdownToPrintHtml(md: string, title: string): string {
-  // Simple markdown-to-HTML for print-friendly PDF export
-  let html = md
-    .replace(/### (.+)/g, "<h3>$1</h3>")
-    .replace(/## (.+)/g, "<h2>$1</h2>")
-    .replace(/# (.+)/g, "<h1>$1</h1>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\n- (.+)/g, "\n<li>$1</li>")
-    .replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>")
-    .replace(/\|(.+)\|/g, (m) => m.replace(/\|/g, " "))  // rough table → text
-    .replace(/<br>/g, "")
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/\n/g, "<br>");
-
-  html = `<p>${html}</p>`;
-
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
-<style>
-  @page { margin: 2cm; size: A4; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 11pt; line-height: 1.6; color: #1a1a1a; max-width: 700px; margin: 0 auto; padding: 20px; }
-  h1 { font-size: 20pt; color: #0d0f1f; border-bottom: 3px solid #0f62fe; padding-bottom: 8px; }
-  h2 { font-size: 14pt; color: #0f62fe; margin-top: 28px; }
-  h3 { font-size: 12pt; color: #333; }
-  strong { color: #0d0f1f; }
-  code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-size: 10pt; }
-  ul { padding-left: 20px; }
-  li { margin-bottom: 4px; }
-  p { margin: 8px 0; }
-  @media print { body { padding: 0; } }
-</style></head><body>${html}</body></html>`;
-}
-
 function CopyStep({
   hook,
   generating,
   result,
+  dossierMd,
+  loadingDossier,
   onGenerate,
-  onExport,
-  onExportPdf,
+  onLoadDossier,
   onNewTopic,
   onRestart,
 }: {
   hook: string;
   generating: boolean;
   result: CopyResult | null;
+  dossierMd: string | null;
+  loadingDossier: boolean;
   onGenerate: () => void;
-  onExport: () => void;
-  onExportPdf: () => void;
+  onLoadDossier: () => void;
   onNewTopic: () => void;
   onRestart: () => void;
 }) {
-  return (
+  // Auto-load dossier when copy is ready
+  useEffect(() => {
+    if (result && !dossierMd && !loadingDossier) onLoadDossier();
+  }, [result, dossierMd, loadingDossier, onLoadDossier]);
+
+  if (!result) {
+    return (
     <div className="space-y-10">
       <header className="space-y-4 max-w-3xl">
         <Badge variant="outline" className="gap-1.5">
@@ -1162,8 +1102,7 @@ function CopyStep({
           the metrics. Nothing here is a guess — it's evidence transposed.
         </p>
       </header>
-
-      {!result && !generating && (
+      {!generating && (
         <Card className="p-10 bg-card/70 text-center space-y-5 border-dashed">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-glow">
             <Play className="h-6 w-6" />
@@ -1171,12 +1110,11 @@ function CopyStep({
           <div className="space-y-1">
             <h3 className="font-display text-xl">Orchestrate final copy</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              The commentator writes grounded ONLY in collected evidence. No
-              hallucination, no fluff.
+              The commentator writes grounded ONLY in collected evidence. No hallucination, no fluff.
             </p>
             {hook && (
               <p className="text-sm text-foreground max-w-md mx-auto pt-2">
-                Hook: “{hook}”
+                Hook: &ldquo;{hook}&rdquo;
               </p>
             )}
           </div>
@@ -1185,81 +1123,92 @@ function CopyStep({
           </Button>
         </Card>
       )}
-
       {generating && (
         <Card className="p-10 bg-card/70 text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <div className="font-display">Writing the script…</div>
+          <div className="font-display">Writing the script...</div>
           <p className="text-sm text-muted-foreground">
             Injecting profile + verified facts into the prompt.
           </p>
         </Card>
       )}
+    </div>
+    );
+  }
 
-      {result && (
-        <div className="grid lg:grid-cols-5 gap-6">
-          <Card className="lg:col-span-3 p-6 md:p-8 bg-card/70 space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-                <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                  🎬 shooting script · {result.word_count} words
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={() => navigator.clipboard?.writeText(result.script)}
-              >
-                <CopyIcon className="h-3.5 w-3.5" /> Copy
-              </Button>
-            </div>
-            <Separator />
-            <div className="whitespace-pre-wrap text-[13px] leading-[1.7] font-mono bg-secondary/30 rounded-lg p-4 max-h-[500px] overflow-y-auto">
-              {result.script}
-            </div>
-          </Card>
-
-          <Card className="lg:col-span-2 p-6 md:p-7 bg-card/70 space-y-5">
-            <div className="flex items-center gap-2">
-              <Scissors className="h-4 w-4 text-primary" />
-              <h3 className="font-display font-medium">Editing directions</h3>
-            </div>
-            <ol className="space-y-4">
-              {result.editing_directions.map((d, i) => (
-                <li key={i} className="flex gap-3">
-                  <span className="font-mono text-[11px] text-primary shrink-0 pt-0.5">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="text-sm text-muted-foreground leading-relaxed">{d}</span>
-                </li>
-              ))}
-            </ol>
-            <Separator />
-            <div className="text-[11px] text-muted-foreground leading-relaxed">
-              <span className="text-foreground font-medium">Data notes:</span>{" "}
-              {result.data_notes}
-            </div>
-          </Card>
-
-          <div className="lg:col-span-5 flex flex-wrap gap-3 justify-between pt-2">
-            <Button variant="outline" size="sm" onClick={onRestart}>
-              <RotateCcw className="h-3.5 w-3.5 mr-1" /> New creator
-            </Button>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={onNewTopic} className="shadow-glow">
-                <Wand2 className="h-4 w-4 mr-1.5" /> New Topic (same creator)
-              </Button>
-              <Button variant="outline" onClick={onExportPdf}>
-                PDF <FileText className="h-4 w-4 ml-1.5" />
-              </Button>
-              <Button className="shadow-glow" onClick={onExport}>
-                Export .md <Download className="h-4 w-4 ml-1.5" />
-              </Button>
-            </div>
-          </div>
+  // Result ready — full inline report
+  return (
+    <div className="space-y-10">
+      {/* Top bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Badge variant="outline" className="gap-1.5">
+          <Wand2 className="h-3 w-3" /> Step 4 - Complete Report
+        </Badge>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={onRestart}>
+            <RotateCcw className="h-3.5 w-3.5 mr-1" /> New creator
+          </Button>
+          <Button variant="outline" size="sm" onClick={onNewTopic}>
+            <Wand2 className="h-3.5 w-3.5 mr-1" /> New topic
+          </Button>
         </div>
+      </div>
+      {/* Shooting Script */}
+      <Card className="p-6 md:p-8 bg-card/70 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+            <h2 className="font-display font-semibold text-lg">Shooting Script</h2>
+            <span className="text-xs font-mono text-muted-foreground">{result.word_count} words</span>
+          </div>
+          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigator.clipboard?.writeText(result.script)}>
+            <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy
+          </Button>
+        </div>
+        <Separator />
+        <div className="whitespace-pre-wrap text-[13px] leading-[1.7] font-mono bg-secondary/30 rounded-lg p-4 max-h-[400px] overflow-y-auto">
+          {result.script}
+        </div>
+      </Card>
+      {/* Editing Directions */}
+      <Card className="p-6 md:p-8 bg-card/70 space-y-4">
+        <div className="flex items-center gap-2">
+          <Scissors className="h-4 w-4 text-primary" />
+          <h2 className="font-display font-semibold text-lg">Editing Directions</h2>
+        </div>
+        <Separator />
+        <ol className="space-y-3">
+          {result.editing_directions.map((d, i) => (
+            <li key={i} className="flex gap-3">
+              <span className="font-mono text-xs text-primary shrink-0 pt-0.5">{String(i + 1).padStart(2, "0")}</span>
+              <span className="text-sm text-muted-foreground leading-relaxed">{d}</span>
+            </li>
+          ))}
+        </ol>
+        {result.data_notes && (
+          <><Separator /><div className="text-xs text-muted-foreground leading-relaxed">
+            <span className="text-foreground font-medium">Data notes:</span> {result.data_notes}
+          </div></>
+        )}
+      </Card>
+      {/* Dossier */}
+      {loadingDossier && (
+        <Card className="p-10 bg-card/70 text-center space-y-4">
+          <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+          <div className="text-sm text-muted-foreground">Assembling full dossier...</div>
+        </Card>
+      )}
+      {dossierMd && (
+        <Card className="p-6 md:p-8 bg-card/70 space-y-4">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <h2 className="font-display font-semibold text-lg">Viralization Dossier</h2>
+          </div>
+          <Separator />
+          <div className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed max-h-[600px] overflow-y-auto">
+            {dossierMd}
+          </div>
+        </Card>
       )}
     </div>
   );
