@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowRight,
   Brain,
@@ -128,6 +128,11 @@ function Studio() {
   const [pickedHook, setPickedHook] = useState<number | null>(null);
   const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
   const [generatingCopy, setGeneratingCopy] = useState(false);
+
+  // Warm up the API on page load (avoids cold start delay later)
+  useEffect(() => {
+    fetch(`${API}/api/health`).catch(() => {});
+  }, []);
 
   const validLinks = links.filter((l) => l.trim().startsWith("http"));
   const isSeedCreator = ["bryan", "jeffnippard", "kallaway"].includes(creatorName.trim().toLowerCase());
