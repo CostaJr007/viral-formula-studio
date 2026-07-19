@@ -57,22 +57,16 @@ In normal operation, all AI traffic goes through IBM watsonx.
 
 ## How It Works
 
-```mermaid
-flowchart LR
-    A["🎬 5 Shorts/TikToks/Reels"] --> B["⬇️ yt-dlp Download"]
-    B --> C["🎤 Captions or Whisper"]
-    C --> D["🧹 Regex + Granite 4 Clean"]
-    D --> E["📊 ffmpeg Metrics"]
-    E --> F["✍️ Granite 4 Text Style"]
-    F --> G["👁️ Llama 3.2 Vision Frames"]
-    G --> H["🔍 Tavily Fact-Check"]
-    H --> I["📝 Granite 4 Hooks + Copy"]
-    I --> J["📋 Styled Report"]
+```
+  INPUT                  PIPELINE                        OUTPUT
+  ─────                  ────────                        ──────
 
-    style A fill:#0f62fe20,stroke:#0f62fe
-    style J fill:#0f62fe20,stroke:#0f62fe
-    style F fill:#0f62fe40,stroke:#0f62fe
-    style I fill:#0f62fe40,stroke:#0f62fe
+  YouTube Shorts   ① yt-dlp download + transcribe    Creator profile
+  TikTok           ② ffmpeg measures cuts/WPM        Measured metrics
+  Instagram Reels  ③ Granite 4 analyzes text style   10 AI hooks
+                   ④ Llama 3.2 Vision reads frames   Shooting script
+                   ⑤ Tavily fact-checks topic         Editing directions
+                   ⑥ Granite 4 writes final copy      Retention psychology
 ```
 
 **Example flow:** Creator → Profile → Topic → 10 Hooks → Pick Hook → Copy → Report
@@ -88,7 +82,6 @@ Your topic              → ② ffmpeg measures cuts/WPM/n-grams    → 10 AI ho
                             ⑥ Granite 4 writes shooting script
 ```
 
-**Transcription pipeline:**
 ```
 Raw captions → regex cleanup (HTML entities, contractions) → Granite 4 coherence fix
 ```
