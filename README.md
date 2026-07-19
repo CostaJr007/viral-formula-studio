@@ -126,6 +126,7 @@ The pipeline masters creators from any country, in any language:
 | Hosting | IBM Cloud Code Engine (serverless containers) |
 | CI/CD | GitHub Actions → Docker Hub → Code Engine |
 | Testing | pytest (25 tests), ruff |
+| Responsive | Mobile-first design — works on phones, tablets, and desktop |
 
 ## Running Locally
 

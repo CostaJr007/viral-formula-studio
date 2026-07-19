@@ -494,19 +494,19 @@ function CreatorStep({
         </p>
 
         {/* Supported platforms */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-[10px] uppercase tracking-widest text-muted-foreground mr-1">Accepts</span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1 text-xs">
-            <Youtube className="h-3.5 w-3.5 text-red-400" />
-            YouTube Shorts
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground mr-0.5">Accepts</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/40 px-2.5 py-1 text-[11px]">
+            <Youtube className="h-3 w-3 text-red-400" />
+            Shorts
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1 text-xs">
-            <Music className="h-3.5 w-3.5 text-pink-400" />
+          <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/40 px-2.5 py-1 text-[11px]">
+            <Music className="h-3 w-3 text-pink-400" />
             TikTok
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1 text-xs">
-            <Camera className="h-3.5 w-3.5 text-purple-400" />
-            Instagram Reels
+          <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/40 px-2.5 py-1 text-[11px]">
+            <Camera className="h-3 w-3 text-purple-400" />
+            Reels
           </span>
         </div>
       </header>
@@ -1162,13 +1162,13 @@ function CopyStep({
           const parts = line.split("|").map((p) => p.trim());
           const [timestamp, shot, text, editing, why] = parts.length >= 5 ? parts : ["", line, "", "", ""];
           return (
-            <Card key={i} className="p-5 bg-card/80 border-border/40 hover:border-primary/30 transition-colors">
-              <div className="flex items-start gap-4">
+            <Card key={i} className="p-4 md:p-5 bg-card/80 border-border/40 hover:border-primary/30 transition-colors">
+              <div className="flex items-start gap-3 md:gap-4">
                 {/* Left: timestamp + shot type badge */}
-                <div className="shrink-0 w-20 text-center">
-                  <div className="font-mono text-xs text-primary font-semibold">{timestamp || `#${i + 1}`}</div>
+                <div className="shrink-0 w-16 md:w-20 text-center">
+                  <div className="font-mono text-[10px] md:text-xs text-primary font-semibold">{timestamp || `#${i + 1}`}</div>
                   <div className="mt-1">
-                    <span className="inline-block text-[10px] font-mono uppercase tracking-wider bg-secondary/60 text-muted-foreground rounded-full px-2 py-0.5">
+                    <span className="inline-block text-[9px] md:text-[10px] font-mono uppercase tracking-wider bg-secondary/60 text-muted-foreground rounded-full px-1.5 md:px-2 py-0.5">
                       {shot || "SHOT"}
                     </span>
                   </div>
