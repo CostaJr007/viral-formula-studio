@@ -1144,14 +1144,13 @@ function CopyStep({
   }
 
   // Result ready — styled report
-  // Extract clean copy (spoken text only, no timestamps)
-  const cleanCopy = blocks
-    .map((line) => {
-      const parts = line.split("|").map((p) => p.trim());
-      return parts.length >= 3 ? parts[2] : "";
-    })
-    .filter(Boolean)
-    .join(" ");
+  // Format clean copy as a proper script — narration on separate lines, audio cues styled
+  const scriptLines = blocks.map((line) => {
+    const parts = line.split("|").map((p) => p.trim());
+    const text = parts.length >= 3 ? parts[2] : "";
+    const isAudioOnly = text.toLowerCase().includes("no speech") || text.toLowerCase().includes("music only") || text.startsWith("(");
+    return { text, isAudioOnly };
+  });
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -1176,19 +1175,33 @@ function CopyStep({
         <p className="text-lg font-display font-semibold text-foreground leading-snug">{hook}</p>
       </Card>
 
-      {/* Clean copy — full script without annotations */}
+      {/* Clean copy — properly formatted script */}
       <Card className="p-6 md:p-8 bg-card/70 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="font-display font-semibold text-lg">Complete Copy</h2>
             <span className="text-xs font-mono text-muted-foreground">{result.word_count} words</span>
           </div>
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigator.clipboard?.writeText(cleanCopy)}>
+          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigator.clipboard?.writeText(scriptLines.map(s => s.text).filter(Boolean).join("\n\n"))}>
             <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy
           </Button>
         </div>
         <Separator />
-        <p className="text-[15px] leading-[1.8] text-foreground/90 font-sans">{cleanCopy}</p>
+        <div className="space-y-3">
+          {scriptLines.map((s, i) =>
+            s.text ? (
+              s.isAudioOnly ? (
+                <p key={i} className="text-sm text-muted-foreground italic pl-4 border-l-2 border-primary/30">
+                  {s.text.replace(/^\(|\)$/g, "")}
+                </p>
+              ) : (
+                <p key={i} className="text-[15px] leading-[1.8] text-foreground/90">
+                  {s.text}
+                </p>
+              )
+            ) : null
+          )}
+        </div>
       </Card>
 
       {/* Shooting script blocks — with timestamps and editing */}
