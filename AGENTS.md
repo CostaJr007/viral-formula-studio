@@ -5,16 +5,17 @@ Guidance for any AI agent (or human) working on this repository.
 ## What this is
 
 Multimodal reverse engineering of a content creator's viral formula. Input: up to 5
-short-video links + a topic. Output: a measured creator playbook (dossier), 10 hooks,
-and an orchestrated ≤200-word video copy with editing directions.
+short-video links + a topic. Output: a measured shooting script with timestamps,
+shot types, editing directions, and retention psychology — plus 10 hooks and a
+full viralization playbook.
 Positioning: **inspiration, not imitation** — the formula migrates, the user's voice stays.
 
 ## Layout
 
 - `studio/` — Python engine (the product brain). All analysis logic lives here.
 - `api.py` — FastAPI layer exposing the engine to the React frontend.
-  Rate-limited (IP-based, 3 analyses/hour via `studio/limits.py`).
-- `frontend/` — React 19 + Vite + TanStack Start + Tailwind 4 UI (4-step wizard).
+  Rate-limited (IP-based, 8 creators + 8 dossiers per IP/hour via `studio/limits.py`).
+- `frontend/` — React 19 + Vite + TanStack Start + Tailwind 4 UI (5-step wizard).
 - `app.py` — legacy Gradio UI (kept for quick local demos).
 - `main.py` — terminal CLI. `tests/` — pytest suite (25 tests). `data/` — transcripts + cached profiles.
 
