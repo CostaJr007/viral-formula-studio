@@ -72,7 +72,11 @@ In normal operation, all AI traffic goes through IBM watsonx.
 
 **Example flow:** Creator → Profile → Topic → 10 Hooks → Pick Hook → Copy → Report
 
-**Transcription pipeline:** Raw captions → regex cleanup (HTML entities, contractions) → Granite 4 coherence fix
+**Transcription pipeline:**
+
+```
+Raw captions → regex cleanup (HTML entities, contractions) → Granite 4 coherence fix
+```
 
 Every output is grounded in **measured evidence**:
 - **Stage 0 — MEASURE (no AI):** ffmpeg computes cuts/min, shot length, words/min, n-grams
