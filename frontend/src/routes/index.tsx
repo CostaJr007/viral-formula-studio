@@ -662,8 +662,33 @@ const ANALYSIS_PHASES = [
 
 type PhaseKey = (typeof ANALYSIS_PHASES)[number]["key"];
 
+function SpinnerWithTimer({ label, sub }: { label: string; sub: string }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const i = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(i);
+  }, []);
+
+  return (
+    <Card className="p-10 bg-card/70 text-center space-y-4">
+      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+      <div className="font-display">{label}</div>
+      <p className="text-sm text-muted-foreground">{sub}</p>
+      <p className="text-xs text-muted-foreground/60 font-mono">
+        {elapsed < 5 ? "Connecting to engine..." : elapsed < 15 ? "Granite 4 is processing your request..." : elapsed < 30 ? "Still working — watsonx.ai is generating..." : "Almost there — large response in progress..."}
+        <span className="ml-2 tabular-nums">({elapsed}s)</span>
+      </p>
+    </Card>
+  );
+}
+
 function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
   const phase: PhaseKey = jobStatus === "analyzing" ? "analyze" : jobStatus === "ingesting" ? "transcribe" : "download";
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const i = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(i);
+  }, []);
 
   return (
     <Card className="p-6 md:p-10 bg-card/70 backdrop-blur-sm text-center space-y-6 md:space-y-8 max-w-2xl mx-auto">
@@ -718,7 +743,8 @@ function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
       </div>
 
       <p className="text-[11px] text-muted-foreground font-mono">
-        {jobStatus === "analyzing" ? "LLM interpreting measurements — this is the longest step" : "Processing…"}
+        {elapsed < 5 ? "Starting pipeline..." : elapsed < 20 ? "Downloading and transcribing..." : "LLM analyzing — this is the longest step"}
+        <span className="ml-2 tabular-nums">({elapsed}s)</span>
       </p>
     </Card>
   );
@@ -1000,15 +1026,7 @@ function HooksStep({
         </div>
       </header>
 
-      {loading && (
-        <Card className="p-10 bg-card/70 text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <div className="font-display">Deriving hooks from the measured formula…</div>
-          <p className="text-sm text-muted-foreground">
-            Fact-checking "{topic}" and injecting verified facts.
-          </p>
-        </Card>
-      )}
+      {loading && <SpinnerWithTimer label="Deriving hooks from the measured formula…" sub={`Fact-checking "${topic}" and injecting verified facts.`} />}
 
       {!loading && hooks.length > 0 && (
         <div className="grid md:grid-cols-2 gap-3">
@@ -1119,15 +1137,7 @@ function CopyStep({
           </Button>
         </Card>
       )}
-      {generating && (
-        <Card className="p-10 bg-card/70 text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <div className="font-display">Writing the script...</div>
-          <p className="text-sm text-muted-foreground">
-            Injecting profile + verified facts into the prompt.
-          </p>
-        </Card>
-      )}
+      {generating && <SpinnerWithTimer label="Writing the shooting script..." sub="Injecting creator profile + verified facts into Granite 4." />}
     </div>
     );
   }
