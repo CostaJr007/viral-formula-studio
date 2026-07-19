@@ -129,9 +129,10 @@ function Studio() {
   const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
   const [generatingCopy, setGeneratingCopy] = useState(false);
 
-  // Warm up the API on page load (avoids cold start delay later)
+  // Warm up API in background — don't block initial render
   useEffect(() => {
-    fetch(`${API}/api/health`).catch(() => {});
+    const t = setTimeout(() => fetch(`${API}/api/health`).catch(() => {}), 500);
+    return () => clearTimeout(t);
   }, []);
 
   const validLinks = links.filter((l) => l.trim().startsWith("http"));
