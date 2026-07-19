@@ -13,6 +13,8 @@ to *your* theme, in *your* voice.
 
 🚀 **Live demo:** [bit.ly/viral-studio](https://bit.ly/viral-studio)
 
+![Demo](demo.gif)
+
 ---
 
 ## Quick Start (Try it in 2 minutes)
