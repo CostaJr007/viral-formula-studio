@@ -11,7 +11,7 @@ to *your* theme, in *your* voice.
 
 **IBM AI Builders Challenge — July 2026 · "Reimagine Creative Industries with AI"**
 
-🚀 **Live demo:** `bit.ly/vfs-studio`
+🚀 **Live demo:** [bit.ly/viral-studio](https://bit.ly/viral-studio)
 
 ---
 
@@ -19,7 +19,7 @@ to *your* theme, in *your* voice.
 
 The demo comes with **3 pre-analyzed creators** — no uploads needed:
 
-1. Open **[bit.ly/vfs-studio](https://bit.ly/vfs-studio)**
+1. Open **[bit.ly/viral-studio](https://bit.ly/viral-studio)**
 2. Creator name: type **`jeffnippard`**
 3. Paste a Shorts link (any from [@jeffnippard](https://youtube.com/@jeffnippard)) or skip — the seed data is ready
 4. Your topic: type anything, e.g. **`carnivore diet`**
