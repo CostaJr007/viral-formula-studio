@@ -33,6 +33,65 @@ The demo comes with **3 pre-analyzed creators** — no uploads needed:
 
 ---
 
+## Use Cases
+
+- **Content Creators:** Copy winning strategies from creators in your niche — hooks, pacing, editing rhythm
+- **Marketing Teams:** Reverse-engineer viral campaigns and adapt them to your brand voice
+- **Influencer Agencies:** Analyze client competitors and generate data-backed scripts in minutes
+- **Course Creators:** Study how top educators capture attention and convert viewers
+- **Social Teams:** Generate 10 variations of hooks from a single creator's pattern
+
+---
+
+## How It Works
+
+```
+┌──────────────────────┐     ┌─────────────────────────────────┐     ┌──────────────────────┐
+│       INPUT          │     │           PIPELINE               │     │       OUTPUT         │
+├──────────────────────┤     ├─────────────────────────────────┤     ├──────────────────────┤
+│ YouTube Shorts       │ ──▶ │ ① yt-dlp download + transcribe  │ ──▶ │ Creator profile      │
+│ TikTok               │     │ ② ffmpeg cuts / WPM / n-grams   │     │ 10 AI hooks          │
+│ Instagram Reels      │     │ ③ Granite 4 text style analysis │     │ Shooting script      │
+│                      │     │ ④ Llama Vision reads frames      │     │ Editing directions   │
+│                      │     │ ⑤ Tavily fact-checks topic       │     │ Retention psychology │
+│                      │     │ ⑥ Granite 4 writes final copy    │     │                      │
+└──────────────────────┘     └─────────────────────────────────┘     └──────────────────────┘
+```
+
+**Example flow:** Creator → Profile → Topic → 10 Hooks → Pick Hook → Copy → Report
+
+**Transcription pipeline:**
+
+```
+Raw captions → regex cleanup (HTML entities, contractions) → Granite 4 coherence fix
+```
+
+Every output is grounded in **measured evidence**:
+- **Stage 0 — MEASURE (no AI):** ffmpeg computes cuts/min, shot length, words/min, n-grams
+- **Stage 1 — EVIDENCE (cached):** Granite 4 decodes text style + vision model reads frames
+- **Stage 2 — SCOUT:** Tavily + Granite 4 verify facts about the topic with source URLs
+- **Stage 3 — COMMENTATOR:** Granite 4 synthesizes a shooting script with timestamps, shot types, editing directions, and retention psychology
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| AI Runtime | IBM watsonx.ai (Granite 4 + Llama 3.2 Vision) |
+| Backend | Python 3.12, FastAPI, Pydantic, Agno 2.7 |
+| Frontend | React 19, Vite, TanStack Start, Tailwind 4, shadcn/ui |
+| Transcription | Groq Whisper Large v3 Turbo |
+| Media | ffmpeg/ffprobe (scene detection, frame sampling) |
+| Ingestion | yt-dlp (YouTube Shorts, TikTok, Instagram Reels) |
+| Fact-Check | Tavily Search API |
+| Hosting | IBM Cloud Code Engine (serverless containers) |
+| CI/CD | GitHub Actions → Docker Hub → Code Engine |
+| Testing | pytest (25 tests), ruff |
+| Responsive | Mobile-first design — works on phones, tablets, and desktop |
+
+---
+
 ## Built on IBM Cloud
 
 This project runs end-to-end on the **IBM Cloud ecosystem**:
@@ -133,35 +192,6 @@ In normal operation, all AI traffic goes through IBM watsonx.
 
 ---
 
-## How It Works
-
-```
-┌──────────────────────┐     ┌─────────────────────────────────┐     ┌──────────────────────┐
-│       INPUT          │     │           PIPELINE               │     │       OUTPUT         │
-├──────────────────────┤     ├─────────────────────────────────┤     ├──────────────────────┤
-│ YouTube Shorts       │ ──▶ │ ① yt-dlp download + transcribe  │ ──▶ │ Creator profile      │
-│ TikTok               │     │ ② ffmpeg cuts / WPM / n-grams   │     │ 10 AI hooks          │
-│ Instagram Reels      │     │ ③ Granite 4 text style analysis │     │ Shooting script      │
-│                      │     │ ④ Llama Vision reads frames      │     │ Editing directions   │
-│                      │     │ ⑤ Tavily fact-checks topic       │     │ Retention psychology │
-│                      │     │ ⑥ Granite 4 writes final copy    │     │                      │
-└──────────────────────┘     └─────────────────────────────────┘     └──────────────────────┘
-```
-
-**Example flow:** Creator → Profile → Topic → 10 Hooks → Pick Hook → Copy → Report
-
-**Transcription pipeline:**
-
-```
-Raw captions → regex cleanup (HTML entities, contractions) → Granite 4 coherence fix
-```
-
-Every output is grounded in **measured evidence**:
-- **Stage 0 — MEASURE (no AI):** ffmpeg computes cuts/min, shot length, words/min, n-grams
-- **Stage 1 — EVIDENCE (cached):** Granite 4 decodes text style + vision model reads frames
-- **Stage 2 — SCOUT:** Tavily + Granite 4 verify facts about the topic with source URLs
-- **Stage 3 — COMMENTATOR:** Granite 4 synthesizes a shooting script with timestamps, shot types, editing directions, and retention psychology
-
 ## Honesty by Design
 
 - **Measured, not guessed** — the AI interprets deterministic ffmpeg numbers
@@ -169,7 +199,7 @@ Every output is grounded in **measured evidence**:
 - **Honesty rules** — every prompt requires `evidence_notes`, `unconfirmed`, and `[INSERT: ...]` placeholders
 - **Graceful degradation** — no captions → Whisper; no search → structural mode; provider down → fallback
 
-## Any Creator, Any Language
+### Any Creator, Any Language
 
 The pipeline masters creators from any country, in any language:
 
@@ -178,28 +208,14 @@ The pipeline masters creators from any country, in any language:
 - **Visual analysis:** Editing grammar is language-independent — the vision model reads frames.
 - **Output:** Analysis in English, creator's expressions preserved in original.
 
-## Security & Rate Limiting
+### Security & Rate Limiting
 
 - **IP-based rate limiting:** max 8 new creator analyses + 8 dossier exports per IP/hour
 - **Seed creators** (Bryan, jeffnippard, kallaway) are exempt — unlimited demo usage
 - **WatsonX token cap:** `max_tokens=4096` prevents structured JSON truncation
 - **Resilient parsing:** `studio/parse.py` recovers Pydantic output from raw/fenced/truncated JSON
 
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| AI Runtime | IBM watsonx.ai (Granite 4 + Llama 3.2 Vision) |
-| Backend | Python 3.12, FastAPI, Pydantic, Agno 2.7 |
-| Frontend | React 19, Vite, TanStack Start, Tailwind 4, shadcn/ui |
-| Transcription | Groq Whisper Large v3 Turbo |
-| Media | ffmpeg/ffprobe (scene detection, frame sampling) |
-| Ingestion | yt-dlp (YouTube Shorts, TikTok, Instagram Reels) |
-| Fact-Check | Tavily Search API |
-| Hosting | IBM Cloud Code Engine (serverless containers) |
-| CI/CD | GitHub Actions → Docker Hub → Code Engine |
-| Testing | pytest (25 tests), ruff |
-| Responsive | Mobile-first design — works on phones, tablets, and desktop |
+---
 
 ## Running Locally
 
