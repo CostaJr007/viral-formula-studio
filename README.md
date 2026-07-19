@@ -15,6 +15,22 @@ to *your* theme, in *your* voice.
 
 ---
 
+## Quick Start (Try it in 2 minutes)
+
+The demo comes with **3 pre-analyzed creators** — no uploads needed:
+
+1. Open **[bit.ly/vfs-studio](https://bit.ly/vfs-studio)**
+2. Creator name: type **`jeffnippard`**
+3. Paste a Shorts link (any from [@jeffnippard](https://youtube.com/@jeffnippard)) or skip — the seed data is ready
+4. Your topic: type anything, e.g. **`carnivore diet`**
+5. Click **"Decode formula"** → instant profile from cache
+6. Click **"Generate 10 hooks"** → pick one
+7. Click **"Generate script"** → see the full shooting script with timestamps, shot types, and editing directions
+
+> 💡 Want a different topic? Click **"New Topic"** — same creator, new theme, zero re-analysis.
+
+---
+
 ## Built on IBM Cloud
 
 This project runs end-to-end on the **IBM Cloud ecosystem**:
