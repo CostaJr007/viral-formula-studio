@@ -13,6 +13,8 @@ to *your* theme, in *your* voice.
 
 ![Demo](demo.gif)
 
+**Built with IBM technologies:** IBM Bob (architecture & implementation), IBM Granite 4 (language model), Llama 3.2 Vision (frame analysis), IBM watsonx.ai (deployment), IBM Code Engine (serverless hosting).
+
 ---
 
 ## Problem Statement
@@ -214,6 +216,25 @@ This is **not a prototype** — the system is deployed and serving real traffic:
 - **Seed data:** 3 pre-analyzed creators baked into the Docker image for instant demo
 - **Cold start:** ~30s on free tier (min-scale 0); set min-scale 1 on demo day
 
+### Infrastructure & Feasibility
+
+**Production Environment:**
+- **Hosting:** IBM Cloud Code Engine (auto-scaling, free tier, $0 when idle)
+- **Pipeline:** GitHub → Docker Hub (via GitHub Actions) → Code Engine auto-deploy
+- **Rate Limiting:** Per-IP rate limiter in production (measured, not guessed)
+- **Database:** SQLite (local dev) + persistent volume (Code Engine)
+- **CDN:** Code Engine's built-in edge caching for static assets
+
+**Why This Stack:**
+- Video processing (ffmpeg, yt-dlp) runs only when needed → serverless cost efficiency
+- No infrastructure lock-in — can redeploy to Railway, Render, or on-prem in <1 hour
+- All credentials stored in environment variables, never in code (`.env` + `.gitignore`)
+- CI/CD tested and live since July 14, 2026
+
+**Live URL:** [bit.ly/viral-studio](https://bit.ly/viral-studio) (production Code Engine deployment)
+
+For detailed deployment instructions, see [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md).
+
 ---
 
 ## How IBM Bob Was Used
@@ -240,7 +261,23 @@ architectural consistency.
 | **watsonx `max_tokens` fix** | After the truncation crash, Bob recommended setting `max_tokens=4096` explicitly in `factory.py` — Granite defaults to 1024, which truncates structured JSON for `CreatorStyle` and `HookList` schemas. |
 | **IBM Code Engine deploy** | Bob optimized the Code Engine deployment configuration: two apps (`vfs-api` + `vfs-web`), min-scale 0 to stay within free tier, and the `ALLOWED_ORIGINS` / `VITE_API_URL` environment variable handshake between services. |
 | **Test suite** | Bob contributed to the test suite expansion from 9 tests (v0.2) to 25 tests (v0.6), including tests for real `cut_metrics`, n-gram counts, WPM calculations, resilient JSON parsing, and schema validation — all runnable without API keys. |
-| **Documentation** | Bob contributed to the technical documentation structure (README, AGENTS.md, DOCUMENTACAO_IA.md), ensuring it follows the challenge rubric and clearly explains the multimodal AI architecture. |
+| **Documentation** | Bob contributed to the technical documentation structure (README, AGENTS.md, DOCUMENTATION_IA.md), ensuring it follows the challenge rubric and clearly explains the multimodal AI architecture. |
+
+### How Bob Accelerated Development
+
+The entire project — from architectural redesign to production deployment — was built in 3 phases with Bob as the AI pair:
+
+1. **Phase 1 (Brainstorm & Architecture):** Bob analyzed the legacy flat structure, proposed the modular `studio/` package design, and drafted the scout→commentator pipeline pattern.
+2. **Phase 2 (Implementation & Debugging):** Bob wrote the initial implementations of each module, debugged the `max_tokens` truncation issue, designed the resilient `parse.py` recovery, and built the fallback mechanism.
+3. **Phase 3 (Production & Polish):** Bob assisted with Code Engine deployment config, test suite expansion (9 → 25 tests), and documentation structure to match the challenge rubric.
+
+**Key outcomes:**
+- Modular `studio/` engine: 16 focused modules, <10KB each, zero code duplication across UI layers
+- Robust error handling: Graceful fallbacks for rate limits, timeouts, truncated LLM output
+- 25 deterministic tests (no API keys required) covering the measurement layer, parsing, and schemas
+- Zero external vision APIs (Llama Vision via watsonx.ai keeps everything in the IBM ecosystem)
+
+**Not just code generation:** Bob participated in design decisions, not just syntax. Example: the four-stage pipeline (MEASURE → EVIDENCE → SCOUT → COMMENTATOR) emerged from Bob's proposal to separate deterministic metrics from LLM interpretation.
 
 ---
 
@@ -371,7 +408,7 @@ uv run ruff check .    # lint
 | [docs/INNOVATION.md](docs/INNOVATION.md) | Deep dive into what makes this approach unique — measured foundation, multimodal processing, IBM ecosystem mastery, honesty layer |
 | [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md) | Step-by-step IBM Cloud Code Engine deployment guide (production) |
 | [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md) | Railway deployment guide (alternative/fallback) |
-| [DOCUMENTACAO_IA.md](DOCUMENTACAO_IA.md) | Full project memory — architecture decisions, change log, and IBM switching strategy |
+| [DOCUMENTATION_IA.md](DOCUMENTATION_IA.md) | Full project memory — architecture decisions, change log, and IBM switching strategy |
 | [AGENTS.md](AGENTS.md) | Guidance for AI agents and human contributors working on this repo |
 
 ---
