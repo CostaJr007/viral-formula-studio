@@ -1144,6 +1144,15 @@ function CopyStep({
   }
 
   // Result ready — styled report
+  // Extract clean copy (spoken text only, no timestamps)
+  const cleanCopy = blocks
+    .map((line) => {
+      const parts = line.split("|").map((p) => p.trim());
+      return parts.length >= 3 ? parts[2] : "";
+    })
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       {/* Top bar */}
@@ -1167,8 +1176,28 @@ function CopyStep({
         <p className="text-lg font-display font-semibold text-foreground leading-snug">{hook}</p>
       </Card>
 
-      {/* Shooting script blocks */}
-      <div className="space-y-3">
+      {/* Clean copy — full script without annotations */}
+      <Card className="p-6 md:p-8 bg-card/70 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="font-display font-semibold text-lg">Complete Copy</h2>
+            <span className="text-xs font-mono text-muted-foreground">{result.word_count} words</span>
+          </div>
+          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigator.clipboard?.writeText(cleanCopy)}>
+            <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy
+          </Button>
+        </div>
+        <Separator />
+        <p className="text-[15px] leading-[1.8] text-foreground/90 font-sans">{cleanCopy}</p>
+      </Card>
+
+      {/* Shooting script blocks — with timestamps and editing */}
+      <Card className="p-6 md:p-8 bg-card/70 space-y-4">
+        <h2 className="font-display font-semibold text-lg flex items-center gap-2">
+          <Film className="h-4 w-4 text-primary" /> Shooting Script with Directions
+        </h2>
+        <Separator />
+        <div className="space-y-3">
         {blocks.map((line, i) => {
           const parts = line.split("|").map((p) => p.trim());
           const [timestamp, shot, text, editing, why] = parts.length >= 5 ? parts : ["", line, "", "", ""];
@@ -1208,6 +1237,7 @@ function CopyStep({
           );
         })}
       </div>
+      </Card>
 
       {/* Editing directions summary */}
       {result.editing_directions.length > 0 && (
