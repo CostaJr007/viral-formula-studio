@@ -130,7 +130,8 @@ function Studio() {
   const [generatingCopy, setGeneratingCopy] = useState(false);
 
   const validLinks = links.filter((l) => l.trim().startsWith("http"));
-  const canAnalyze = creatorName.trim().length >= 2 && validLinks.length >= 1 && topic.trim().length >= 3;
+  const isSeedCreator = ["bryan", "jeffnippard", "kallaway"].includes(creatorName.trim().toLowerCase());
+  const canAnalyze = creatorName.trim().length >= 2 && (validLinks.length >= 1 || isSeedCreator) && topic.trim().length >= 3;
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
@@ -138,6 +139,23 @@ function Studio() {
   async function runAnalysis() {
     setAnalyzing(true);
     setError(null);
+
+    // Seed creator without links — skip ingestion, load cached profile directly
+    if (isSeedCreator && validLinks.length === 0) {
+      try {
+        setJobStatus("Loading pre-analyzed profile...");
+        const prof = await (await fetch(`${API}/api/profile/${encodeURIComponent(creatorName.trim())}`)).json();
+        setProfile(prof);
+        setStep("profile");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setAnalyzing(false);
+        setJobStatus(null);
+      }
+      return;
+    }
+
     setJobStatus("Queuing ingestion…");
     try {
       const { job_id } = await apiPost<{ job_id: string; remaining?: number }>("/api/ingest", {
