@@ -9,6 +9,7 @@ import logging
 
 from . import store
 from .analyze_text import analyze_style
+from .analyze_thumbnail import analyze_thumbnail
 from .analyze_visual import analyze_editing
 from .config import get_settings
 from .metrics import measure_creator
@@ -48,6 +49,11 @@ def analyze_creator(
         profile.editing = analyze_editing(creator, max_videos, metrics=profile.metrics)
     except (FileNotFoundError, ValueError) as e:
         logger.warning("Visual analysis skipped: %s", e)
+
+    try:
+        profile.thumbnail = analyze_thumbnail(creator, max_videos)
+    except (FileNotFoundError, ValueError) as e:
+        logger.warning("Thumbnail analysis skipped: %s", e)
 
     if profile.style is None and profile.editing is None:
         raise RuntimeError(f"Nothing to analyze in '{creator}': no transcriptions or videos.")

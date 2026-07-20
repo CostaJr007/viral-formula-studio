@@ -93,6 +93,16 @@ type Profile = {
     retention_tricks: string[];
     evidence_notes: string;
   };
+  thumbnail?: {
+    composition: string;
+    dominant_colors: string[];
+    contrast_level: string;
+    facial_expression: string | null;
+    text_readability: string | null;
+    score: number;
+    suggestions: string[];
+    evidence_notes: string;
+  };
 };
 
 type Hook = { text: string; pattern: string };
@@ -532,6 +542,45 @@ function CreatorStep({
         ))}
       </div>
 
+      {/* Demo presets — instant access to pre-analyzed creators */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+          <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Try a Demo</span>
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { name: "Bryan", topic: "optimal morning routine for longevity", emoji: "🧬", desc: "Biohacking & longevity creator — slow cuts, data-driven tone" },
+            { name: "jeffnippard", topic: "science-based hypertrophy training", emoji: "💪", desc: "Fitness science creator — fast cuts, technical authority" },
+            { name: "kallaway", topic: "building consistent coding habits", emoji: "💻", desc: "Tech/productivity creator — motivational, story-driven" },
+          ].map((demo) => (
+            <button
+              key={demo.name}
+              onClick={() => {
+                setCreatorName(demo.name);
+                setTopic(demo.topic);
+              }}
+              className="text-left p-4 rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm hover:border-primary/40 hover:bg-card transition-all group relative overflow-hidden"
+            >
+              <div className="absolute -top-4 -right-4 h-12 w-12 rounded-full bg-primary/10 blur-xl group-hover:bg-primary/20 transition" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{demo.emoji}</span>
+                  <span className="font-display font-semibold text-sm">{demo.name}</span>
+                  <Badge variant="secondary" className="text-[9px] px-1.5 py-0 ml-auto">DEMO</Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">{demo.desc}</p>
+                <div className="mt-2 flex items-center gap-1 text-[10px] text-primary font-mono">
+                  <Zap className="h-3 w-3" />
+                  Instant · No upload needed
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {analyzing ? (
         <AnalysisProgress jobStatus={jobStatus} />
       ) : (
@@ -638,6 +687,7 @@ function CreatorStep({
           </span>
         </div>
         <Button
+          id="decode-btn"
           size="lg"
           disabled={!canAnalyze || analyzing}
           onClick={runAnalysis}
@@ -875,6 +925,76 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
           )}
         </Card>
       </div>
+
+      {profile.thumbnail && (
+        <Card className="p-6 md:p-7 bg-card/70 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Camera className="h-4 w-4 text-primary" />
+              <h3 className="font-display font-medium">Thumbnail analysis</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Score</span>
+              <span className={cn(
+                "font-display text-2xl font-bold tabular-nums",
+                profile.thumbnail.score >= 7 ? "text-success" :
+                profile.thumbnail.score >= 4 ? "text-yellow-400" : "text-destructive"
+              )}>
+                {profile.thumbnail.score}
+              </span>
+              <span className="text-xs text-muted-foreground">/10</span>
+            </div>
+          </div>
+          <Separator />
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Composition</div>
+                <p className="text-sm text-muted-foreground">{profile.thumbnail.composition}</p>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Contrast</div>
+                <p className="text-sm text-muted-foreground">{profile.thumbnail.contrast_level}</p>
+              </div>
+              {profile.thumbnail.facial_expression && (
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Expression</div>
+                  <p className="text-sm text-muted-foreground">{profile.thumbnail.facial_expression}</p>
+                </div>
+              )}
+            </div>
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Dominant colors</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {profile.thumbnail.dominant_colors.map((c) => (
+                    <Badge key={c} variant="secondary" className="text-[11px]">{c}</Badge>
+                  ))}
+                </div>
+              </div>
+              {profile.thumbnail.text_readability && (
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Text readability</div>
+                  <p className="text-sm text-muted-foreground">{profile.thumbnail.text_readability}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          {profile.thumbnail.suggestions.length > 0 && (
+            <div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Suggestions</div>
+              <div className="space-y-1.5">
+                {profile.thumbnail.suggestions.map((s, i) => (
+                  <div key={i} className="flex gap-2 text-xs text-muted-foreground bg-secondary/40 rounded-lg p-3">
+                    <Sparkle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {(profile.style?.evidence_notes || profile.editing?.evidence_notes) && (
         <Card className="p-5 bg-secondary/30 border-dashed">

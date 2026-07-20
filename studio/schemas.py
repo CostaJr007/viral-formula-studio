@@ -66,6 +66,17 @@ class EditingProfile(BaseModel):
     )
 
 
+class ThumbnailAnalysis(BaseModel):
+    composition: str = Field(description="Rule of thirds, balance, visual hierarchy analysis")
+    dominant_colors: list[str] = Field(description="Top 3-5 dominant colors detected")
+    contrast_level: str = Field(description="High/Medium/Low with explanation")
+    facial_expression: str | None = Field(description="Emotion detected if a person is present, None otherwise")
+    text_readability: str | None = Field(description="Analysis of on-screen text legibility, None if no text")
+    score: int = Field(description="Overall thumbnail quality score 0-10")
+    suggestions: list[str] = Field(description="2-4 actionable improvement suggestions")
+    evidence_notes: str = Field(description="What could NOT be concluded (honesty rule)")
+
+
 class CreatorProfile(BaseModel):
     """Complete cached profile of a creator (measurements + text + vision evidence)."""
 
@@ -74,6 +85,7 @@ class CreatorProfile(BaseModel):
     metrics: dict | None = None
     style: CreatorStyle | None = None
     editing: EditingProfile | None = None
+    thumbnail: ThumbnailAnalysis | None = None
 
 
 class Fact(BaseModel):

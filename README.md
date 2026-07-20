@@ -258,6 +258,7 @@ architectural consistency.
 | **`studio/metrics.py`** | Bob assisted in building the deterministic metrics layer: ffmpeg scene detection for cuts/min, audio duration for WPM, and regex-based n-gram extraction with counts — all running before any LLM to feed measured numbers into the analysis prompts. |
 | **`studio/limits.py`** | Bob designed the IP-based rate limiter to protect the watsonx Lite plan's RPM limits in production — max 8 distinct creator analyses + 8 dossier exports per IP per hour. |
 | **`studio/ingest.py`** | Bob assisted module-by-module with the link-based ingestion flow: yt-dlp download, captions-first transcription strategy (free YouTube captions before Groq Whisper fallback), and platform-honest error handling (Instagram documented as best-effort). |
+| **`studio/analyze_thumbnail.py`** | Bob designed the Thumbnail Analyst agent (Agent 4.5): extracts the first frame via ffmpeg and sends it to Llama 3.2 Vision on watsonx.ai for composition, color palette, and click-through effectiveness scoring — adding a third multimodal dimension (image) to the existing text + video analysis. |
 | **watsonx `max_tokens` fix** | After the truncation crash, Bob recommended setting `max_tokens=4096` explicitly in `factory.py` — Granite defaults to 1024, which truncates structured JSON for `CreatorStyle` and `HookList` schemas. |
 | **IBM Code Engine deploy** | Bob optimized the Code Engine deployment configuration: two apps (`vfs-api` + `vfs-web`), min-scale 0 to stay within free tier, and the `ALLOWED_ORIGINS` / `VITE_API_URL` environment variable handshake between services. |
 | **Test suite** | Bob contributed to the test suite expansion from 9 tests (v0.2) to 25 tests (v0.6), including tests for real `cut_metrics`, n-gram counts, WPM calculations, resilient JSON parsing, and schema validation — all runnable without API keys. |
@@ -272,7 +273,7 @@ The entire project — from architectural redesign to production deployment — 
 3. **Phase 3 (Production & Polish):** Bob assisted with Code Engine deployment config, test suite expansion (9 → 25 tests), and documentation structure to match the challenge rubric.
 
 **Key outcomes:**
-- Modular `studio/` engine: 16 focused modules, <10KB each, zero code duplication across UI layers
+- Modular `studio/` engine: 17 focused modules, <10KB each, zero code duplication across UI layers
 - Robust error handling: Graceful fallbacks for rate limits, timeouts, truncated LLM output
 - 25 deterministic tests (no API keys required) covering the measurement layer, parsing, and schemas
 - Zero external vision APIs (Llama Vision via watsonx.ai keeps everything in the IBM ecosystem)
@@ -366,6 +367,7 @@ studio/
 ├── metrics.py         # Deterministic: cuts/min, WPM, n-grams (no LLM)
 ├── analyze_text.py    # Agent: transcripts + metrics → CreatorStyle
 ├── analyze_visual.py  # Agent: frames + metrics → EditingProfile (multimodal)
+├── analyze_thumbnail.py # Agent: first frame → ThumbnailAnalysis (multimodal)
 ├── research.py        # Agent: web fact-check → ResearchReport
 ├── dossier.py         # Agent: profiles + facts → viralization playbook
 ├── create.py          # Guided flow: 10 hooks → pick → shooting script
