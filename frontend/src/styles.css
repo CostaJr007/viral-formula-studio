@@ -152,7 +152,9 @@
 @utility text-gradient {
   background-image: var(--gradient-primary);
   background-clip: text;
+  -webkit-background-clip: text;
   color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 @utility bg-hero {
