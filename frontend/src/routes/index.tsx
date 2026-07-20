@@ -843,11 +843,11 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
         </p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {metricCards.map((m) => (
-          <Card key={m.label} className="p-5 bg-card/70 relative overflow-hidden">
+          <Card key={m.label} className="p-4 md:p-5 bg-card/70 relative overflow-hidden">
             <div className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">{m.label}</div>
+            <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">{m.label}</div>
             <div className="mt-3 font-display text-3xl font-semibold tabular-nums">
               {m.value}
               <span className="text-base text-muted-foreground ml-1">{m.unit}</span>
@@ -1356,11 +1356,29 @@ function CopyStep({
                     </span>
                   </div>
                 </div>
-                {/* Center: spoken text */}
+                {/* Center: spoken text and mobile editing directions */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm leading-relaxed text-foreground/90">{text || line}</p>
+                  
+                  {/* Mobile only: editing + psychology below text */}
+                  {(editing || why) && (
+                    <div className="md:hidden mt-3 space-y-2 border-t border-border/40 pt-3">
+                      {editing && (
+                        <div className="flex items-start gap-1.5">
+                          <Scissors className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                          <span className="text-xs text-muted-foreground leading-tight">{editing}</span>
+                        </div>
+                      )}
+                      {why && (
+                        <div className="flex items-start gap-1.5">
+                          <Zap className="h-3.5 w-3.5 text-yellow-400 mt-0.5 shrink-0" />
+                          <span className="text-xs text-muted-foreground leading-tight">{why}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {/* Right: editing + psychology */}
+                {/* Right: editing + psychology (Desktop) */}
                 <div className="shrink-0 w-40 hidden md:block space-y-1">
                   {editing && (
                     <div className="flex items-start gap-1">
