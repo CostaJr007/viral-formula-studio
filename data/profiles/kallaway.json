@@ -172,5 +172,21 @@
       "Frequent captioning to highlight key points"
     ],
     "evidence_notes": "The exact use of transitions and any special effects beyond cuts cannot be determined from the frames."
+  },
+  "thumbnail": {
+    "composition": "Close-up on face, creating intimacy and high trust. Eye-level framing.",
+    "dominant_colors": [
+      "warm yellow",
+      "white",
+      "black"
+    ],
+    "contrast_level": "High - great for mobile feeds",
+    "facial_expression": "Excited, storytelling, expressive",
+    "text_readability": "Clean sans-serif font, easy to read quickly",
+    "score": 9,
+    "suggestions": [
+      "Keep the consistency, this format works perfectly for tech/productivity"
+    ],
+    "evidence_notes": "Analyzed from local backup frame."
   }
 }

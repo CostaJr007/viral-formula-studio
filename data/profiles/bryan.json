@@ -66,5 +66,22 @@
       "Cut away to food items as visual examples"
     ],
     "evidence_notes": "No information about audio elements or background music components was available."
+  },
+  "thumbnail": {
+    "composition": "Minimalist setup, centered subject with high symmetry. Excellent rule of thirds.",
+    "dominant_colors": [
+      "dark gray",
+      "muted blue",
+      "white"
+    ],
+    "contrast_level": "Medium - subtle and professional mood",
+    "facial_expression": "Serious, focused, authoritative",
+    "text_readability": "No text detected",
+    "score": 8,
+    "suggestions": [
+      "Add subtle text hook to increase curiosity",
+      "Increase saturation slightly for mobile screens"
+    ],
+    "evidence_notes": "Analyzed from local backup frame."
   }
 }

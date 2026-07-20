@@ -172,5 +172,22 @@
       "Cutaways to diagrams or study excerpts"
     ],
     "evidence_notes": "Specific transitions or detailed narrative content could not be concluded solely from frames. The audio and pacing adjustments beyond cut cadence are unknown."
+  },
+  "thumbnail": {
+    "composition": "Subject clearly separated from background with shallow depth of field. High visual hierarchy.",
+    "dominant_colors": [
+      "vibrant blue",
+      "bright red",
+      "black"
+    ],
+    "contrast_level": "High - very punchy and eye-catching",
+    "facial_expression": "Intense, educational, engaging",
+    "text_readability": "Large bold text, highly legible",
+    "score": 9,
+    "suggestions": [
+      "Thumbnail is already highly optimized",
+      "Consider A/B testing a different hook text"
+    ],
+    "evidence_notes": "Analyzed from local backup frame."
   }
 }
