@@ -252,46 +252,17 @@ For detailed deployment instructions, see [docs/deployment/DEPLOY_IBM.md](docs/d
 
 ## How IBM Bob Was Used
 
-IBM Bob was the AI development partner throughout the entire project lifecycle —
-from architecture design through implementation, debugging, and documentation. All
-code decisions were made by the human developer; Bob served as a spec-driven
-assistant that accelerated the build process while maintaining code quality and
-architectural consistency.
+IBM Bob acted as a core development partner throughout the project, accelerating the build process while ensuring architectural consistency. Instead of just generating code, Bob was used as a spec-driven assistant for system design, debugging, and infrastructure planning.
 
-### Bob's Contributions by Module
+**Key Contributions:**
 
-| Module / Decision | How Bob Helped Specifically |
-|---|---|
-| **`studio/` modular engine** | Bob analyzed the legacy codebase (flat `agents/`, `prompts/`, `transcripter.py`) in Ask/Plan modes and proposed the modular `studio/` package structure with clear separation: `config`, `factory`, `schemas`, `pipeline`, `store`, plus per-stage modules. |
-| **`studio/factory.py`** | Bob designed the provider-switch pattern (`MODEL_PROVIDER=watsonx` in `.env`) so that swapping OpenAI → Granite requires zero agent changes. Bob also designed the automatic fallback mechanism (`fallback_models`) — tested live on 07/17 when a frozen watsonx account triggered seamless GPT-4o fallback. |
-| **`studio/config.py`** | Bob identified and fixed the CWD path bug from v0.1: the old code used relative paths that broke when run from different directories. Bob anchored all paths to `Path(__file__).resolve().parent.parent` and designed the `.env`-beats-machine-env priority to prevent stale API keys from shadowing the project `.env`. |
-| **`studio/parse.py`** | Bob diagnosed the watsonx `max_tokens=1024` truncation issue — Granite's default token limit was cutting `CreatorStyle` JSON mid-object, crashing the pipeline. Bob designed the resilient `coerce_structured()` parser that recovers Pydantic output from raw strings, markdown-fenced JSON, and truncated responses. |
-| **`studio/pipeline.py`** | Bob proposed the scout → commentator pipeline pattern (inspired by the June 2026 challenge winner, Kickoff Buddy): deterministic measurements first, then LLM interpretation, then fact-check, then synthesis. This became the four-stage architecture. |
-| **`studio/schemas.py`** | Bob implemented the honesty rule: every Pydantic schema includes `evidence_notes` fields so the model must state what the available evidence could NOT support — preventing hallucinated claims about creators. |
-| **`studio/metrics.py`** | Bob assisted in building the deterministic metrics layer: ffmpeg scene detection for cuts/min, audio duration for WPM, and regex-based n-gram extraction with counts — all running before any LLM to feed measured numbers into the analysis prompts. |
-| **`studio/limits.py`** | Bob designed the IP-based rate limiter to protect the watsonx Lite plan's RPM limits in production — max 8 distinct creator analyses + 8 dossier exports per IP per hour. |
-| **`studio/ingest.py`** | Bob assisted module-by-module with the link-based ingestion flow: yt-dlp download, captions-first transcription strategy (free YouTube captions before Groq Whisper fallback), and platform-honest error handling (Instagram documented as best-effort). |
-| **`studio/analyze_thumbnail.py`** | Bob designed the Thumbnail Analyst agent (Agent 4.5): extracts the first frame via ffmpeg and sends it to Llama 3.2 Vision on watsonx.ai for composition, color palette, and click-through effectiveness scoring — adding a third multimodal dimension (image) to the existing text + video analysis. |
-| **watsonx `max_tokens` fix** | After the truncation crash, Bob recommended setting `max_tokens=4096` explicitly in `factory.py` — Granite defaults to 1024, which truncates structured JSON for `CreatorStyle` and `HookList` schemas. |
-| **IBM Code Engine deploy** | Bob optimized the Code Engine deployment configuration: two apps (`vfs-api` + `vfs-web`), min-scale 0 to stay within free tier, and the `ALLOWED_ORIGINS` / `VITE_API_URL` environment variable handshake between services. |
-| **Test suite** | Bob contributed to the test suite expansion from 9 tests (v0.2) to 25 tests (v0.6), including tests for real `cut_metrics`, n-gram counts, WPM calculations, resilient JSON parsing, and schema validation — all runnable without API keys. |
-| **Documentation** | Bob contributed to the technical documentation structure (README, AGENTS.md, DOCUMENTATION_IA.md), ensuring it follows the challenge rubric and clearly explains the multimodal AI architecture. |
+- **Architecture Restructuring:** Transitioned the legacy flat codebase into a modular, decoupled engine (`studio/` package) with clear boundaries for configuration, parsing, and state management.
+- **Resilience & Fallbacks:** Designed the provider-switch pattern for seamless IBM watsonx integration and implemented the automatic fallback mechanism to handle rate limits and outages.
+- **Debugging Complex LLM Issues:** Diagnosed and fixed edge cases like the `max_tokens` truncation issue that broke structured JSON outputs, implementing a robust recovery parser.
+- **Deployment Optimization:** Assisted with the IBM Cloud Code Engine deployment, optimizing container configurations to stay within the serverless free tier while managing cross-origin environments.
+- **Testing & Quality Assurance:** Expanded the test suite significantly to ensure deterministic measurements and schema validations worked perfectly without requiring API keys.
 
-### How Bob Accelerated Development
-
-The entire project — from architectural redesign to production deployment — was built in 3 phases with Bob as the AI pair:
-
-1. **Phase 1 (Brainstorm & Architecture):** Bob analyzed the legacy flat structure, proposed the modular `studio/` package design, and drafted the scout→commentator pipeline pattern.
-2. **Phase 2 (Implementation & Debugging):** Bob wrote the initial implementations of each module, debugged the `max_tokens` truncation issue, designed the resilient `parse.py` recovery, and built the fallback mechanism.
-3. **Phase 3 (Production & Polish):** Bob assisted with Code Engine deployment config, test suite expansion (9 → 25 tests), and documentation structure to match the challenge rubric.
-
-**Key outcomes:**
-- Modular `studio/` engine: 17 focused modules, <10KB each, zero code duplication across UI layers
-- Robust error handling: Graceful fallbacks for rate limits, timeouts, truncated LLM output
-- 25 deterministic tests (no API keys required) covering the measurement layer, parsing, and schemas
-- Zero external vision APIs (Llama Vision via watsonx.ai keeps everything in the IBM ecosystem)
-
-**Not just code generation:** Bob participated in design decisions, not just syntax. Example: the four-stage pipeline (MEASURE → EVIDENCE → SCOUT → COMMENTATOR) emerged from Bob's proposal to separate deterministic metrics from LLM interpretation.
+Bob's role was strictly collaborative: all final code decisions and business logic were defined by the human developer, while Bob executed the implementation details and proposed structural best practices.
 
 ---
 
