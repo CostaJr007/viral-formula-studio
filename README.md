@@ -114,8 +114,9 @@ The demo comes with **3 pre-analyzed creators** — no uploads needed:
 │ TikTok               │     │ ② ffmpeg cuts / WPM / n-grams   │     │ 10 AI hooks          │
 │ Instagram Reels      │     │ ③ Granite 4 text style analysis │     │ Shooting script      │
 │                      │     │ ④ Llama Vision reads frames      │     │ Editing directions   │
-│                      │     │ ⑤ Tavily fact-checks topic       │     │ Retention psychology │
-│                      │     │ ⑥ Granite 4 writes final copy    │     │                      │
+│                      │     │ ⑤ Llama Vision reads thumbnail   │     │ Retention psychology │
+│                      │     │ ⑥ Tavily fact-checks topic       │     │ Thumbnail analysis   │
+│                      │     │ ⑦ Granite 4 writes final copy    │     │                      │
 └──────────────────────┘     └─────────────────────────────────┘     └──────────────────────┘
 ```
 
