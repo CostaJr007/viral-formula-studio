@@ -128,6 +128,18 @@ The demo comes with **3 pre-analyzed creators** — no uploads needed:
 Raw captions → regex cleanup (HTML entities, contractions) → Granite 4 coherence fix
 ```
 
+### Multi-Agent Orchestration
+
+The system does not rely on a single monolithic prompt. Instead, it employs an **orchestrated multi-agent architecture** where specialized personas work in sequence or parallel, each with a narrow, well-defined scope:
+
+1. **The Textual Analyst (Agent 4.1):** Reads transcriptions and metrics to extract the creator's copywriting fingerprint, tone, and hook patterns.
+2. **The Visual Editor (Agent 4.2):** Analyzes video frames to decode the creator's editing grammar, cut cadence, and visual retention tricks.
+3. **The Thumbnail Analyst (Agent 4.5):** Evaluates the first frame for composition, color palette, and click-through effectiveness.
+4. **The Fact-Checker / Scout (Agent 5.1):** Acts as an independent researcher, browsing the web to find verified facts about the user's chosen topic.
+5. **The Content Strategist / Commentator (Agent 5.2):** The final orchestrator. It receives the outputs from all previous agents (text profile, visual profile, thumbnail data, and verified facts) and synthesizes the final actionable playbook.
+
+This separation of concerns ensures that the final script is based on *real evidence* and verified facts rather than a single LLM hallucinating both the style and the content simultaneously.
+
 ### Four-Stage Evidence Chain
 
 Every output is grounded in **measured evidence**:
