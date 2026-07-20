@@ -706,12 +706,11 @@ function CreatorStep({
 /* ---------------- Analysis progress (phased) ---------------- */
 
 const ANALYSIS_PHASES = [
-  { key: "download", label: "Downloading videos", sub: "Pulling public Shorts / TikTok data", icon: Globe },
-  { key: "transcribe", label: "Transcribing", sub: "Captions first, Whisper as fallback", icon: Mic },
-  { key: "analyze", label: "Analyzing style & editing", sub: "Measuring cuts/min, WPM, and running LLM analysis", icon: Sparkle },
+  { id: "Agent 0", name: "ffmpeg + yt-dlp", desc: "Data ingestion & deterministic metrics", delay: 0, duration: 6 },
+  { id: "Agent 4.1", name: "Textual Analyst", desc: "Extracting copy fingerprint & tone", delay: 6, duration: 25 },
+  { id: "Agent 4.2", name: "Visual Editor", desc: "Decoding editing grammar from frames", delay: 6, duration: 30 },
+  { id: "Agent 4.5", name: "Thumbnail Analyst", desc: "Scoring click-through & composition", delay: 6, duration: 18 },
 ] as const;
-
-type PhaseKey = (typeof ANALYSIS_PHASES)[number]["key"];
 
 function SpinnerWithTimer({ label, sub }: { label: string; sub: string }) {
   const [elapsed, setElapsed] = useState(0);
@@ -721,20 +720,17 @@ function SpinnerWithTimer({ label, sub }: { label: string; sub: string }) {
   }, []);
 
   return (
-    <Card className="p-10 bg-card/70 text-center space-y-4">
-      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-      <div className="font-display">{label}</div>
-      <p className="text-sm text-muted-foreground">{sub}</p>
-      <p className="text-xs text-muted-foreground/60 font-mono">
-        {elapsed < 5 ? "Connecting to engine..." : elapsed < 15 ? "Granite 4 is processing your request..." : elapsed < 30 ? "Still working — watsonx.ai is generating..." : "Almost there — large response in progress..."}
-        <span className="ml-2 tabular-nums">({elapsed}s)</span>
-      </p>
-    </Card>
+    <div className="flex items-center gap-4">
+      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+      <div>
+        <div className="text-sm font-medium">{label} ({elapsed}s)</div>
+        <div className="text-xs text-muted-foreground">{sub}</div>
+      </div>
+    </div>
   );
 }
 
 function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
-  const phase: PhaseKey = jobStatus === "analyzing" ? "analyze" : jobStatus === "ingesting" ? "transcribe" : "download";
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const i = setInterval(() => setElapsed((e) => e + 1), 1000);
@@ -742,61 +738,75 @@ function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
   }, []);
 
   return (
-    <Card className="p-6 md:p-10 bg-card/70 backdrop-blur-sm text-center space-y-6 md:space-y-8 max-w-2xl mx-auto">
+    <Card className="p-6 md:p-10 bg-card/70 backdrop-blur-sm text-center space-y-6 md:space-y-8 max-w-3xl mx-auto border-primary/20 shadow-glow">
       <div className="space-y-2">
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary relative">
           <Loader2 className="h-7 w-7 animate-spin" />
+          <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-primary/30 animate-pulse" />
         </div>
-        <h2 className="font-display text-xl font-semibold mt-4">Decoding the formula</h2>
-        <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          This takes ~30–90 seconds depending on video count. The engine pulls, transcribes, measures and analyzes each one.
+        <h2 className="font-display text-xl md:text-2xl font-semibold mt-4 text-gradient">Multi-Agent Orchestration Active</h2>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+          Orchestrating specialized AI personas in parallel. This takes ~30–90 seconds depending on video count.
         </p>
       </div>
 
-      <div className="space-y-3">
-        {ANALYSIS_PHASES.map((p, i) => {
-          const idx = ANALYSIS_PHASES.findIndex((x) => x.key === phase);
-          const done = i < idx;
-          const active = i === idx;
-          const pending = i > idx;
-          const Icon = p.icon;
+      <div className="grid sm:grid-cols-2 gap-3 text-left">
+        {ANALYSIS_PHASES.map((agent) => {
+          const isWaiting = elapsed < agent.delay;
+          const isDone = elapsed >= (agent.delay + agent.duration);
+          const isActive = !isWaiting && !isDone;
 
           return (
             <div
-              key={p.key}
+              key={agent.id}
               className={cn(
-                "flex items-center gap-4 p-4 rounded-xl border transition-all",
-                active && "border-primary/50 bg-primary/5 shadow-glow",
-                done && "border-success/30 bg-success/5",
-                pending && "border-border/40 bg-secondary/20 opacity-50",
+                "flex items-start gap-3 p-4 rounded-xl border transition-all duration-500 relative overflow-hidden",
+                isActive && "border-primary/50 bg-primary/5 shadow-glow scale-[1.02]",
+                isDone && "border-success/30 bg-success/5",
+                isWaiting && "border-border/40 bg-secondary/20 opacity-50",
               )}
             >
+              {isActive && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+              )}
               <span
                 className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-lg shrink-0 transition-all",
-                  active && "bg-primary text-primary-foreground",
-                  done && "bg-success/20 text-success",
-                  pending && "bg-secondary text-muted-foreground",
+                  "flex h-9 w-9 items-center justify-center rounded-lg shrink-0 transition-all duration-500",
+                  isActive && "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary),0.5)]",
+                  isDone && "bg-success/20 text-success",
+                  isWaiting && "bg-secondary text-muted-foreground",
                 )}
               >
-                {done ? <Check className="h-4 w-4" /> : active ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+                {isDone ? <Check className="h-4 w-4" /> : isActive ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <Sparkle className="h-4 w-4" />}
               </span>
-              <div className="text-left flex-1 min-w-0">
-                <div className={cn("text-sm font-medium", active && "text-foreground", done && "text-foreground", pending && "text-muted-foreground")}>
-                  {p.label}
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-center mb-0.5">
+                  <div className={cn("text-[11px] font-mono font-medium", isActive && "text-primary", isDone && "text-success", isWaiting && "text-muted-foreground")}>
+                    {agent.id}
+                  </div>
+                  <div className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+                    {isDone ? "Complete" : isActive ? "Working" : "Waiting"}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">{p.sub}</div>
+                <div className={cn("text-sm font-medium", (isActive || isDone) ? "text-foreground" : "text-muted-foreground")}>
+                  {agent.name}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 leading-relaxed">{agent.desc}</div>
               </div>
-              {done && <Check className="h-4 w-4 text-success shrink-0" />}
             </div>
           );
         })}
       </div>
 
-      <p className="text-[11px] text-muted-foreground font-mono">
-        {elapsed < 5 ? "Starting pipeline..." : elapsed < 20 ? "Downloading and transcribing..." : "LLM analyzing — this is the longest step"}
-        <span className="ml-2 tabular-nums">({elapsed}s)</span>
-      </p>
+      <div className="pt-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 text-[11px] text-muted-foreground font-mono">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+          </span>
+          Engine running: {elapsed}s elapsed
+        </div>
+      </div>
     </Card>
   );
 }
