@@ -117,7 +117,7 @@ type CopyResult = {
 type StepId = "creator" | "profile" | "topic-select" | "hooks" | "copy";
 
 const STEPS: { id: StepId; label: string; hint: string; icon: typeof LinkIcon }[] = [
-  { id: "creator", label: "Creator", hint: "5 Shorts / TikTok links", icon: LinkIcon },
+  { id: "creator", label: "Creator", hint: "5 YouTube Shorts links", icon: LinkIcon },
   { id: "profile", label: "Profile", hint: "measured formula", icon: Gauge },
   { id: "topic-select", label: "Topic", hint: "your theme", icon: Target },
   { id: "hooks", label: "Hooks", hint: "10 derived hooks", icon: Target },
@@ -507,17 +507,9 @@ function CreatorStep({
         {/* Supported platforms */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
           <span className="text-[10px] uppercase tracking-widest text-muted-foreground mr-0.5">Accepts</span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/40 px-2.5 py-1 text-[11px]">
-            <Youtube className="h-3 w-3 text-red-400" />
-            Shorts
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/40 px-2.5 py-1 text-[11px]">
-            <Music className="h-3 w-3 text-pink-400" />
-            TikTok
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/40 px-2.5 py-1 text-[11px]">
-            <Camera className="h-3 w-3 text-purple-400" />
-            Reels
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
+            <Youtube className="h-3 w-3 text-red-500" />
+            YouTube Shorts
           </span>
         </div>
       </header>
@@ -591,7 +583,7 @@ function CreatorStep({
             <div>
               <div className="font-display font-medium text-sm">Reference creator links</div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                Public YouTube Shorts, TikTok or Reels.
+                Public YouTube Shorts (TikTok/Reels require local runtime).
               </div>
             </div>
             <span className="font-mono text-xs text-muted-foreground tabular-nums shrink-0 ml-2">
