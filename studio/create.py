@@ -96,7 +96,7 @@ words/minute, editing grammar — cuts per minute, shot types, text overlays),
 Your task: orchestrate a COMPLETE SHOOTING SCRIPT — not just words to say, but
 exactly HOW to shoot and edit each moment, and WHY each technique works.
 
-FORMAT — Every block in the script must follow this structure:
+FORMAT — Every block in the script must be a SINGLE LINE separated by EXACTLY 4 pipe `|` characters:
 ```
 [TIMESTAMP] | [SHOT TYPE] | [TEXT TO SAY] | [EDITING] | [WHY IT WORKS]
 ```
@@ -109,8 +109,9 @@ EXAMPLE:
 ```
 
 RULES:
+- CRITICAL: Do NOT use line breaks (newlines) inside a single block. Each timestamp block must be exactly one line.
 - Total spoken words ≤ {MAX_COPY_WORDS} across all blocks.
-- Every block MUST include all 5 fields: timestamp, shot, text, editing, psychology.
+- Every block MUST include all 5 fields separated by `|`: timestamp, shot, text, editing, psychology.
 - SHOT TYPES must match the creator's measured grammar (e.g. "CLOSE-UP face",
   "MEDIUM shot", "SPLIT-SCREEN", "B-ROLL", "TEXT OVERLAY").
 - EDITING must use MEASURED NUMBERS: cut cadence (~X cuts/min, every ~Y seconds),
@@ -191,8 +192,9 @@ def generate_copy(
         f"{_facts_block(research)}\n\n"
         f'USER THEME: {theme}\n'
         f'CHOSEN HOOK: "{chosen_hook}"\n\n'
-        "Generate the COMPLETE SHOOTING SCRIPT. Every block must have all 5 fields: "
+        "Generate the COMPLETE SHOOTING SCRIPT. Every block must be EXACTLY ONE LINE separated by 4 pipes: "
         "[TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY IT WORKS]. "
+        "DO NOT use line breaks inside a block. "
         "Use the creator's measured cuts/min, shot types, and editing grammar from the profile."
     )
     return coerce_structured(response.content, VideoCopy, stage="Copy generation")
