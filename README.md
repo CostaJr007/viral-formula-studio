@@ -399,6 +399,14 @@ uv run ruff check .    # lint
 
 ---
 
+## Cross-Platform Video Support
+
+The ingestion engine is natively platform-agnostic and supports videos from **YouTube Shorts**, **TikTok**, **Instagram Reels**, and **X/Twitter**.
+
+*   **Cloud Deployment Note:** When deploying to public cloud services (like IBM Cloud Code Engine), platforms with aggressive anti-bot protections (TikTok/Instagram) may block datacenter IPs. For these platforms, it is recommended to run the engine locally, pass a local browser `cookies.txt` file, or manually download the `.mp4` files and place them directly into the `/videos` directory for processing. YouTube Shorts are generally accessible without restrictions in the cloud.
+
+---
+
 ## License
 
 © 2026 Costa Jr. All rights reserved. Shared publicly for review as part of the
