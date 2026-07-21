@@ -1228,9 +1228,14 @@ function CopyStep({
   onRestart: () => void;
 }) {
   // Parse shooting script lines into blocks
-  const blocks = result?.script
+  let blocks = result?.script
     ? result.script.split("\n").filter((l) => l.includes("|"))
     : [];
+  let isFallback = false;
+  if (result?.script && blocks.length === 0) {
+    isFallback = true;
+    blocks = result.script.split("\n").filter(l => l.trim().length > 0);
+  }
 
   if (!result) {
     return (
@@ -1276,8 +1281,13 @@ function CopyStep({
   // Result ready — styled report
   // Format clean copy as a proper script — narration on separate lines, audio cues styled
   const scriptLines = blocks.map((line) => {
+    if (isFallback) {
+      const text = line.trim();
+      const isAudioOnly = text.toLowerCase().includes("no speech") || text.toLowerCase().includes("music only") || text.startsWith("(");
+      return { text, isAudioOnly };
+    }
     const parts = line.split("|").map((p) => p.trim());
-    const text = parts.length >= 3 ? parts[2] : "";
+    const text = parts.length >= 3 ? parts[2] : parts[parts.length - 1];
     const isAudioOnly = text.toLowerCase().includes("no speech") || text.toLowerCase().includes("music only") || text.startsWith("(");
     return { text, isAudioOnly };
   });
@@ -1342,6 +1352,13 @@ function CopyStep({
         <Separator />
         <div className="space-y-3">
         {blocks.map((line, i) => {
+          if (isFallback) {
+            return (
+              <Card key={i} className="p-4 md:p-5 bg-card/80 border-border/40 hover:border-primary/30 transition-colors">
+                <p className="text-sm leading-relaxed text-foreground/90">{line}</p>
+              </Card>
+            );
+          }
           const parts = line.split("|").map((p) => p.trim());
           const [timestamp, shot, text, editing, why] = parts.length >= 5 ? parts : ["", line, "", "", ""];
           return (
