@@ -56,25 +56,65 @@ def _clean_transcription(text: str) -> str:
 
 
 def _base_opts(out_dir: Path) -> dict:
+    """Shared yt-dlp options tuned for cloud / datacenter IPs.
+
+    YouTube increasingly requires a JS runtime for web clients. Prefer mobile
+    player clients (android/ios/mweb) which still work without deno/node, and
+    keep retries polite so burst rate-limits don't kill the whole job.
+    """
     return {
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
         "ignoreerrors": False,
-        # Politeness: platforms (esp. YouTube) rate-limit bursts — space out
-        # requests and retry transparently instead of dying with a 429.
-        "retries": 3,
-        "fragment_retries": 3,
-        "sleep_interval_requests": 1.5,
-        "sleep_interval": 2,
-        "max_sleep_interval": 5,
+        "retries": 5,
+        "fragment_retries": 5,
+        "sleep_interval_requests": 1.0,
+        "sleep_interval": 1.5,
+        "max_sleep_interval": 6,
+        # Prefer clients that work without a JS challenge solver in containers.
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "mweb", "tv"],
+                "player_skip": ["webpage", "configs"],
+            }
+        },
+        # Some hosts block the default Python UA; a browser-like UA helps TikTok.
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "en-US,en;q=0.9",
+        },
+        # Allow remote EJS components when a JS runtime (node/deno) is present.
+        "remote_components": ["ejs:github"],
     }
 
 
 def probe(url: str) -> dict:
     """Fetch metadata only (no download): id, title, duration, uploader, platform."""
-    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True}) as ydl:
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "mweb", "tv"],
+                "player_skip": ["webpage", "configs"],
+            }
+        },
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+        },
+    }
+    with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
+    if not info:
+        raise RuntimeError("yt-dlp returned empty metadata (blocked or invalid URL)")
     return {
         "id": info.get("id"),
         "title": info.get("title", ""),
@@ -124,12 +164,33 @@ def parse_vtt(vtt_text: str) -> str:
 
 def download_video(url: str, out_dir: Path) -> Path:
     """Download the video at the lowest usable resolution (frames/metrics only)."""
+    # Broad format ladder: mobile clients often only expose progressive streams.
+    format_ladder = (
+        "best[height<=480][ext=mp4]/"
+        "best[height<=720][ext=mp4]/"
+        "worst[ext=mp4]/"
+        "best[height<=480]/"
+        "best[ext=mp4]/"
+        "best"
+    )
     opts = _base_opts(out_dir) | {
-        "format": "worst[ext=mp4][height>=360]/worst[ext=mp4]/worst/best[height<=480]",
+        "format": format_ladder,
+        "merge_output_format": "mp4",
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
-        return Path(ydl.prepare_filename(info))
+        if not info:
+            raise RuntimeError("Download returned no info (platform may block this IP)")
+        path = Path(ydl.prepare_filename(info))
+        # Sometimes extension differs from template after merge
+        if not path.exists():
+            candidates = list(out_dir.glob(f"{info.get('id', '')}.*"))
+            candidates = [c for c in candidates if c.suffix.lower() in {".mp4", ".webm", ".mkv", ".m4a"}]
+            if candidates:
+                path = candidates[0]
+        if not path.exists():
+            raise RuntimeError(f"Downloaded file missing after yt-dlp: expected {path.name}")
+        return path
 
 
 def _transcribe_with_whisper(video_path: Path) -> str | None:
@@ -236,7 +297,15 @@ def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> di
         # Captions first (free); Whisper as fallback
         text = fetch_captions(url, creator_dir) or _transcribe_with_whisper(video_path)
         if text is None:
-            report["failed"].append({"url": url, "reason": "no captions and transcription unavailable"})
+            settings = get_settings()
+            if not settings.groq_api_key:
+                reason = (
+                    "no captions available and GROQ_API_KEY is missing "
+                    "(needed for Whisper fallback)"
+                )
+            else:
+                reason = "no captions and Whisper transcription failed or too short"
+            report["failed"].append({"url": url, "reason": reason})
             continue
 
         # Clean: regex first (fast, catches known patterns), then LLM for coherence

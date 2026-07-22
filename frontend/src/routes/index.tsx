@@ -223,12 +223,17 @@ function Studio() {
         await new Promise((r) => setTimeout(r, 2000));
         const job = await (await fetch(`${API}/api/jobs/${job_id}`)).json();
         if (job.status === "done") break;
-        if (job.status === "failed") throw new Error(job.error ?? "Analysis failed");
+        if (job.status === "failed") {
+          throw new Error(
+            (job.error as string | undefined) ??
+              "Analysis failed. Try a public YouTube Shorts link or a seed creator (jeffnippard).",
+          );
+        }
         setJobStatus(
           job.status === "ingesting"
-            ? "Downloading & transcribing videos…"
+            ? "Downloading & transcribing videos (yt-dlp + Whisper)…"
             : job.status === "analyzing"
-              ? "Measuring cuts + analyzing style & editing…"
+              ? "Measuring cuts + IBM Granite / Vision analysis…"
               : "Queued…",
         );
       }

@@ -127,7 +127,23 @@ async def _run_ingest_job(job_id: str, creator: str, urls: list[str]) -> None:
         job["ingest_report"] = report
         if not report["ok"]:
             job["status"] = "failed"
-            job["error"] = "No video could be ingested. Check the links (YouTube Shorts/TikTok work best)."
+            # Surface concrete per-URL reasons so users/judges aren't stuck on a generic message.
+            details = []
+            for item in (report.get("failed") or [])[:4]:
+                if isinstance(item, dict):
+                    url = str(item.get("url") or "")[:48]
+                    reason = str(item.get("reason") or "unknown error")[:160]
+                    details.append(f"{url} → {reason}" if url else reason)
+                else:
+                    details.append(str(item)[:160])
+            detail_txt = " | ".join(details) if details else "unknown reason"
+            skipped = len(report.get("skipped") or [])
+            job["error"] = (
+                "No video could be ingested. "
+                f"{detail_txt}"
+                + (f" ({skipped} skipped)." if skipped else ".")
+                + " Tip: use public YouTube Shorts, or try seed creators bryan / jeffnippard / kallaway (no upload)."
+            )
             return
 
         job["status"] = "analyzing"

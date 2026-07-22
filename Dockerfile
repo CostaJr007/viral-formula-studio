@@ -1,8 +1,9 @@
 # Viral Formula Studio — API backend (FastAPI + ffmpeg)
 FROM python:3.12-slim
 
-# ffmpeg/ffprobe are required by the metrics + transcription pipeline
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates \
+# ffmpeg/ffprobe: metrics + transcription. nodejs: optional yt-dlp YouTube JS solver.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ffmpeg curl ca-certificates nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # uv via official installer (avoids external registry pulls inside the build env)
