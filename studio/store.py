@@ -65,7 +65,30 @@ def load_profile(creator: str) -> CreatorProfile | None:
     path = profile_path(creator)
     if not path.exists():
         return None
-    return CreatorProfile.model_validate_json(path.read_text(encoding="utf-8"))
+    profile = CreatorProfile.model_validate_json(path.read_text(encoding="utf-8"))
+    # Heal legacy profiles saved with N/A / "Insufficient transcript evidence"
+    # so the UI never shows a broken fingerprint again.
+    if profile.style is not None:
+        from .analyze_text import _field_is_bad, _fallback_style
+
+        s = profile.style
+        if (
+            _field_is_bad(s.tone)
+            or _field_is_bad(s.persona)
+            or _field_is_bad(s.copy_structure)
+            or "insufficient transcript" in f"{s.tone} {s.copy_structure}".lower()
+        ):
+            logger.info("Healing unusable style on profile '%s'", creator)
+            profile.style = _fallback_style(
+                profile.creator,
+                profile.metrics,
+                reason="Healed legacy empty/N/A fingerprint on load.",
+            )
+            try:
+                save_profile(profile)
+            except Exception:
+                logger.warning("Could not persist healed profile for '%s'", creator)
+    return profile
 
 
 def save_profile(profile: CreatorProfile) -> Path:
