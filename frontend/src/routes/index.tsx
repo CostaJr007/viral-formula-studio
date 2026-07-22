@@ -6,7 +6,6 @@ import {
   Camera,
   Check,
   Copy as CopyIcon,
-  Cpu,
   Download,
   Eye,
   FileText,
