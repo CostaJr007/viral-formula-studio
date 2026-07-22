@@ -16,22 +16,11 @@ from pathlib import Path
 from . import store
 from .config import get_settings
 from .frames import get_video_duration
+from .text_quality import STOPWORDS, is_error_blob, is_speech_like, spoken_tokens
 
 logger = logging.getLogger(__name__)
 
 SCENE_THRESHOLD = 0.3
-
-# Portuguese stopwords — matches the language of the source transcriptions
-# (the analyzed creators speak Portuguese). Changing this set changes the
-# measured n-grams, so it stays as-is on purpose.
-_STOPWORDS_PT = {
-    "a", "o", "e", "é", "de", "da", "do", "das", "dos", "em", "no", "na", "nos", "nas", "um", "uma",
-    "que", "pra", "para", "com", "se", "eu", "você", "ele", "ela", "isso", "esse", "essa", "isto",
-    "ao", "aos", "à", "às", "por", "mais", "muito", "muita", "como", "mas", "ou", "quando", "já",
-    "também", "só", "tem", "têm", "ter", "ser", "estar", "foi", "são", "era", "vai", "vou", "meu",
-    "minha", "seu", "sua", "dele", "dela", "aí", "lá", "aqui", "hoje", "então", "assim", "porque",
-    "pois", "nem", "não", "sim", "me", "te", "lhe", "vos", "lo", "la", "aquilo",
-}
 
 
 def detect_cuts(video_path: Path, threshold: float = SCENE_THRESHOLD) -> list[float]:
@@ -107,7 +96,10 @@ def speech_metrics(creator: str, max_videos: int | None = None) -> dict:
             logger.exception("Failed to measure duration of %s", video_path.name)
             continue
 
-        words = len(item["transcription"].split())
+        raw = str(item.get("transcription") or "")
+        if is_error_blob(raw):
+            continue  # never count API/error blobs as speech rate
+        words = len(spoken_tokens(raw)) or len(raw.split())
         wpm = round(words / duration * 60, 1) if duration else 0.0
         wpms.append(wpm)
         per_video.append(
@@ -121,21 +113,33 @@ def speech_metrics(creator: str, max_videos: int | None = None) -> dict:
 
 
 def signature_ngrams(creator: str, n: int = 3, top_k: int = 10, min_count: int = 2) -> list[dict]:
-    """Most repeated n-grams across the creator's transcriptions, with real counts."""
+    """Most repeated n-grams across speech-like transcriptions only (no URL/API junk)."""
     counter: Counter = Counter()
     for item in store.get_creator_transcriptions(creator):
-        words = re.findall(r"[a-záàâãéêíóôõúç]+", item["transcription"].lower())
+        raw = str(item.get("transcription") or "")
+        if not is_speech_like(raw, min_tokens=6):
+            continue
+        words = spoken_tokens(raw)
+        if len(words) < n:
+            continue
         for i in range(len(words) - n + 1):
             gram = tuple(words[i : i + n])
-            if gram[0] in _STOPWORDS_PT or gram[-1] in _STOPWORDS_PT:
+            # spoken_tokens already dropped stopwords/junk; still skip weak edges
+            if gram[0] in STOPWORDS or gram[-1] in STOPWORDS:
                 continue
             counter[gram] += 1
 
-    return [
+    # Prefer real multi-word phrases; fall back to bigrams if trigrams are sparse
+    ranked = [
         {"ngram": " ".join(gram), "count": count}
-        for gram, count in counter.most_common(top_k)
+        for gram, count in counter.most_common(top_k * 2)
         if count >= min_count
-    ]
+    ][:top_k]
+    if len(ranked) >= 3 or n == 2:
+        return ranked
+    if n == 3:
+        return signature_ngrams(creator, n=2, top_k=top_k, min_count=min_count)
+    return ranked
 
 
 def measure_creator(creator: str, max_videos: int | None = None) -> dict:

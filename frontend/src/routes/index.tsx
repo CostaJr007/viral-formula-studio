@@ -1070,13 +1070,41 @@ function isStyleUsable(style?: Profile["style"] | null): boolean {
   return true;
 }
 
+const PHRASE_JUNK =
+  /^(https?|www|com|org|net|ibm|cloud|quota|status|chat|code|api|error|null|token|json|html|mp4|url)$/i;
+
+function isCleanPhrase(p: string): boolean {
+  const t = p.trim();
+  if (!t || t.length < 3) return false;
+  if (PHRASE_JUNK.test(t)) return false;
+  if (/https?:|www\.|\.com|\.cloud/i.test(t)) return false;
+  const parts = t.toLowerCase().split(/\s+/);
+  if (parts.some((w) => PHRASE_JUNK.test(w))) return false;
+  return true;
+}
+
 /** Client-side emergency fingerprint so the card never renders poison strings. */
 function healStyleForDisplay(profile: Profile): Profile["style"] {
   const s = profile.style;
-  if (s && isStyleUsable(s) && !isPoisonStyleText(s.tone)) return s;
+  const cleanExprs = (s?.signature_expressions ?? []).filter(isCleanPhrase);
+  const cleanNgrams = (profile.metrics?.signature_ngrams ?? [])
+    .map((g) => g.ngram)
+    .filter(isCleanPhrase);
+  const styleLooksReal =
+    s &&
+    isStyleUsable(s) &&
+    !isPoisonStyleText(s.tone) &&
+    // If "phrases" are pure infra junk, force heal even if tone string looks fine
+    (cleanExprs.length > 0 || cleanNgrams.length > 0 || (s.hook_patterns?.length ?? 0) > 0);
+
+  if (styleLooksReal && s) {
+    return {
+      ...s,
+      signature_expressions: cleanExprs.length ? cleanExprs : cleanNgrams.slice(0, 8),
+    };
+  }
 
   const wpm = profile.metrics?.speech?.avg_wpm;
-  const ngrams = profile.metrics?.signature_ngrams ?? [];
   const pace =
     typeof wpm === "number"
       ? `Measured speech pace ~${Math.round(wpm)} WPM`
@@ -1092,7 +1120,8 @@ function healStyleForDisplay(profile: Profile): Profile["style"] {
     persona: "Creator speaking straight to camera in short-form format",
     copy_structure:
       "Open with a hook, deliver one clear idea, close with a takeaway — standard short-form arc.",
-    signature_expressions: ngrams.slice(0, 8).map((g) => g.ngram),
+    // Never dump junk unigrams (https, ibm, quota…) into the UI
+    signature_expressions: cleanNgrams.slice(0, 8),
     hook_patterns: [
       {
         pattern: "Direct promise in the first seconds",
@@ -1107,7 +1136,7 @@ function healStyleForDisplay(profile: Profile): Profile["style"] {
     ],
     persuasion_tactics: ["Direct address", "Single-idea focus"],
     evidence_notes:
-      "Client healed a legacy empty/N/A fingerprint using measured metrics so the demo never blocks.",
+      "Recovered fingerprint from measured pace only — prior phrases looked like error/URL noise, not speech.",
   };
 }
 

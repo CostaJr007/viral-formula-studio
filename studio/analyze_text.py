@@ -19,6 +19,12 @@ from .config import get_settings
 from .factory import create_agent
 from .parse import coerce_structured
 from .schemas import CreatorStyle, HookPattern
+from .text_quality import (
+    filter_expression,
+    is_error_blob,
+    is_speech_like,
+    top_content_phrases,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,42 +59,9 @@ Honesty rules (CRITICAL):
 """
 
 
-def _is_error_blob(text: str) -> bool:
-    """True when the 'transcript' is clearly a system/API error, not speech."""
-    raw = (text or "").strip()
-    if not raw:
-        return True
-    lower = raw.lower()
-    words = raw.split()
-    error_markers = (
-        "error message",
-        "failed request",
-        "request failed",
-        "rate limit",
-        "unauthorized",
-        "traceback",
-        "exception:",
-        "http error",
-        "could not retrieve",
-        "transcription unavailable",
-        "access denied",
-        "403 forbidden",
-        "401 unauthorized",
-        "500 internal",
-    )
-    if any(m in lower for m in error_markers) and len(words) < 100:
-        return True
-    return False
-
-
 def _is_usable_transcription(text: str, *, min_words: int = 8) -> bool:
-    """Accept short but real speech; reject empty/error blobs only."""
-    raw = (text or "").strip()
-    if not raw:
-        return False
-    if _is_error_blob(raw):
-        return False
-    return len(raw.split()) >= min_words
+    """Accept short but real speech; reject empty/error/URL blobs."""
+    return is_speech_like(text, min_tokens=min_words)
 
 
 def _field_is_bad(value: str | None) -> bool:
@@ -106,9 +79,11 @@ def _field_is_bad(value: str | None) -> bool:
 
 def _first_spoken_line(texts: list[str]) -> str:
     for t in texts:
+        if is_error_blob(t):
+            continue
         for part in re.split(r"[.!?]\s+", t.strip()):
             part = part.strip().strip('"“”')
-            if len(part.split()) >= 4 and not _is_error_blob(part):
+            if len(part.split()) >= 4 and is_speech_like(part, min_tokens=4):
                 return part[:160]
     return "Hey — watch this."
 
@@ -132,17 +107,11 @@ def _fallback_style(
         elif isinstance(g, str):
             exprs.append(g)
 
-    texts = [t for t in (sample_texts or []) if t and not _is_error_blob(t)]
+    texts = [t for t in (sample_texts or []) if t and is_speech_like(t, min_tokens=4)]
+    # Never surface junk unigrams from error/URL text (https, ibm, quota, …)
+    exprs = [e for e in exprs if filter_expression(e)]
     if not exprs and texts:
-        # Pull simple repeated-ish tokens from available speech
-        words = re.findall(r"[a-záéíóúãõâêôç']{3,}", " ".join(texts).lower())
-        stop = {"the", "and", "you", "that", "this", "with", "for", "are", "have", "was"}
-        counts: dict[str, int] = {}
-        for w in words:
-            if w in stop:
-                continue
-            counts[w] = counts.get(w, 0) + 1
-        exprs = [w for w, _ in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:8]]
+        exprs = top_content_phrases(texts, top_k=8)
 
     example = _first_spoken_line(texts)
     if wpm:
@@ -229,7 +198,11 @@ def _sanitize_style(
     rhythm = fallback.sentence_rhythm if _field_is_bad(style.sentence_rhythm) else style.sentence_rhythm
     structure = fallback.copy_structure if _field_is_bad(style.copy_structure) else style.copy_structure
     hooks = style.hook_patterns if style.hook_patterns else fallback.hook_patterns
-    exprs = [e for e in (style.signature_expressions or []) if e and not _field_is_bad(e)]
+    exprs = [
+        e
+        for e in (style.signature_expressions or [])
+        if e and not _field_is_bad(e) and filter_expression(e)
+    ]
     if not exprs:
         exprs = fallback.signature_expressions
     tactics = [t for t in (style.persuasion_tactics or []) if t and not _field_is_bad(t)]
@@ -267,7 +240,7 @@ def analyze_style(creator: str, max_videos: int | None = None, metrics: dict | N
 
     if not usable:
         # Keep non-error crumbs if any (even < 8 words) for examples
-        crumbs = [t for t in raw_texts if t.strip() and not _is_error_blob(t)]
+        crumbs = [t for t in raw_texts if t.strip() and not is_error_blob(t)]
         logger.warning(
             "Thin/empty speech for '%s' — using metrics-backed fallback fingerprint.",
             creator,

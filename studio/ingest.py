@@ -312,6 +312,22 @@ def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> di
         cleaned = _clean_transcription(text)
         fixed = _fix_transcription_coherence(cleaned)
 
+        # Refuse to persist API/error/URL blobs as if they were speech — they poison
+        # n-grams ("https", "ibm", "quota") and cause hallucinated fingerprints.
+        from .text_quality import is_error_blob, is_speech_like
+
+        if is_error_blob(fixed) or not is_speech_like(fixed, min_tokens=6):
+            report["failed"].append(
+                {
+                    "url": url,
+                    "reason": (
+                        "transcription looks like an error/empty blob, not spoken audio "
+                        "(refusing to save — re-try with captions or valid GROQ_API_KEY)"
+                    ),
+                }
+            )
+            continue
+
         transcriptions[creator].append({"video": video_path.name, "transcription": fixed})
         store.save_transcriptions(transcriptions)  # incremental save
         logger.info("[OK] %s ingested (%s, %ds)", video_path.name, meta["uploader"], meta["duration"])
