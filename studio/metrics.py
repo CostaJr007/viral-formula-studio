@@ -133,16 +133,16 @@ def signature_ngrams(creator: str, n: int = 3, top_k: int = 10, min_count: int =
                 continue
             counter[gram] += 1
 
-    # Prefer real multi-word phrases; fall back to bigrams if trigrams are sparse
+    # Prefer real multi-word phrases; fall back to bigrams only if trigrams found nothing
     ranked = [
         {"ngram": " ".join(gram), "count": count}
         for gram, count in counter.most_common(top_k * 2)
         if count >= min_count
     ][:top_k]
-    if len(ranked) >= 3 or n == 2:
+    if ranked:
         return ranked
     if n == 3:
-        return signature_ngrams(creator, n=2, top_k=top_k, min_count=min_count)
+        return signature_ngrams(creator, n=2, top_k=top_k, min_count=max(2, min_count))
     return ranked
 
 
