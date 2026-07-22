@@ -308,7 +308,30 @@ function Studio() {
   const canNavigate = (id: StepId) => id === "creator" || profile !== null;
 
   return (
-    <div className="min-h-screen flex bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      {/* Always-on IBM strip — unmistakable for judges / live demo */}
+      <div className="relative z-30 w-full bg-[#0f62fe] text-white">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-white/15 shrink-0">
+              <Cpu className="h-3.5 w-3.5" />
+            </span>
+            <p className="text-[11px] sm:text-xs font-semibold tracking-wide truncate">
+              Powered by <span className="underline decoration-white/40 underline-offset-2">IBM Granite 4</span>
+              <span className="hidden sm:inline"> on watsonx.ai</span>
+              <span className="mx-1.5 opacity-50">·</span>
+              <span className="font-normal opacity-90">multimodal reverse engineering</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-mono uppercase tracking-wider opacity-95">
+            <span className="hidden md:inline rounded-full bg-white/15 px-2 py-0.5">Llama 3.2 Vision</span>
+            <span className="rounded-full bg-white/15 px-2 py-0.5">Code Engine</span>
+            <span className="rounded-full bg-white text-[#0f62fe] px-2 py-0.5 font-bold">AI Builders 2026</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-1 min-h-0">
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground relative">
         <div className="absolute inset-0 bg-grid opacity-40 pointer-events-none" />
@@ -535,6 +558,7 @@ function Studio() {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 }

@@ -3,7 +3,8 @@ FROM node:22-slim AS build
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# Prefer clean install; fall back if lock drifts (avoids failed web deploys)
+RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
 COPY . .
 # VITE_API_URL is inlined at build time (points to the API service URL)
