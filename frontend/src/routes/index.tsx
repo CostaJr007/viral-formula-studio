@@ -900,15 +900,15 @@ const ANALYSIS_PHASES: PhaseSpec[] = [
 ];
 
 const HOOKS_PHASES: PhaseSpec[] = [
-  { id: "Scout 5.1", name: "Fact-Checker", desc: "Tavily search + source URLs for the user's topic", delay: 0, duration: 14, engine: "Tavily · evidence only" },
-  { id: "Granite 4", name: "Hook Strategist", desc: "10 hooks: creator patterns × your theme", delay: 8, duration: 30, engine: "IBM Granite 4 · watsonx.ai" },
-  { id: "Quality", name: "Honesty gate", desc: "Strip noise, enforce theme, keep evidence_notes", delay: 32, duration: 12, engine: "IBM Granite 4 · structured out" },
+  { id: "Scout 5.1", name: "Fact-Checker", desc: "Tavily search + source URLs for the user's topic", delay: 0, duration: 12, engine: "Tavily · evidence only" },
+  { id: "Granite 4", name: "Hook Strategist", desc: "10 hooks: creator patterns × your theme", delay: 8, duration: 45, engine: "IBM Granite 4 · watsonx.ai" },
+  { id: "Quality", name: "Honesty gate", desc: "Strip noise, enforce theme, keep evidence_notes", delay: 40, duration: 40, engine: "IBM Granite 4 · structured out" },
 ];
 
 const COPY_PHASES: PhaseSpec[] = [
   { id: "Scout 5.1", name: "Fact refresh", desc: "Re-ground claims before writing the script", delay: 0, duration: 12, engine: "Tavily + Granite" },
-  { id: "Granite 4", name: "Script Director", desc: "Full narration + timestamps + shot list (not only the hook)", delay: 6, duration: 42, engine: "IBM Granite 4 · watsonx.ai" },
-  { id: "Normalize", name: "Call-sheet polish", desc: "Recover blocks, spoken copy, editing directions", delay: 40, duration: 14, engine: "Post-process · measured format" },
+  { id: "Granite 4", name: "Script Director", desc: "Full narration + timestamps + shot list (not only the hook)", delay: 6, duration: 50, engine: "IBM Granite 4 · watsonx.ai" },
+  { id: "Normalize", name: "Call-sheet polish", desc: "Recover blocks, spoken copy, editing directions", delay: 45, duration: 45, engine: "Post-process · measured format" },
 ];
 
 function PhasedWait({
@@ -936,11 +936,18 @@ function PhasedWait({
     "Llama 3.2 Vision on watsonx reads frames; Granite writes hooks, copy and playbooks.",
     "Judges: every user-facing sentence is designed to run on IBM Granite — OpenAI is fallback only.",
     "Honesty by design: unconfirmed claims become [INSERT: …] placeholders, never invented stats.",
+    "Cold starts on Code Engine can push this to 60–120s — the request is still live.",
   ];
   const tip = rotatingTips[Math.floor(elapsed / 7) % rotatingTips.length];
 
   const modeLabel =
     mode === "hooks" ? "Hook generation" : mode === "copy" ? "Script generation" : "Creator analysis";
+
+  // Phases are an ETA animation only — this component stays mounted until the real API returns.
+  // Never show "all Complete" while we are still waiting (that looked like a stuck UI at ~45s+).
+  const plannedEnd = Math.max(...phases.map((p) => p.delay + p.duration), 1);
+  const pastPlan = elapsed >= plannedEnd;
+  const lastPhaseId = phases[phases.length - 1]?.id;
 
   return (
     <Card className="p-5 md:p-9 bg-card/80 backdrop-blur-sm text-center space-y-6 md:space-y-7 max-w-3xl mx-auto border-primary/25 shadow-glow relative overflow-hidden">
@@ -972,6 +979,12 @@ function PhasedWait({
         {statusLine && (
           <p className="text-xs font-mono text-primary/90 pt-1">{statusLine}</p>
         )}
+        {pastPlan && (
+          <p className="text-xs text-primary font-medium pt-1 max-w-md mx-auto leading-relaxed">
+            Still waiting on watsonx.ai ({elapsed}s) — phases above are progress estimates; the API
+            request is still running (cold start / model load can take 60–120s).
+          </p>
+        )}
       </div>
 
       {/* Model stack strip for judges */}
@@ -994,9 +1007,23 @@ function PhasedWait({
 
       <div className="grid sm:grid-cols-2 gap-3 text-left relative">
         {phases.map((agent) => {
-          const isWaiting = elapsed < agent.delay;
-          const isDone = elapsed >= agent.delay + agent.duration;
-          const isActive = !isWaiting && !isDone;
+          const endAt = agent.delay + agent.duration;
+          let isWaiting = elapsed < agent.delay;
+          let isDone = elapsed >= endAt;
+          let isActive = !isWaiting && !isDone;
+
+          // While API is still in flight past the planned ETA, keep the last phase "Working"
+          // so we never freeze the UI on all-green "Complete" cards.
+          if (pastPlan && agent.id === lastPhaseId) {
+            isWaiting = false;
+            isDone = false;
+            isActive = true;
+          } else if (pastPlan && isDone) {
+            // earlier phases stay complete
+            isActive = false;
+          }
+
+          const statusLabel = isDone ? "Complete" : isActive ? (pastPlan && agent.id === lastPhaseId ? "Finalizing" : "Working") : "Waiting";
 
           return (
             <div
@@ -1040,7 +1067,7 @@ function PhasedWait({
                     {agent.id}
                   </div>
                   <div className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground shrink-0">
-                    {isDone ? "Complete" : isActive ? "Working" : "Waiting"}
+                    {statusLabel}
                   </div>
                 </div>
                 <div className={cn("text-sm font-medium", isActive || isDone ? "text-foreground" : "text-muted-foreground")}>

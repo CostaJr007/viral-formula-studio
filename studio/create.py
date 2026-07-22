@@ -168,13 +168,38 @@ def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None 
         instructions=HOOKS_INSTRUCTIONS,
         output_schema=HookList,
     )
+    # Slim profile for the prompt — huge per_video metric dumps slow watsonx and bloat tokens
+    slim = profile_obj.model_dump()
+    if isinstance(slim.get("metrics"), dict):
+        m = slim["metrics"]
+        editing = m.get("editing") or {}
+        speech = m.get("speech") or {}
+        slim["metrics"] = {
+            "editing": {
+                "avg_cuts_per_min": editing.get("avg_cuts_per_min"),
+                "avg_shot_length_s": editing.get("avg_shot_length_s"),
+                "videos_measured": editing.get("videos_measured"),
+            },
+            "speech": {"avg_wpm": speech.get("avg_wpm")},
+            "signature_ngrams": (m.get("signature_ngrams") or [])[:8],
+        }
+    # Drop heavy frame-level thumbnail noise if present
+    if isinstance(slim.get("thumbnail"), dict):
+        th = slim["thumbnail"]
+        slim["thumbnail"] = {
+            "score": th.get("score"),
+            "composition": th.get("composition"),
+            "suggestions": (th.get("suggestions") or [])[:3],
+        }
+
     logger.info("Generating 10 hooks from '%s' for '%s'...", creator, theme)
     response = agent.run(
         f"USER'S THEME (the hooks MUST be about this topic): {theme}\n\n"
-        f"Creator profile (measured evidence — JSON):\n{profile_obj.model_dump_json(indent=2)}\n"
+        f"Creator profile (measured evidence — JSON):\n{__import__('json').dumps(slim, ensure_ascii=False, indent=2)}\n"
         f"{_facts_block(research)}\n\n"
         f"Generate exactly 10 hooks. Every single hook MUST reference the user's theme: '{theme}'. "
-        "Apply the creator's patterns to THIS theme — do NOT use the creator's original topic."
+        "Apply the creator's patterns to THIS theme — do NOT use the creator's original topic. "
+        "Return structured JSON only — be concise."
     )
     return coerce_structured(response.content, HookList, stage="Hook generation")
 
