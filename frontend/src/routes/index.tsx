@@ -236,7 +236,7 @@ function Studio() {
           job.status === "ingesting"
             ? "Downloading & transcribing videos (yt-dlp + Whisper)…"
             : job.status === "analyzing"
-              ? "Measuring cuts + IBM Granite / Vision analysis…"
+              ? "Measuring cuts + analyzing style & editing…"
               : "Queued…",
         );
       }
@@ -319,28 +319,6 @@ function Studio() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
-      {/* Always-on IBM strip — unmistakable for judges / live demo */}
-      <div className="relative z-30 w-full bg-[#0f62fe] text-white">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-white/15 shrink-0">
-              <Cpu className="h-3.5 w-3.5" />
-            </span>
-            <p className="text-[11px] sm:text-xs font-semibold tracking-wide truncate">
-              Powered by <span className="underline decoration-white/40 underline-offset-2">IBM Granite 4</span>
-              <span className="hidden sm:inline"> on watsonx.ai</span>
-              <span className="mx-1.5 opacity-50">·</span>
-              <span className="font-normal opacity-90">multimodal reverse engineering</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-mono uppercase tracking-wider opacity-95">
-            <span className="hidden md:inline rounded-full bg-white/15 px-2 py-0.5">Llama 3.2 Vision</span>
-            <span className="rounded-full bg-white/15 px-2 py-0.5">Code Engine</span>
-            <span className="rounded-full bg-white text-[#0f62fe] px-2 py-0.5 font-bold">AI Builders 2026</span>
-          </div>
-        </div>
-      </div>
-
       <div className="flex flex-1 min-h-0">
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground relative">
@@ -413,20 +391,10 @@ function Studio() {
           </div>
         </nav>
 
-        <div className="relative mt-auto p-4 space-y-3">
-          <Card className="bg-sidebar-accent/40 border-sidebar-border p-4 relative overflow-hidden">
-            <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-primary/20 blur-2xl" />
-            <div className="relative flex items-center gap-2 text-xs font-medium">
-              <Cpu className="h-3.5 w-3.5 text-primary" />
-              IBM Granite 4 · watsonx.ai
-            </div>
-            <p className="relative text-[11px] text-muted-foreground mt-2 leading-relaxed">
-              Primary voice of every hook &amp; script. Llama 3.2 Vision for frames. Whisper + Tavily alongside.
-            </p>
-          </Card>
-          <div className="text-[10px] text-muted-foreground px-2 font-mono uppercase tracking-widest">
-            IBM AI Builders Challenge · 2026
-          </div>
+        <div className="relative mt-auto p-4 border-t border-sidebar-border">
+          <p className="text-[10px] text-muted-foreground text-center tracking-wide">
+            Powered by <span className="text-foreground/80 font-medium">IBM Granite</span>
+          </p>
         </div>
       </aside>
 
@@ -436,7 +404,7 @@ function Studio() {
         <div className="absolute inset-0 bg-grid pointer-events-none opacity-50 hidden sm:block" />
 
         <div className="relative">
-          {/* Sticky chrome: progress + mobile stepper + Granite badge */}
+          {/* Sticky chrome: progress + mobile stepper */}
           <div className="border-b border-border/60 backdrop-blur-md bg-background/75 sticky top-0 z-20">
             <div className="max-w-5xl mx-auto px-4 md:px-10 py-3 flex items-center gap-3">
               <div className="lg:hidden flex items-center gap-2 shrink-0">
@@ -453,13 +421,6 @@ function Studio() {
                   {Math.round(progress)}%
                 </span>
               </div>
-              <Badge
-                variant="outline"
-                className="shrink-0 gap-1.5 border-primary/40 bg-primary/10 text-[10px] px-2.5 py-1 font-medium"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-granite-pulse" />
-                <span className="hidden xs:inline sm:inline">IBM</span> Granite
-              </Badge>
               {profile && (
                 <Button
                   variant="ghost"
@@ -565,6 +526,14 @@ function Studio() {
                 onRestart={restart}
               />
             )}
+
+            {/* Product footer — single quiet IBM credit */}
+            <footer className="mt-14 md:mt-20 pt-6 border-t border-border/50 pb-2">
+              <p className="text-center text-[11px] text-muted-foreground tracking-wide">
+                Viral Formula Studio · Powered by{" "}
+                <span className="text-foreground/75 font-medium">IBM Granite</span>
+              </p>
+            </footer>
           </div>
         </div>
       </main>
@@ -610,15 +579,9 @@ function CreatorStep({
         <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
         <div className="relative space-y-4 max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="gap-1.5 border-primary/30 bg-primary/10">
-              <Cpu className="h-3 w-3 text-primary" />
-              IBM watsonx · Granite 4
-            </Badge>
-            <Badge variant="secondary" className="text-[10px] gap-1">
-              <Sparkle className="h-3 w-3" /> AI Builders Challenge
-            </Badge>
-          </div>
+          <Badge variant="outline" className="gap-1.5">
+            <Sparkle className="h-3 w-3" /> Multimodal creator studio
+          </Badge>
           <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05] tracking-tight">
             Reverse-engineer any creator&apos;s{" "}
             <span className="text-gradient">viral formula</span>
@@ -629,18 +592,14 @@ function CreatorStep({
             Inspiration, not imitation.
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Stack</span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/15 text-primary text-xs font-medium border border-primary/25">
-              <Cpu className="h-3 w-3" /> Granite 4
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
+              <Youtube className="h-3 w-3 text-red-500" /> YouTube Shorts
             </span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
-              <Eye className="h-3 w-3" /> Llama Vision
+              <Scissors className="h-3 w-3 text-success" /> Measured metrics
             </span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
-              <Youtube className="h-3 w-3 text-red-500" /> Shorts
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
-              <Scissors className="h-3 w-3 text-success" /> ffmpeg metrics
+              <Film className="h-3 w-3 text-primary" /> Shoot-ready script
             </span>
           </div>
         </div>
@@ -648,9 +607,9 @@ function CreatorStep({
         {/* Pipeline strip */}
         <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
           {[
-            { icon: Eye, label: "01 · Measure", text: "ffmpeg + Whisper read real cuts, WPM, frames", tone: "text-sky-400" },
-            { icon: Brain, label: "02 · Decode", text: "IBM Granite 4 extracts style; Vision reads edit grammar", tone: "text-primary" },
-            { icon: Wand2, label: "03 · Transpose", text: "Hooks + shooting script on your topic, with sources", tone: "text-emerald-400" },
+            { icon: Eye, label: "01 · Measure", text: "Cuts/min, speech rate, frames — numbers first", tone: "text-sky-400" },
+            { icon: Brain, label: "02 · Decode", text: "Extract style, hooks and editing grammar", tone: "text-primary" },
+            { icon: Wand2, label: "03 · Transpose", text: "Hooks + shooting script on your topic", tone: "text-emerald-400" },
           ].map(({ icon: Icon, label, text, tone }) => (
             <div
               key={label}
@@ -842,11 +801,9 @@ function CreatorStep({
                   rows={6}
                   className="bg-background/60 resize-none flex-1 min-h-[140px]"
                 />
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-[11px] text-muted-foreground leading-relaxed">
-                  <span className="text-primary font-medium flex items-center gap-1 mb-1">
-                    <Cpu className="h-3 w-3" /> Scout + Granite
-                  </span>
-                  Tavily verifies checkable facts; IBM Granite 4 writes hooks &amp; script grounded only in that evidence.
+                <div className="rounded-lg border border-border/60 bg-secondary/40 p-3 text-[11px] text-muted-foreground leading-relaxed">
+                  <span className="text-foreground font-medium">Fact-check on:</span> we verify
+                  checkable claims about your topic and cite sources in the final script.
                 </div>
               </Card>
             </div>
@@ -893,22 +850,22 @@ type PhaseSpec = {
 };
 
 const ANALYSIS_PHASES: PhaseSpec[] = [
-  { id: "Agent 0", name: "Measure", desc: "yt-dlp + ffmpeg: cuts/min, shot length, frames", delay: 0, duration: 8, engine: "Deterministic · no LLM" },
-  { id: "Agent 4.1", name: "Textual Analyst", desc: "Copy fingerprint, tone, hook patterns from transcripts", delay: 6, duration: 28, engine: "IBM Granite 4 · watsonx.ai" },
-  { id: "Agent 4.2", name: "Visual Editor", desc: "Editing grammar from sampled frames", delay: 6, duration: 32, engine: "Llama 3.2 Vision · watsonx.ai" },
-  { id: "Agent 4.5", name: "Thumbnail Analyst", desc: "Composition, contrast & CTR signals", delay: 8, duration: 20, engine: "Llama 3.2 Vision · watsonx.ai" },
+  { id: "01", name: "Measure", desc: "Download, cuts/min, shot length, frames", delay: 0, duration: 8 },
+  { id: "02", name: "Text style", desc: "Tone, hooks and copy fingerprint", delay: 6, duration: 28 },
+  { id: "03", name: "Visual edit", desc: "Editing grammar from sampled frames", delay: 6, duration: 32 },
+  { id: "04", name: "Thumbnail", desc: "Composition, contrast & CTR signals", delay: 8, duration: 20 },
 ];
 
 const HOOKS_PHASES: PhaseSpec[] = [
-  { id: "Scout 5.1", name: "Fact-Checker", desc: "Tavily search + source URLs for the user's topic", delay: 0, duration: 12, engine: "Tavily · evidence only" },
-  { id: "Granite 4", name: "Hook Strategist", desc: "10 hooks: creator patterns × your theme", delay: 8, duration: 45, engine: "IBM Granite 4 · watsonx.ai" },
-  { id: "Quality", name: "Honesty gate", desc: "Strip noise, enforce theme, keep evidence_notes", delay: 40, duration: 40, engine: "IBM Granite 4 · structured out" },
+  { id: "01", name: "Fact-check", desc: "Verify topic claims with sources", delay: 0, duration: 12 },
+  { id: "02", name: "Hook strategist", desc: "10 hooks from measured patterns × your theme", delay: 8, duration: 45 },
+  { id: "03", name: "Quality pass", desc: "Theme fit, clarity, honesty notes", delay: 40, duration: 40 },
 ];
 
 const COPY_PHASES: PhaseSpec[] = [
-  { id: "Scout 5.1", name: "Fact refresh", desc: "Re-ground claims before writing the script", delay: 0, duration: 12, engine: "Tavily + Granite" },
-  { id: "Granite 4", name: "Script Director", desc: "Full narration + timestamps + shot list (not only the hook)", delay: 6, duration: 50, engine: "IBM Granite 4 · watsonx.ai" },
-  { id: "Normalize", name: "Call-sheet polish", desc: "Recover blocks, spoken copy, editing directions", delay: 45, duration: 45, engine: "Post-process · measured format" },
+  { id: "01", name: "Fact refresh", desc: "Re-ground claims before writing", delay: 0, duration: 12 },
+  { id: "02", name: "Script director", desc: "Full narration + shot list + timestamps", delay: 6, duration: 50 },
+  { id: "03", name: "Format polish", desc: "Blocks, spoken copy, editing directions", delay: 45, duration: 45 },
 ];
 
 function PhasedWait({
@@ -931,17 +888,12 @@ function PhasedWait({
   }, []);
 
   const rotatingTips = [
-    "IBM Granite 4 (ibm/granite-4-h-small) is the primary voice of this product on watsonx.ai.",
-    "We measure first with ffmpeg — Granite only interprets numbers and verified facts.",
-    "Llama 3.2 Vision on watsonx reads frames; Granite writes hooks, copy and playbooks.",
-    "Judges: every user-facing sentence is designed to run on IBM Granite — OpenAI is fallback only.",
-    "Honesty by design: unconfirmed claims become [INSERT: …] placeholders, never invented stats.",
-    "Cold starts on Code Engine can push this to 60–120s — the request is still live.",
+    "We measure first — the model only interprets numbers and verified facts.",
+    "Typical wait: 20–90s depending on load and cold start.",
+    "Spoken copy is built from every timeline block, not only the hook.",
+    "Honesty by design: unconfirmed claims become [INSERT: …] placeholders.",
   ];
   const tip = rotatingTips[Math.floor(elapsed / 7) % rotatingTips.length];
-
-  const modeLabel =
-    mode === "hooks" ? "Hook generation" : mode === "copy" ? "Script generation" : "Creator analysis";
 
   // Phases are an ETA animation only — this component stays mounted until the real API returns.
   // Never show "all Complete" while we are still waiting (that looked like a stuck UI at ~45s+).
@@ -954,22 +906,10 @@ function PhasedWait({
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent" />
       <div className="absolute -top-24 right-0 h-48 w-48 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
 
-      {/* Judge-facing IBM banner */}
-      <div className="relative flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary relative animate-granite-pulse">
-          <Cpu className="h-7 w-7" />
-        </div>
-        <div className="text-center sm:text-left space-y-1">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-            </span>
-            IBM Granite 4 working on watsonx.ai
-          </div>
-          <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
-            {modeLabel} · multi-agent pipeline · live
-          </div>
+      <div className="relative flex flex-col items-center gap-3">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary relative">
+          <Loader2 className="h-7 w-7 animate-spin" />
+          <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-primary/30 animate-pulse" />
         </div>
       </div>
 
@@ -981,28 +921,10 @@ function PhasedWait({
         )}
         {pastPlan && (
           <p className="text-xs text-primary font-medium pt-1 max-w-md mx-auto leading-relaxed">
-            Still waiting on watsonx.ai ({elapsed}s) — phases above are progress estimates; the API
-            request is still running (cold start / model load can take 60–120s).
+            Still working ({elapsed}s) — progress cards are estimates; the request is live
+            (cold starts can take 60–120s).
           </p>
         )}
-      </div>
-
-      {/* Model stack strip for judges */}
-      <div className="relative flex flex-wrap items-center justify-center gap-2">
-        {[
-          { label: "IBM Granite 4", sub: "text · hooks · script" },
-          { label: "Llama 3.2 Vision", sub: "frames · thumbnail" },
-          { label: "Whisper / ffmpeg", sub: "speech · metrics" },
-          { label: "Tavily", sub: "fact-check" },
-        ].map((m) => (
-          <div
-            key={m.label}
-            className="rounded-lg border border-border/50 bg-background/50 px-2.5 py-1.5 text-left"
-          >
-            <div className="text-[11px] font-medium text-foreground">{m.label}</div>
-            <div className="text-[9px] text-muted-foreground font-mono">{m.sub}</div>
-          </div>
-        ))}
       </div>
 
       <div className="grid sm:grid-cols-2 gap-3 text-left relative">
@@ -1074,17 +996,6 @@ function PhasedWait({
                   {agent.name}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1 leading-relaxed">{agent.desc}</div>
-                {agent.engine && (
-                  <div
-                    className={cn(
-                      "mt-2 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-mono",
-                      isActive ? "bg-primary/15 text-primary" : "bg-secondary/60 text-muted-foreground",
-                    )}
-                  >
-                    <Cpu className="h-2.5 w-2.5" />
-                    {agent.engine}
-                  </div>
-                )}
               </div>
             </div>
           );
@@ -1097,10 +1008,13 @@ function PhasedWait({
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
           </span>
-          watsonx session · {elapsed}s elapsed
+          {elapsed}s elapsed
         </div>
         <p className="text-[11px] text-muted-foreground/90 max-w-md mx-auto leading-relaxed transition-opacity duration-500 min-h-[2.5rem]">
           {tip}
+        </p>
+        <p className="text-[10px] text-muted-foreground/70 tracking-wide">
+          Powered by IBM Granite
         </p>
       </div>
     </Card>
@@ -1110,8 +1024,8 @@ function PhasedWait({
 function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
   return (
     <PhasedWait
-      title="IBM multi-agent orchestration live"
-      subtitle="Specialized agents on watsonx.ai measure the creator, then Granite 4 and Llama Vision decode the formula. ~30–90s."
+      title="Decoding the creator formula"
+      subtitle="Measuring the videos, then extracting style and editing grammar. Usually ~30–90 seconds."
       phases={ANALYSIS_PHASES}
       statusLine={jobStatus}
       mode="analysis"
@@ -1227,9 +1141,6 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
           <Badge variant="outline" className="gap-1.5">
             <Gauge className="h-3 w-3" /> Evidence room
           </Badge>
-          <Badge variant="outline" className="gap-1.5 border-primary/30 bg-primary/10 text-[10px]">
-            <Cpu className="h-3 w-3 text-primary" /> Granite + Vision decoded
-          </Badge>
           <Badge variant="secondary" className="font-mono text-[10px]">
             {profile.creator}
           </Badge>
@@ -1238,7 +1149,7 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
           Formula <span className="text-gradient">measured</span>, not guessed.
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
-          Deterministic ffmpeg numbers + IBM Granite 4 style reading + Llama Vision edit grammar.
+          Numbers from ffmpeg plus stylistic and visual reading of the videos.
           Each line becomes an instruction in your final call sheet.
         </p>
       </header>
@@ -1246,7 +1157,7 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
       {styleHealed && (
         <Card className="p-4 md:p-5 border-primary/30 bg-primary/10 space-y-2">
           <div className="font-display font-semibold text-sm flex items-center gap-2">
-            <Cpu className="h-4 w-4 text-primary" />
+            <Gauge className="h-4 w-4 text-primary" />
             Fingerprint recovered from measured metrics
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
@@ -1584,8 +1495,8 @@ function HooksStep({
 
       {loading && (
         <PhasedWait
-          title="IBM Granite 4 is writing your hooks"
-          subtitle={`Fact-checking “${topic}” with Tavily, then Granite 4 maps the creator’s measured patterns onto your theme. Usually 20–60s.`}
+          title="Writing hooks in the creator’s technique"
+          subtitle={`Fact-checking “${topic}”, then mapping measured patterns onto your theme. Usually 20–60s.`}
           phases={HOOKS_PHASES}
           mode="hooks"
         />
@@ -1740,7 +1651,7 @@ function buildExportMarkdown(opts: {
     `- **Creator formula:** ${opts.creator || "—"}`,
     `- **Topic:** ${opts.topic || "—"}`,
     `- **Spoken words:** ${opts.wordCount}`,
-    `- **Engine:** IBM Granite 4 on watsonx.ai`,
+    `- **Engine:** Viral Formula Studio`,
     ``,
     `## Hook`,
     opts.hook,
@@ -1790,15 +1701,15 @@ function CopyStep({
     return (
       <div className="space-y-10">
         <header className="space-y-4 max-w-3xl">
-          <Badge variant="outline" className="gap-1.5 border-primary/30 bg-primary/10">
-            <Cpu className="h-3 w-3 text-primary" /> Step 5 · IBM Granite script
+          <Badge variant="outline" className="gap-1.5">
+            <Wand2 className="h-3 w-3" /> Final step · shooting script
           </Badge>
           <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
             Your script, <span className="text-gradient">ready to shoot</span>.
           </h1>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            Granite 4 writes a full call sheet: spoken narration, timecodes, shot types and
-            retention psychology — grounded in measured metrics and verified facts.
+            Full call sheet: spoken narration, timecodes, shot types and retention psychology —
+            grounded in measured metrics and verified facts.
           </p>
         </header>
         {!generating && (
@@ -1819,17 +1730,17 @@ function CopyStep({
               )}
             </div>
             <Button size="lg" onClick={onGenerate} className="shadow-glow relative" disabled={!hook}>
-              Generate with Granite 4 <ArrowRight className="h-4 w-4" />
+              Generate script <ArrowRight className="h-4 w-4" />
             </Button>
             <p className="text-[11px] text-muted-foreground relative">
-              30–90s · Tavily fact-check · IBM Granite 4 · format polish
+              Usually 30–90s · fact-check + full narration + format polish
             </p>
           </Card>
         )}
         {generating && (
           <PhasedWait
-            title="IBM Granite 4 is directing your video"
-            subtitle="Injecting measured creator profile + verified facts. Full narration and shot list — not just the opening hook."
+            title="Writing the complete shooting script"
+            subtitle="Injecting creator profile + verified facts. Full narration and shot list — not just the opening hook."
             phases={COPY_PHASES}
             mode="copy"
           />
@@ -1901,9 +1812,6 @@ function CopyStep({
                 <Badge className="gap-1.5 bg-primary text-primary-foreground">
                   <FileText className="h-3 w-3" /> Shooting Report
                 </Badge>
-                <Badge variant="outline" className="gap-1.5 border-primary/40 text-[10px]">
-                  <Cpu className="h-3 w-3 text-primary" /> Written by IBM Granite 4
-                </Badge>
                 {result.format_repaired && (
                   <Badge variant="secondary" className="text-[10px]">
                     format auto-repaired
@@ -1960,7 +1868,7 @@ function CopyStep({
         {thinCopy && (
           <div className="mx-5 md:mx-8 mt-5 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-sm">
             Spoken copy looks short ({spokenWordCount} words). Use <strong>Regenerate</strong> for a
-            fuller Granite pass — timeline directions may still be usable.
+            fuller script pass — timeline directions may still be usable.
           </div>
         )}
 
@@ -2118,8 +2026,8 @@ function CopyStep({
                     <Gauge className="h-4 w-4 text-success" /> Honesty notes
                   </h3>
                   <p className="text-[12px] text-muted-foreground leading-relaxed">{result.data_notes}</p>
-                  <p className="text-[10px] font-mono text-muted-foreground/70 pt-2 border-t border-border/40">
-                    Verified via Tavily · synthesized by IBM Granite 4
+                  <p className="text-[10px] text-muted-foreground/70 pt-2 border-t border-border/40">
+                    Sources verified · honesty notes included
                   </p>
                 </div>
               )}
@@ -2127,15 +2035,15 @@ function CopyStep({
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/40">
-            <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-              IBM AI Builders · watsonx.ai · inspiration not imitation
+            <p className="text-[10px] text-muted-foreground tracking-wide">
+              Inspiration, not imitation · Powered by IBM Granite
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={onNewTopic}>
                 New topic
               </Button>
               <Button size="sm" className="shadow-glow" onClick={onGenerate}>
-                Regenerate with Granite
+                Regenerate script
               </Button>
             </div>
           </div>
