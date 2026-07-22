@@ -289,16 +289,22 @@ def is_error_blob(text: str) -> bool:
     return False
 
 
-def spoken_tokens(text: str) -> list[str]:
-    """Tokenize speech-like words only (no URLs, no infra junk, no stopwords)."""
+def spoken_tokens(text: str, *, drop_stopwords: bool = True) -> list[str]:
+    """Tokenize speech-like words (no URLs / infra junk).
+
+    drop_stopwords=True → content terms only (style fallback unigrams).
+    drop_stopwords=False → keep function words so n-grams like "final do dia" survive.
+    """
     cleaned = strip_urls(text or "")
-    words = re.findall(r"[a-záàâãéêíóôõúç']{3,}", cleaned.lower())
+    words = re.findall(r"[a-záàâãéêíóôõúç']{2,}", cleaned.lower())
     out: list[str] = []
     for w in words:
         w = w.strip("'")
-        if len(w) < 3:
+        if len(w) < 2:
             continue
-        if w in STOPWORDS or w in JUNK_TOKENS:
+        if w in JUNK_TOKENS:
+            continue
+        if drop_stopwords and w in STOPWORDS:
             continue
         if re.fullmatch(r"[0-9]+", w):
             continue

@@ -119,13 +119,17 @@ def signature_ngrams(creator: str, n: int = 3, top_k: int = 10, min_count: int =
         raw = str(item.get("transcription") or "")
         if not is_speech_like(raw, min_tokens=6):
             continue
-        words = spoken_tokens(raw)
+        # Keep function words for natural phrases ("final do dia"); drop only infra junk
+        words = spoken_tokens(raw, drop_stopwords=False)
         if len(words) < n:
             continue
         for i in range(len(words) - n + 1):
             gram = tuple(words[i : i + n])
-            # spoken_tokens already dropped stopwords/junk; still skip weak edges
             if gram[0] in STOPWORDS or gram[-1] in STOPWORDS:
+                continue
+            if any(tok in STOPWORDS and tok in {"http", "https"} for tok in gram):
+                continue
+            if any(tok in {"https", "http", "www", "ibm", "cloud", "quota"} for tok in gram):
                 continue
             counter[gram] += 1
 
