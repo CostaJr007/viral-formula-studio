@@ -32,8 +32,48 @@ Honesty rules (CRITICAL):
   never estimate what has already been measured.
 - If the evidence is insufficient for any dimension, state that explicitly
   in the evidence_notes field instead of filling it with assumptions.
+- NEVER put the literal strings "N/A", "None", "Unknown", or "n/a" into tone,
+  persona, sentence_rhythm, or copy_structure. If you cannot assess a field,
+  write a short honest phrase like "Insufficient transcript evidence" and explain
+  fully in evidence_notes.
+- If the provided "transcriptions" are error messages, API failures, or empty
+  placeholders (not real spoken words), do NOT invent a fingerprint — set
+  evidence_notes to describe the failure and use "Insufficient transcript evidence"
+  for textual fields, with empty hook_patterns / signature_expressions lists.
 - Respond in English.
 """
+
+
+def _is_usable_transcription(text: str, *, min_words: int = 25) -> bool:
+    """Reject empty, tiny, or error-message 'transcripts' that poison style analysis."""
+    raw = (text or "").strip()
+    if not raw:
+        return False
+    words = raw.split()
+    if len(words) < min_words:
+        return False
+    lower = raw.lower()
+    error_markers = (
+        "error message",
+        "failed request",
+        "request failed",
+        "rate limit",
+        "unauthorized",
+        "traceback",
+        "exception:",
+        "http error",
+        "could not retrieve",
+        "transcription unavailable",
+        "no captions",
+        "access denied",
+        "403",
+        "401",
+        "500 internal",
+    )
+    # Short blobs that are clearly system errors, not speech
+    if len(words) < 80 and any(m in lower for m in error_markers):
+        return False
+    return True
 
 
 def analyze_style(creator: str, max_videos: int | None = None, metrics: dict | None = None) -> CreatorStyle:
@@ -42,7 +82,28 @@ def analyze_style(creator: str, max_videos: int | None = None, metrics: dict | N
     if not items:
         raise ValueError(f"No transcriptions found for '{creator}'. Run the transcription first.")
 
-    sample = items[: max_videos or settings.max_videos_per_creator]
+    usable = [it for it in items if _is_usable_transcription(str(it.get("transcription") or ""))]
+    if not usable:
+        logger.warning(
+            "All transcriptions for '%s' look empty/errored — returning insufficient-evidence style.",
+            creator,
+        )
+        return CreatorStyle(
+            tone="Insufficient transcript evidence",
+            sentence_rhythm="Insufficient transcript evidence",
+            persona="Insufficient transcript evidence",
+            hook_patterns=[],
+            copy_structure="Insufficient transcript evidence — re-ingest with working captions or Whisper.",
+            signature_expressions=[],
+            persuasion_tactics=[],
+            evidence_notes=(
+                f"No usable spoken transcriptions for '{creator}'. "
+                "Captions/Whisper may have failed (error text stored instead of speech). "
+                "Re-run ingest with public YouTube Shorts + GROQ_API_KEY, or use a seed creator."
+            ),
+        )
+
+    sample = usable[: max_videos or settings.max_videos_per_creator]
     text = "\n\n---\n\n".join(f"[{item['video']}]\n{item['transcription']}" for item in sample)
 
     metrics_block = ""

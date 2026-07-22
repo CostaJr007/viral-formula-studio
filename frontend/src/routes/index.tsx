@@ -1089,12 +1089,47 @@ function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
 
 /* ---------------- Step 2: Profile ---------------- */
 
+function isBlankField(value?: string | null): boolean {
+  if (value == null) return true;
+  const t = value.trim();
+  if (!t) return true;
+  return /^(n\/?a|none|null|unknown|tbd|-|—)$/i.test(t);
+}
+
+/** Style object exists but Granite only returned N/A (failed/empty transcripts). */
+function isStyleUsable(style?: Profile["style"] | null): boolean {
+  if (!style) return false;
+  const coreBlank =
+    isBlankField(style.tone) &&
+    isBlankField(style.persona) &&
+    isBlankField(style.copy_structure);
+  const noHooks = !style.hook_patterns?.length;
+  const noExprs = !style.signature_expressions?.length;
+  if (coreBlank && noHooks) return false;
+  // "Insufficient transcript evidence" is honest but not a usable fingerprint for hooks
+  if (
+    /insufficient transcript|analysis failed/i.test(
+      `${style.tone} ${style.copy_structure} ${style.persona}`,
+    ) &&
+    noHooks &&
+    noExprs
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () => void }) {
   if (!profile) return null;
 
   const editingM = profile.metrics?.editing;
   const speechM = profile.metrics?.speech;
   const ngrams = profile.metrics?.signature_ngrams ?? [];
+  const styleOk = isStyleUsable(profile.style);
+  const phraseChips =
+    ngrams.length > 0
+      ? ngrams.slice(0, 8).map((g) => `${g.ngram} (${g.count}x)`)
+      : (profile.style?.signature_expressions ?? []).filter((s) => !isBlankField(s));
 
   const metricCards = [
     { label: "Cuts / min", value: editingM?.avg_cuts_per_min ?? "—", unit: "" },
@@ -1113,6 +1148,9 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
           <Badge variant="outline" className="gap-1.5 border-primary/30 bg-primary/10 text-[10px]">
             <Cpu className="h-3 w-3 text-primary" /> Granite + Vision decoded
           </Badge>
+          <Badge variant="secondary" className="font-mono text-[10px]">
+            {profile.creator}
+          </Badge>
         </div>
         <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
           Formula <span className="text-gradient">measured</span>, not guessed.
@@ -1122,6 +1160,29 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
           Each line becomes an instruction in your final call sheet.
         </p>
       </header>
+
+      {!styleOk && (
+        <Card className="p-4 md:p-5 border-yellow-500/35 bg-yellow-500/10 space-y-2">
+          <div className="font-display font-semibold text-sm flex items-center gap-2">
+            <Zap className="h-4 w-4 text-yellow-400" />
+            Copy fingerprint unavailable for this run
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Transcriptions were missing, too short, or stored as an error (common when YouTube
+            blocks cloud IPs or captions/Whisper fail). Editing metrics may still be valid.
+          </p>
+          {profile.style?.evidence_notes && (
+            <p className="text-xs text-muted-foreground/90 italic border-t border-border/40 pt-2">
+              {profile.style.evidence_notes}
+            </p>
+          )}
+          <p className="text-xs text-foreground/90 pt-1">
+            <strong>Fix:</strong> use a seed demo (jeffnippard / bryan / kallaway) with no links, or
+            re-ingest public Shorts with <code className="font-mono text-[11px]">GROQ_API_KEY</code> set
+            on the API.
+          </p>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {metricCards.map((m) => (
@@ -1145,47 +1206,63 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
             <Wand2 className="h-4 w-4 text-primary" />
             <h3 className="font-display font-medium">Copy fingerprint</h3>
           </div>
-          {profile.style ? (
+          {styleOk && profile.style ? (
             <>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">{profile.style.tone}</strong> —{" "}
-                {profile.style.persona}. {profile.style.sentence_rhythm}
+                <strong className="text-foreground">{profile.style.tone}</strong>
+                {!isBlankField(profile.style.persona) && <> — {profile.style.persona}</>}
+                {!isBlankField(profile.style.sentence_rhythm) && <> · {profile.style.sentence_rhythm}</>}
               </p>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {profile.style.copy_structure}
-              </p>
+              {!isBlankField(profile.style.copy_structure) && (
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {profile.style.copy_structure}
+                </p>
+              )}
               <Separator />
               <div>
                 <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
                   Signature phrases (measured)
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {(ngrams.length > 0
-                    ? ngrams.slice(0, 6).map((g) => `${g.ngram} (${g.count}x)`)
-                    : profile.style.signature_expressions
-                  ).map((n) => (
-                    <Badge key={n} variant="secondary" className="font-mono text-[11px]">
-                      {n}
-                    </Badge>
-                  ))}
-                </div>
+                {phraseChips.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {phraseChips.map((n) => (
+                      <Badge key={n} variant="secondary" className="font-mono text-[11px]">
+                        {n}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No repeated phrases measured yet.</p>
+                )}
               </div>
               <div>
                 <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
                   Hook patterns
                 </div>
-                <ul className="space-y-2 text-sm">
-                  {profile.style.hook_patterns.map((h) => (
-                    <li key={h.pattern} className="text-muted-foreground">
-                      <span className="text-foreground font-medium">{h.pattern}</span> —{" "}
-                      {h.why_it_works}
-                    </li>
-                  ))}
-                </ul>
+                {(profile.style.hook_patterns?.length ?? 0) > 0 ? (
+                  <ul className="space-y-2 text-sm">
+                    {profile.style.hook_patterns.map((h) => (
+                      <li key={h.pattern} className="text-muted-foreground">
+                        <span className="text-foreground font-medium">{h.pattern}</span>
+                        {!isBlankField(h.why_it_works) && <> — {h.why_it_works}</>}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No hook patterns extracted.</p>
+                )}
               </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">No textual analysis available.</p>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                No usable textual fingerprint — the model only had empty/error transcripts, so it
+                correctly refused to invent tone, hooks, or phrases.
+              </p>
+              <p className="text-xs font-mono text-muted-foreground/80">
+                Try seed creator <span className="text-primary">jeffnippard</span> for a full demo.
+              </p>
+            </div>
           )}
         </Card>
 

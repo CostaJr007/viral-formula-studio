@@ -40,7 +40,23 @@ def analyze_creator(
 
     transcriptions = store.get_creator_transcriptions(creator)
     if transcriptions:
-        profile.style = analyze_style(creator, max_videos, metrics=profile.metrics)
+        try:
+            profile.style = analyze_style(creator, max_videos, metrics=profile.metrics)
+        except Exception as e:
+            # Never leave a silent empty fingerprint — surface the failure in evidence.
+            logger.exception("Textual analysis failed for '%s'", creator)
+            from .schemas import CreatorStyle
+
+            profile.style = CreatorStyle(
+                tone="Analysis failed",
+                sentence_rhythm="Analysis failed",
+                persona="Analysis failed",
+                hook_patterns=[],
+                copy_structure="Textual analysis did not complete.",
+                signature_expressions=[],
+                persuasion_tactics=[],
+                evidence_notes=f"Textual analysis error: {e!s}"[:500],
+            )
         profile.videos_analyzed = min(len(transcriptions), max_videos or settings.max_videos_per_creator)
     else:
         logger.warning("No transcriptions for '%s' — textual analysis skipped.", creator)
