@@ -233,9 +233,9 @@ function Studio() {
         }
         setJobStatus(
           job.status === "ingesting"
-            ? "Downloading & transcribing videos (yt-dlp + Whisper)…"
+            ? "Downloading and transcribing videos…"
             : job.status === "analyzing"
-              ? "Measuring cuts + analyzing style & editing…"
+              ? "Measuring cuts and decoding style…"
               : "Queued…",
         );
       }
