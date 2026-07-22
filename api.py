@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from studio import store
-from studio.create import generate_copy, generate_hooks
+from studio.create import copy_payload, generate_copy, generate_hooks
 from studio.dossier import generate_dossier
 from studio.ingest import ingest_urls
 from studio.limits import limiter
@@ -197,7 +197,8 @@ async def copy(req: CopyRequest) -> dict:
         result = await asyncio.to_thread(generate_copy, req.creator, req.topic, req.hook, profile=req.profile)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    return result.model_dump() | {"word_count": len(result.script.split())}
+    # Structured blocks + spoken_copy so the frontend never depends on brittle pipe parsing alone
+    return copy_payload(result)
 
 
 @app.post("/api/dossier")

@@ -164,3 +164,71 @@
 @utility shadow-glow {
   box-shadow: var(--shadow-glow);
 }
+
+@utility shadow-elegant {
+  box-shadow: var(--shadow-elegant);
+}
+
+/* Subtle grid used behind studio surfaces */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 3%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 3%) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Film-strip edge for shooting timeline */
+@utility film-strip {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 10px,
+    oklch(1 0 0 / 8%) 10px,
+    oklch(1 0 0 / 8%) 14px
+  );
+}
+
+/* Call-sheet document surface */
+@utility call-sheet {
+  background:
+    linear-gradient(180deg, oklch(0.23 0.01 250 / 0.9), oklch(0.18 0.006 250 / 0.95)),
+    radial-gradient(ellipse at top left, oklch(0.56 0.22 264 / 0.12), transparent 50%);
+}
+
+/* Soft entrance for step content */
+@keyframes studio-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-studio-in {
+  animation: studio-fade-up 0.35s ease-out both;
+}
+
+@keyframes granite-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 0 oklch(0.56 0.22 264 / 0.35);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 24px 2px oklch(0.56 0.22 264 / 0.35);
+  }
+}
+
+@utility animate-granite-pulse {
+  animation: granite-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

@@ -6,14 +6,14 @@ import {
   Camera,
   Check,
   Copy as CopyIcon,
+  Cpu,
+  Download,
   Eye,
-  Globe,
-  Loader2,
+  FileText,
   Film,
   Gauge,
   Link as LinkIcon,
-  Mic,
-  Music,
+  Loader2,
   Play,
   RotateCcw,
   Scissors,
@@ -21,7 +21,6 @@ import {
   Target,
   Trash2,
   Wand2,
-  Waves,
   Youtube,
   Zap,
 } from "lucide-react";
@@ -107,22 +106,63 @@ type Profile = {
 
 type Hook = { text: string; pattern: string };
 
+type ScriptBlock = {
+  timestamp: string;
+  shot: string;
+  text: string;
+  editing: string;
+  why: string;
+};
+
 type CopyResult = {
   script: string;
+  /** Clean spoken narration only (preferred for Complete Copy panel). */
+  spoken_copy?: string;
+  /** Structured blocks from backend normalizer (preferred for shooting board). */
+  blocks?: ScriptBlock[];
   editing_directions: string[];
   data_notes: string;
   word_count: number;
+  format_repaired?: boolean;
+  block_count?: number;
 };
 
 type StepId = "creator" | "profile" | "topic-select" | "hooks" | "copy";
 
 const STEPS: { id: StepId; label: string; hint: string; icon: typeof LinkIcon }[] = [
-  { id: "creator", label: "Creator", hint: "5 YouTube Shorts links", icon: LinkIcon },
+  { id: "creator", label: "Creator", hint: "links or demo", icon: LinkIcon },
   { id: "profile", label: "Profile", hint: "measured formula", icon: Gauge },
   { id: "topic-select", label: "Topic", hint: "your theme", icon: Target },
-  { id: "hooks", label: "Hooks", hint: "10 derived hooks", icon: Target },
-  { id: "copy", label: "Copy", hint: "script ≤200 words", icon: Wand2 },
+  { id: "hooks", label: "Hooks", hint: "10 patterns", icon: Target },
+  { id: "copy", label: "Script", hint: "shooting report", icon: Wand2 },
 ];
+
+const DEMO_CREATORS = [
+  {
+    name: "Bryan",
+    topic: "optimal morning routine for longevity",
+    tag: "Longevity",
+    desc: "Biohacking · data-driven tone · measured slow cuts",
+    metrics: { cuts: "12.4", wpm: "148", shot: "2.1s" },
+    accent: "from-emerald-500/25 to-primary/10",
+  },
+  {
+    name: "jeffnippard",
+    topic: "science-based hypertrophy training",
+    tag: "Fitness science",
+    desc: "Technical authority · fast cuts · proof-first hooks",
+    metrics: { cuts: "28.1", wpm: "172", shot: "1.1s" },
+    accent: "from-sky-500/25 to-primary/10",
+  },
+  {
+    name: "kallaway",
+    topic: "building consistent coding habits",
+    tag: "Tech / productivity",
+    desc: "Story-driven · motivational cadence · clean B-roll",
+    metrics: { cuts: "18.6", wpm: "155", shot: "1.6s" },
+    accent: "from-violet-500/25 to-primary/10",
+  },
+] as const;
 
 function Studio() {
   const [step, setStep] = useState<StepId>("creator");
@@ -233,6 +273,7 @@ function Studio() {
     if (pickedHook === null || !hooks[pickedHook]) return;
     setGeneratingCopy(true);
     setError(null);
+    setCopyResult(null); // show phased wait UX (also on regenerate)
     try {
       const result = await apiPost<CopyResult>("/api/copy", {
         creator: creatorName.trim(),
@@ -264,10 +305,12 @@ function Studio() {
     setError(null);
   }
 
+  const canNavigate = (id: StepId) => id === "creator" || profile !== null;
+
   return (
     <div className="min-h-screen flex bg-background text-foreground">
-      {/* Sidebar */}
-      <aside className="hidden md:flex w-72 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground relative">
+      {/* Sidebar — desktop */}
+      <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground relative">
         <div className="absolute inset-0 bg-grid opacity-40 pointer-events-none" />
         <div className="relative p-6 flex items-center gap-3">
           <div className="relative">
@@ -278,9 +321,7 @@ function Studio() {
           </div>
           <div className="leading-tight">
             <div className="font-display font-semibold text-[15px]">Viral Formula</div>
-            <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Studio
-            </div>
+            <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Studio</div>
           </div>
         </div>
 
@@ -295,47 +336,46 @@ function Studio() {
           <div className="relative">
             <span className="absolute left-[26px] top-4 bottom-4 w-px bg-gradient-to-b from-border via-border to-transparent" />
             <div className="space-y-1 relative">
-          {STEPS.map((s, i) => {
-            const active = s.id === step;
-            const done = i < stepIndex || (s.id === "creator" && profile !== null);
-            const Icon = s.icon;
-            return (
-              <button
-                key={s.id}
-                onClick={() => (s.id === "creator" || profile !== null ? setStep(s.id) : null)}
-                disabled={s.id !== "creator" && profile === null}
-                className={cn(
-                  "w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-all group relative",
-                  active && "bg-sidebar-accent shadow-glow ring-1 ring-primary/40",
-                  !active &&
-                    "hover:bg-sidebar-accent/60 disabled:opacity-40 disabled:cursor-not-allowed",
-                )}
-              >
-                <span
-                  className={cn(
-                    "mt-0.5 flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] font-mono font-medium shrink-0 transition-all",
-                    active
-                      ? "border-primary bg-primary text-primary-foreground shadow-glow"
-                      : done
-                        ? "border-success/60 bg-success/20 text-success"
-                        : "border-border bg-background text-muted-foreground",
-                  )}
-                >
-                  {done && !active ? <Check className="h-3.5 w-3.5" /> : String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="flex items-center gap-2 text-sm font-medium">
-                    <Icon className="h-3.5 w-3.5 opacity-80" />
-                    {s.label}
-                  </span>
-                  <span className="block text-xs text-muted-foreground mt-0.5">{s.hint}</span>
-                </span>
-                {active && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                )}
-              </button>
-            );
-          })}
+              {STEPS.map((s, i) => {
+                const active = s.id === step;
+                const done = i < stepIndex || (s.id === "creator" && profile !== null);
+                const Icon = s.icon;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => (canNavigate(s.id) ? setStep(s.id) : null)}
+                    disabled={!canNavigate(s.id)}
+                    className={cn(
+                      "w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-all group relative",
+                      active && "bg-sidebar-accent shadow-glow ring-1 ring-primary/40",
+                      !active && "hover:bg-sidebar-accent/60 disabled:opacity-40 disabled:cursor-not-allowed",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "mt-0.5 flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] font-mono font-medium shrink-0 transition-all",
+                        active
+                          ? "border-primary bg-primary text-primary-foreground shadow-glow"
+                          : done
+                            ? "border-success/60 bg-success/20 text-success"
+                            : "border-border bg-background text-muted-foreground",
+                      )}
+                    >
+                      {done && !active ? <Check className="h-3.5 w-3.5" /> : String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        <Icon className="h-3.5 w-3.5 opacity-80" />
+                        {s.label}
+                      </span>
+                      <span className="block text-xs text-muted-foreground mt-0.5">{s.hint}</span>
+                    </span>
+                    {active && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </nav>
@@ -344,16 +384,15 @@ function Studio() {
           <Card className="bg-sidebar-accent/40 border-sidebar-border p-4 relative overflow-hidden">
             <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-primary/20 blur-2xl" />
             <div className="relative flex items-center gap-2 text-xs font-medium">
-              <Sparkle className="h-3.5 w-3.5 text-primary" />
-              Powered by IBM Granite
+              <Cpu className="h-3.5 w-3.5 text-primary" />
+              IBM Granite 4 · watsonx.ai
             </div>
             <p className="relative text-[11px] text-muted-foreground mt-2 leading-relaxed">
-              Multimodal analysis with watsonx.ai. Whisper for transcription, Tavily for
-              fact checking.
+              Primary voice of every hook &amp; script. Llama 3.2 Vision for frames. Whisper + Tavily alongside.
             </p>
           </Card>
           <div className="text-[10px] text-muted-foreground px-2 font-mono uppercase tracking-widest">
-            IBM AI Builders · 2026
+            IBM AI Builders Challenge · 2026
           </div>
         </div>
       </aside>
@@ -361,45 +400,82 @@ function Studio() {
       {/* Main */}
       <main className="flex-1 min-w-0 relative">
         <div className="absolute inset-0 bg-hero pointer-events-none" />
-        <div className="absolute inset-0 bg-grid pointer-events-none opacity-60 hidden sm:block" />
+        <div className="absolute inset-0 bg-grid pointer-events-none opacity-50 hidden sm:block" />
 
         <div className="relative">
-          {/* Top bar */}
-          <div className="border-b border-border/60 backdrop-blur-md bg-background/70 sticky top-0 z-10">
-            <div className="max-w-5xl mx-auto px-4 md:px-10 py-3 md:py-4 flex items-center gap-3 md:gap-4">
-              <div className="md:hidden flex items-center gap-2 shrink-0">
+          {/* Sticky chrome: progress + mobile stepper + Granite badge */}
+          <div className="border-b border-border/60 backdrop-blur-md bg-background/75 sticky top-0 z-20">
+            <div className="max-w-5xl mx-auto px-4 md:px-10 py-3 flex items-center gap-3">
+              <div className="lg:hidden flex items-center gap-2 shrink-0">
                 <button onClick={restart} className="cursor-pointer" title="Home">
-                  <img src={logoUrl} alt="Viral Formula Studio" className="h-6 w-6" />
+                  <img src={logoUrl} alt="Viral Formula Studio" className="h-7 w-7" />
                 </button>
               </div>
-              <div className="flex-1 flex items-center gap-2 md:gap-3">
+              <div className="flex-1 flex items-center gap-2 md:gap-3 min-w-0">
                 <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground tabular-nums shrink-0">
                   {String(stepIndex + 1).padStart(2, "0")}/{String(STEPS.length).padStart(2, "0")}
                 </span>
-                <Progress value={progress} className="h-1 flex-1" />
-                <span className="hidden sm:inline text-[10px] font-mono uppercase tracking-[0.2em] text-primary tabular-nums">
+                <Progress value={progress} className="h-1.5 flex-1" />
+                <span className="hidden sm:inline text-[10px] font-mono uppercase tracking-[0.2em] text-primary tabular-nums shrink-0">
                   {Math.round(progress)}%
                 </span>
               </div>
-              <Badge variant="outline" className="shrink-0 gap-1.5 border-success/40 bg-success/5 text-[10px] px-2 py-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse hidden sm:inline" />
-                Granite
+              <Badge
+                variant="outline"
+                className="shrink-0 gap-1.5 border-primary/40 bg-primary/10 text-[10px] px-2.5 py-1 font-medium"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-granite-pulse" />
+                <span className="hidden xs:inline sm:inline">IBM</span> Granite
               </Badge>
               {profile && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={restart}
-                  className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  className="gap-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">New</span>
                 </Button>
               )}
             </div>
+
+            {/* Mobile / tablet horizontal stepper */}
+            <div className="lg:hidden border-t border-border/40 px-2 sm:px-4 py-2 overflow-x-auto">
+              <div className="flex items-center gap-1 min-w-max mx-auto max-w-5xl">
+                {STEPS.map((s, i) => {
+                  const active = s.id === step;
+                  const done = i < stepIndex || (s.id === "creator" && profile !== null);
+                  return (
+                    <div key={s.id} className="flex items-center">
+                      <button
+                        type="button"
+                        disabled={!canNavigate(s.id)}
+                        onClick={() => canNavigate(s.id) && setStep(s.id)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-medium transition-all",
+                          active && "bg-primary text-primary-foreground shadow-glow",
+                          done && !active && "bg-success/15 text-success",
+                          !done && !active && "bg-secondary/50 text-muted-foreground",
+                          "disabled:opacity-40 disabled:cursor-not-allowed",
+                        )}
+                      >
+                        <span className="font-mono text-[10px] opacity-80">
+                          {done && !active ? "✓" : String(i + 1).padStart(2, "0")}
+                        </span>
+                        <span>{s.label}</span>
+                      </button>
+                      {i < STEPS.length - 1 && (
+                        <span className="w-3 sm:w-5 h-px bg-border mx-0.5 sm:mx-1 shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          <div className="max-w-5xl mx-auto px-4 md:px-10 py-6 md:py-14">
+          <div className="max-w-5xl mx-auto px-4 md:px-10 py-6 md:py-12 animate-studio-in" key={step}>
             {error && (
               <Card className="mb-6 p-4 border-destructive/50 bg-destructive/10 text-sm text-destructive-foreground">
                 {error}
@@ -447,6 +523,8 @@ function Studio() {
             {step === "copy" && (
               <CopyStep
                 hook={pickedHook !== null && hooks[pickedHook] ? hooks[pickedHook].text : ""}
+                creator={creatorName}
+                topic={topic}
                 generating={generatingCopy}
                 result={copyResult}
                 onGenerate={generateCopy}
@@ -487,265 +565,403 @@ function CreatorStep({
   runAnalysis: () => void;
 }) {
   const filled = links.filter((l) => l.trim().startsWith("http")).length;
+  const selectedDemo = DEMO_CREATORS.find(
+    (d) => d.name.toLowerCase() === creatorName.trim().toLowerCase(),
+  );
 
   return (
-    <div className="space-y-10">
-      <header className="space-y-4 max-w-3xl">
-        <Badge variant="outline" className="gap-1.5">
-          <Waves className="h-3 w-3" /> Step 1 of 4
-        </Badge>
-        <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
-          Paste up to 5 videos <span className="text-gradient">from the creator</span>{" "}
-          you want to study.
-        </h1>
-        <p className="text-muted-foreground text-lg leading-relaxed">
-          The AI watches the creator's Shorts, learns their editing rhythm, hook
-          patterns and narrative cadence — then transposes that formula onto your topic.
-          <strong className="text-foreground"> No templates. No guessing.</strong>
-        </p>
-
-        {/* Supported platforms */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="text-[10px] uppercase tracking-widest text-muted-foreground mr-0.5">Accepts</span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
-            <Youtube className="h-3 w-3 text-red-500" />
-            YouTube Shorts
-          </span>
+    <div className="space-y-10 md:space-y-12">
+      {/* Hero */}
+      <header className="relative overflow-hidden rounded-2xl border border-border/50 call-sheet p-6 md:p-10 space-y-5">
+        <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="relative space-y-4 max-w-3xl">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="gap-1.5 border-primary/30 bg-primary/10">
+              <Cpu className="h-3 w-3 text-primary" />
+              IBM watsonx · Granite 4
+            </Badge>
+            <Badge variant="secondary" className="text-[10px] gap-1">
+              <Sparkle className="h-3 w-3" /> AI Builders Challenge
+            </Badge>
+          </div>
+          <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05] tracking-tight">
+            Reverse-engineer any creator&apos;s{" "}
+            <span className="text-gradient">viral formula</span>
+          </h1>
+          <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-2xl">
+            Measure real cuts, speech rate and hooks — then transpose that grammar onto{" "}
+            <strong className="text-foreground">your</strong> topic with a shoot-ready script.
+            Inspiration, not imitation.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Stack</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/15 text-primary text-xs font-medium border border-primary/25">
+              <Cpu className="h-3 w-3" /> Granite 4
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
+              <Eye className="h-3 w-3" /> Llama Vision
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
+              <Youtube className="h-3 w-3 text-red-500" /> Shorts
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
+              <Scissors className="h-3 w-3 text-success" /> ffmpeg metrics
+            </span>
+          </div>
         </div>
-      </header>
 
-      {/* How AI learns — 3 cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { icon: Eye, label: "Watch", text: "AI ingests up to 5 Shorts from any public creator profile — downloads, extracts frames and transcribes captions.", color: "text-blue-400" },
-          { icon: Brain, label: "Learn", text: "Reverse-engineers the creator's formula: cuts/min, WPM, hook patterns, tone, editing grammar — measured, not guessed.", color: "text-primary" },
-          { icon: Wand2, label: "Create", text: "Generates your script (≤200 words) with hooks and editing directions transposed from the creator's proven style.", color: "text-green-400" },
-        ].map(({ icon: Icon, label, text, color }) => (
-          <Card key={label} className="p-5 bg-card/60 backdrop-blur-sm border-border/50 space-y-3 relative overflow-hidden">
-            <div className="absolute -top-6 -right-6 h-16 w-16 rounded-full bg-primary/10 blur-xl" />
-            <div className="relative flex items-center gap-3">
-              <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/60", color)}>
-                <Icon className="h-5 w-5" />
-              </span>
-              <span className="font-display font-semibold text-sm">{label}</span>
-            </div>
-            <p className="relative text-xs text-muted-foreground leading-relaxed">{text}</p>
-          </Card>
-        ))}
-      </div>
-
-      {/* Demo presets — instant access to pre-analyzed creators */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-          <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Try a Demo</span>
-          <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Pipeline strip */}
+        <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
           {[
-            { name: "Bryan", topic: "optimal morning routine for longevity", emoji: "🧬", desc: "Biohacking & longevity creator — slow cuts, data-driven tone" },
-            { name: "jeffnippard", topic: "science-based hypertrophy training", emoji: "💪", desc: "Fitness science creator — fast cuts, technical authority" },
-            { name: "kallaway", topic: "building consistent coding habits", emoji: "💻", desc: "Tech/productivity creator — motivational, story-driven" },
-          ].map((demo) => (
-            <button
-              key={demo.name}
-              onClick={() => {
-                setCreatorName(demo.name);
-                setTopic(demo.topic);
-              }}
-              className="text-left p-4 rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm hover:border-primary/40 hover:bg-card transition-all group relative overflow-hidden"
+            { icon: Eye, label: "01 · Measure", text: "ffmpeg + Whisper read real cuts, WPM, frames", tone: "text-sky-400" },
+            { icon: Brain, label: "02 · Decode", text: "IBM Granite 4 extracts style; Vision reads edit grammar", tone: "text-primary" },
+            { icon: Wand2, label: "03 · Transpose", text: "Hooks + shooting script on your topic, with sources", tone: "text-emerald-400" },
+          ].map(({ icon: Icon, label, text, tone }) => (
+            <div
+              key={label}
+              className="flex items-start gap-3 rounded-xl border border-border/50 bg-background/40 backdrop-blur-sm p-4"
             >
-              <div className="absolute -top-4 -right-4 h-12 w-12 rounded-full bg-primary/10 blur-xl group-hover:bg-primary/20 transition" />
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">{demo.emoji}</span>
-                  <span className="font-display font-semibold text-sm">{demo.name}</span>
-                  <Badge variant="secondary" className="text-[9px] px-1.5 py-0 ml-auto">DEMO</Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">{demo.desc}</p>
-                <div className="mt-2 flex items-center gap-1 text-[10px] text-primary font-mono">
-                  <Zap className="h-3 w-3" />
-                  Instant · No upload needed
-                </div>
+              <span className={cn("flex h-9 w-9 items-center justify-center rounded-lg bg-secondary/70 shrink-0", tone)}>
+                <Icon className="h-4.5 w-4.5" />
+              </span>
+              <div>
+                <div className="font-display text-sm font-semibold">{label}</div>
+                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{text}</p>
               </div>
-            </button>
+            </div>
           ))}
         </div>
-      </div>
+      </header>
 
       {analyzing ? (
         <AnalysisProgress jobStatus={jobStatus} />
       ) : (
         <>
-      <div className="grid lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-3 p-4 md:p-7 space-y-4 md:space-y-5 bg-card/70 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-display font-medium text-sm">Reference creator links</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                Public YouTube Shorts (TikTok/Reels require local runtime).
+          {/* Demo creators — primary path for judges */}
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.22em] text-primary font-mono mb-1">
+                  Instant demo · pre-analyzed
+                </div>
+                <h2 className="font-display text-xl md:text-2xl font-semibold">
+                  Pick a seed creator
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+                  Profiles already measured — no download. Perfect for live demos and judges.
+                </p>
               </div>
+              <Badge variant="outline" className="gap-1.5 text-[10px] border-success/40 text-success">
+                <Zap className="h-3 w-3" /> 0 upload · cache ready
+              </Badge>
             </div>
-            <span className="font-mono text-xs text-muted-foreground tabular-nums shrink-0 ml-2">
-              {filled} / 5
-            </span>
-          </div>
 
-          <div>
-            <Label htmlFor="creator-name" className="font-display font-medium text-sm">
-              Creator name
-            </Label>
-            <Input
-              id="creator-name"
-              value={creatorName}
-              onChange={(e) => setCreatorName(e.target.value)}
-              placeholder="e.g. jeffnippard"
-              className="mt-2 bg-background/60 h-10"
-            />
-          </div>
-
-          <div className="space-y-2 md:space-y-2.5">
-            {links.map((link, i) => (
-              <div key={i} className="flex items-center gap-2 group">
-                <span className="font-mono text-[11px] text-muted-foreground w-5 md:w-6 text-right shrink-0">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <div className="relative flex-1 min-w-0">
-                  <LinkIcon className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={link}
-                    onChange={(e) => {
-                      const next = [...links];
-                      next[i] = e.target.value;
-                      setLinks(next);
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {DEMO_CREATORS.map((demo) => {
+                const active = selectedDemo?.name === demo.name;
+                return (
+                  <button
+                    key={demo.name}
+                    type="button"
+                    onClick={() => {
+                      setCreatorName(demo.name);
+                      setTopic(demo.topic);
                     }}
-                    placeholder="https://www.youtube.com/shorts/..."
-                    className="pl-9 bg-background/60 font-mono text-xs h-10"
+                    className={cn(
+                      "text-left rounded-2xl border p-5 transition-all relative overflow-hidden group",
+                      active
+                        ? "border-primary bg-primary/10 shadow-glow ring-1 ring-primary/40 scale-[1.01]"
+                        : "border-border/60 bg-card/60 hover:border-primary/40 hover:bg-card",
+                    )}
+                  >
+                    <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", demo.accent)} />
+                    <div className="relative space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-display font-semibold text-lg">{demo.name}</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">{demo.tag}</div>
+                        </div>
+                        <Badge
+                          variant={active ? "default" : "secondary"}
+                          className="text-[9px] uppercase tracking-wider"
+                        >
+                          {active ? "Selected" : "Demo"}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{demo.desc}</p>
+                      <div className="grid grid-cols-3 gap-2 pt-1">
+                        {[
+                          { k: "cuts/min", v: demo.metrics.cuts },
+                          { k: "WPM", v: demo.metrics.wpm },
+                          { k: "shot", v: demo.metrics.shot },
+                        ].map((m) => (
+                          <div
+                            key={m.k}
+                            className="rounded-lg bg-background/50 border border-border/40 px-2 py-1.5 text-center"
+                          >
+                            <div className="font-mono text-xs font-semibold text-foreground tabular-nums">{m.v}</div>
+                            <div className="text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5">{m.k}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-[10px] font-mono text-primary flex items-center gap-1 pt-0.5">
+                        <Check className={cn("h-3 w-3", active ? "opacity-100" : "opacity-0")} />
+                        Topic prefilled · click Decode below
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Custom creator form */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+              <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+                Or analyze your own creator
+              </span>
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+            </div>
+
+            <div className="grid lg:grid-cols-5 gap-5">
+              <Card className="lg:col-span-3 p-4 md:p-7 space-y-4 md:space-y-5 bg-card/70 backdrop-blur-sm border-border/60">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-display font-medium text-sm">Reference creator</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Up to 5 public YouTube Shorts (TikTok/Reels: local runtime).
+                    </div>
+                  </div>
+                  <span className="font-mono text-xs text-muted-foreground tabular-nums shrink-0">
+                    {filled}/5
+                  </span>
+                </div>
+
+                <div>
+                  <Label htmlFor="creator-name" className="font-display font-medium text-sm">
+                    Creator name
+                  </Label>
+                  <Input
+                    id="creator-name"
+                    value={creatorName}
+                    onChange={(e) => setCreatorName(e.target.value)}
+                    placeholder="e.g. jeffnippard"
+                    className="mt-2 bg-background/60 h-11"
                   />
                 </div>
-                {link && (
-                  <button
-                    onClick={() => {
-                      const next = [...links];
-                      next[i] = "";
-                      setLinks(next);
-                    }}
-                    className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition shrink-0"
-                    aria-label="Clear"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
 
-        <Card className="lg:col-span-2 p-4 md:p-7 space-y-4 md:space-y-5 bg-card/70 backdrop-blur-sm">
-          <div>
-            <Label htmlFor="topic" className="font-display font-medium text-sm">
-              Your topic
-            </Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              What YOUR video will be about — the creator's formula gets transposed onto
-              it.
-            </p>
-          </div>
-          <Textarea
-            id="topic"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. how small businesses can use AI without coding."
-            rows={5}
-            className="bg-background/60 resize-none"
-          />
-          <div className="rounded-lg border border-border/60 bg-secondary/40 p-3 text-[11px] text-muted-foreground leading-relaxed">
-            <span className="text-foreground font-medium">Scout enabled:</span> we verify
-            checkable facts about your topic (via Tavily) and cite the sources.
-          </div>
-        </Card>
-      </div>
+                <div className="space-y-2">
+                  {links.map((link, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="font-mono text-[11px] text-muted-foreground w-5 text-right shrink-0">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <div className="relative flex-1 min-w-0">
+                        <LinkIcon className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={link}
+                          onChange={(e) => {
+                            const next = [...links];
+                            next[i] = e.target.value;
+                            setLinks(next);
+                          }}
+                          placeholder="https://www.youtube.com/shorts/..."
+                          className="pl-9 bg-background/60 font-mono text-xs h-10"
+                        />
+                      </div>
+                      {link && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...links];
+                            next[i] = "";
+                            setLinks(next);
+                          }}
+                          className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition shrink-0"
+                          aria-label="Clear"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
-        <div className="text-xs text-muted-foreground flex items-center gap-4 flex-wrap">
-          <span className="flex items-center gap-1.5">
-            <Scissors className="h-3.5 w-3.5" /> cuts/min
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Film className="h-3.5 w-3.5" /> shot length
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5" /> signature n-grams
-          </span>
-        </div>
-        <Button
-          id="decode-btn"
-          size="lg"
-          disabled={!canAnalyze || analyzing}
-          onClick={runAnalysis}
-          className="min-w-[220px] shadow-glow"
-        >
-          Decode formula
-          <ArrowRight className="h-4 w-4" />
-        </Button>
-      </div>
+              <Card className="lg:col-span-2 p-4 md:p-7 space-y-4 bg-card/70 backdrop-blur-sm border-border/60 flex flex-col">
+                <div>
+                  <Label htmlFor="topic" className="font-display font-medium text-sm">
+                    Your topic
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Formula migrates here — your voice, their technique.
+                  </p>
+                </div>
+                <Textarea
+                  id="topic"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="e.g. how small businesses can use AI without coding."
+                  rows={6}
+                  className="bg-background/60 resize-none flex-1 min-h-[140px]"
+                />
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-[11px] text-muted-foreground leading-relaxed">
+                  <span className="text-primary font-medium flex items-center gap-1 mb-1">
+                    <Cpu className="h-3 w-3" /> Scout + Granite
+                  </span>
+                  Tavily verifies checkable facts; IBM Granite 4 writes hooks &amp; script grounded only in that evidence.
+                </div>
+              </Card>
+            </div>
+          </section>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-1 pb-2">
+            <div className="text-xs text-muted-foreground flex items-center gap-4 flex-wrap">
+              <span className="flex items-center gap-1.5">
+                <Scissors className="h-3.5 w-3.5 text-success" /> measured cuts/min
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Film className="h-3.5 w-3.5 text-primary" /> shot length
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-warning" /> signature n-grams
+              </span>
+            </div>
+            <Button
+              id="decode-btn"
+              size="lg"
+              disabled={!canAnalyze || analyzing}
+              onClick={runAnalysis}
+              className="min-w-[240px] shadow-glow h-12 text-base"
+            >
+              Decode formula
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
         </>
       )}
     </div>
   );
 }
 
-/* ---------------- Analysis progress (phased) ---------------- */
+/* ---------------- Phased wait UX (analysis / hooks / copy) ---------------- */
 
-const ANALYSIS_PHASES = [
-  { id: "Agent 0", name: "ffmpeg + yt-dlp", desc: "Data ingestion & deterministic metrics", delay: 0, duration: 6 },
-  { id: "Agent 4.1", name: "Textual Analyst", desc: "Extracting copy fingerprint & tone", delay: 6, duration: 25 },
-  { id: "Agent 4.2", name: "Visual Editor", desc: "Decoding editing grammar from frames", delay: 6, duration: 30 },
-  { id: "Agent 4.5", name: "Thumbnail Analyst", desc: "Scoring click-through & composition", delay: 6, duration: 18 },
-] as const;
+type PhaseSpec = {
+  id: string;
+  name: string;
+  desc: string;
+  delay: number;
+  duration: number;
+  engine?: string;
+};
 
-function SpinnerWithTimer({ label, sub }: { label: string; sub: string }) {
+const ANALYSIS_PHASES: PhaseSpec[] = [
+  { id: "Agent 0", name: "Measure", desc: "yt-dlp + ffmpeg: cuts/min, shot length, frames", delay: 0, duration: 8, engine: "Deterministic · no LLM" },
+  { id: "Agent 4.1", name: "Textual Analyst", desc: "Copy fingerprint, tone, hook patterns from transcripts", delay: 6, duration: 28, engine: "IBM Granite 4 · watsonx.ai" },
+  { id: "Agent 4.2", name: "Visual Editor", desc: "Editing grammar from sampled frames", delay: 6, duration: 32, engine: "Llama 3.2 Vision · watsonx.ai" },
+  { id: "Agent 4.5", name: "Thumbnail Analyst", desc: "Composition, contrast & CTR signals", delay: 8, duration: 20, engine: "Llama 3.2 Vision · watsonx.ai" },
+];
+
+const HOOKS_PHASES: PhaseSpec[] = [
+  { id: "Scout 5.1", name: "Fact-Checker", desc: "Tavily search + source URLs for the user's topic", delay: 0, duration: 14, engine: "Tavily · evidence only" },
+  { id: "Granite 4", name: "Hook Strategist", desc: "10 hooks: creator patterns × your theme", delay: 8, duration: 30, engine: "IBM Granite 4 · watsonx.ai" },
+  { id: "Quality", name: "Honesty gate", desc: "Strip noise, enforce theme, keep evidence_notes", delay: 32, duration: 12, engine: "IBM Granite 4 · structured out" },
+];
+
+const COPY_PHASES: PhaseSpec[] = [
+  { id: "Scout 5.1", name: "Fact refresh", desc: "Re-ground claims before writing the script", delay: 0, duration: 12, engine: "Tavily + Granite" },
+  { id: "Granite 4", name: "Script Director", desc: "Full narration + timestamps + shot list (not only the hook)", delay: 6, duration: 42, engine: "IBM Granite 4 · watsonx.ai" },
+  { id: "Normalize", name: "Call-sheet polish", desc: "Recover blocks, spoken copy, editing directions", delay: 40, duration: 14, engine: "Post-process · measured format" },
+];
+
+function PhasedWait({
+  title,
+  subtitle,
+  phases,
+  statusLine,
+  mode = "analysis",
+}: {
+  title: string;
+  subtitle: string;
+  phases: PhaseSpec[];
+  statusLine?: string | null;
+  mode?: "analysis" | "hooks" | "copy";
+}) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const i = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(i);
   }, []);
 
-  return (
-    <div className="flex items-center gap-4">
-      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-      <div>
-        <div className="text-sm font-medium">{label} ({elapsed}s)</div>
-        <div className="text-xs text-muted-foreground">{sub}</div>
-      </div>
-    </div>
-  );
-}
+  const rotatingTips = [
+    "IBM Granite 4 (ibm/granite-4-h-small) is the primary voice of this product on watsonx.ai.",
+    "We measure first with ffmpeg — Granite only interprets numbers and verified facts.",
+    "Llama 3.2 Vision on watsonx reads frames; Granite writes hooks, copy and playbooks.",
+    "Judges: every user-facing sentence is designed to run on IBM Granite — OpenAI is fallback only.",
+    "Honesty by design: unconfirmed claims become [INSERT: …] placeholders, never invented stats.",
+  ];
+  const tip = rotatingTips[Math.floor(elapsed / 7) % rotatingTips.length];
 
-function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
-  const [elapsed, setElapsed] = useState(0);
-  useEffect(() => {
-    const i = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => clearInterval(i);
-  }, []);
+  const modeLabel =
+    mode === "hooks" ? "Hook generation" : mode === "copy" ? "Script generation" : "Creator analysis";
 
   return (
-    <Card className="p-6 md:p-10 bg-card/70 backdrop-blur-sm text-center space-y-6 md:space-y-8 max-w-3xl mx-auto border-primary/20 shadow-glow">
-      <div className="space-y-2">
-        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary relative">
-          <Loader2 className="h-7 w-7 animate-spin" />
-          <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-primary/30 animate-pulse" />
+    <Card className="p-5 md:p-9 bg-card/80 backdrop-blur-sm text-center space-y-6 md:space-y-7 max-w-3xl mx-auto border-primary/25 shadow-glow relative overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent" />
+      <div className="absolute -top-24 right-0 h-48 w-48 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+
+      {/* Judge-facing IBM banner */}
+      <div className="relative flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary relative animate-granite-pulse">
+          <Cpu className="h-7 w-7" />
         </div>
-        <h2 className="font-display text-xl md:text-2xl font-semibold mt-4 text-gradient">Multi-Agent Orchestration Active</h2>
-        <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-          Orchestrating specialized AI personas in parallel. This takes ~30–90 seconds depending on video count.
-        </p>
+        <div className="text-center sm:text-left space-y-1">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+            </span>
+            IBM Granite 4 working on watsonx.ai
+          </div>
+          <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+            {modeLabel} · multi-agent pipeline · live
+          </div>
+        </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3 text-left">
-        {ANALYSIS_PHASES.map((agent) => {
+      <div className="relative space-y-2">
+        <h2 className="font-display text-xl md:text-2xl font-semibold text-gradient">{title}</h2>
+        <p className="text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">{subtitle}</p>
+        {statusLine && (
+          <p className="text-xs font-mono text-primary/90 pt-1">{statusLine}</p>
+        )}
+      </div>
+
+      {/* Model stack strip for judges */}
+      <div className="relative flex flex-wrap items-center justify-center gap-2">
+        {[
+          { label: "IBM Granite 4", sub: "text · hooks · script" },
+          { label: "Llama 3.2 Vision", sub: "frames · thumbnail" },
+          { label: "Whisper / ffmpeg", sub: "speech · metrics" },
+          { label: "Tavily", sub: "fact-check" },
+        ].map((m) => (
+          <div
+            key={m.label}
+            className="rounded-lg border border-border/50 bg-background/50 px-2.5 py-1.5 text-left"
+          >
+            <div className="text-[11px] font-medium text-foreground">{m.label}</div>
+            <div className="text-[9px] text-muted-foreground font-mono">{m.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3 text-left relative">
+        {phases.map((agent) => {
           const isWaiting = elapsed < agent.delay;
-          const isDone = elapsed >= (agent.delay + agent.duration);
+          const isDone = elapsed >= agent.delay + agent.duration;
           const isActive = !isWaiting && !isDone;
 
           return (
@@ -769,37 +985,76 @@ function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
                   isWaiting && "bg-secondary text-muted-foreground",
                 )}
               >
-                {isDone ? <Check className="h-4 w-4" /> : isActive ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <Sparkle className="h-4 w-4" />}
+                {isDone ? (
+                  <Check className="h-4 w-4" />
+                ) : isActive ? (
+                  <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                ) : (
+                  <Sparkle className="h-4 w-4" />
+                )}
               </span>
               <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-0.5">
-                  <div className={cn("text-[11px] font-mono font-medium", isActive && "text-primary", isDone && "text-success", isWaiting && "text-muted-foreground")}>
+                <div className="flex justify-between items-center mb-0.5 gap-2">
+                  <div
+                    className={cn(
+                      "text-[11px] font-mono font-medium",
+                      isActive && "text-primary",
+                      isDone && "text-success",
+                      isWaiting && "text-muted-foreground",
+                    )}
+                  >
                     {agent.id}
                   </div>
-                  <div className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+                  <div className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground shrink-0">
                     {isDone ? "Complete" : isActive ? "Working" : "Waiting"}
                   </div>
                 </div>
-                <div className={cn("text-sm font-medium", (isActive || isDone) ? "text-foreground" : "text-muted-foreground")}>
+                <div className={cn("text-sm font-medium", isActive || isDone ? "text-foreground" : "text-muted-foreground")}>
                   {agent.name}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1 leading-relaxed">{agent.desc}</div>
+                {agent.engine && (
+                  <div
+                    className={cn(
+                      "mt-2 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-mono",
+                      isActive ? "bg-primary/15 text-primary" : "bg-secondary/60 text-muted-foreground",
+                    )}
+                  >
+                    <Cpu className="h-2.5 w-2.5" />
+                    {agent.engine}
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
 
-      <div className="pt-2">
+      <div className="space-y-3 pt-1 relative">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 text-[11px] text-muted-foreground font-mono">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
           </span>
-          Engine running: {elapsed}s elapsed
+          watsonx session · {elapsed}s elapsed
         </div>
+        <p className="text-[11px] text-muted-foreground/90 max-w-md mx-auto leading-relaxed transition-opacity duration-500 min-h-[2.5rem]">
+          {tip}
+        </p>
       </div>
     </Card>
+  );
+}
+
+function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
+  return (
+    <PhasedWait
+      title="IBM multi-agent orchestration live"
+      subtitle="Specialized agents on watsonx.ai measure the creator, then Granite 4 and Llama Vision decode the formula. ~30–90s."
+      phases={ANALYSIS_PHASES}
+      statusLine={jobStatus}
+      mode="analysis"
+    />
   );
 }
 
@@ -822,29 +1077,33 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
   return (
     <div className="space-y-10">
       <header className="space-y-4 max-w-3xl">
-        <Badge variant="outline" className="gap-1.5">
-          <Gauge className="h-3 w-3" /> Step 2 of 4
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="gap-1.5">
+            <Gauge className="h-3 w-3" /> Evidence room
+          </Badge>
+          <Badge variant="outline" className="gap-1.5 border-primary/30 bg-primary/10 text-[10px]">
+            <Cpu className="h-3 w-3 text-primary" /> Granite + Vision decoded
+          </Badge>
+        </div>
         <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
           Formula <span className="text-gradient">measured</span>, not guessed.
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
-          This is what the evidence shows — numbers from ffmpeg plus stylistic reading
-          from the vision model. Each line here becomes an instruction in the final
-          script.
+          Deterministic ffmpeg numbers + IBM Granite 4 style reading + Llama Vision edit grammar.
+          Each line becomes an instruction in your final call sheet.
         </p>
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {metricCards.map((m) => (
-          <Card key={m.label} className="p-4 md:p-5 bg-card/70 relative overflow-hidden">
-            <div className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
+          <Card key={m.label} className="p-4 md:p-5 bg-card/70 relative overflow-hidden border-border/60">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-success via-primary to-primary/40" />
             <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">{m.label}</div>
             <div className="mt-3 font-display text-3xl font-semibold tabular-nums">
               {m.value}
               <span className="text-base text-muted-foreground ml-1">{m.unit}</span>
             </div>
-            <div className="mt-2 text-[10px] font-mono text-muted-foreground">
+            <div className="mt-2 text-[10px] font-mono text-success/90">
               measured · deterministic
             </div>
           </Card>
@@ -1149,7 +1408,14 @@ function HooksStep({
         </div>
       </header>
 
-      {loading && <SpinnerWithTimer label="Deriving hooks from the measured formula…" sub={`Fact-checking "${topic}" and injecting verified facts.`} />}
+      {loading && (
+        <PhasedWait
+          title="IBM Granite 4 is writing your hooks"
+          subtitle={`Fact-checking “${topic}” with Tavily, then Granite 4 maps the creator’s measured patterns onto your theme. Usually 20–60s.`}
+          phases={HOOKS_PHASES}
+          mode="hooks"
+        />
+      )}
 
       {!loading && hooks.length > 0 && (
         <div className="grid md:grid-cols-2 gap-3">
@@ -1204,8 +1470,133 @@ function HooksStep({
 
 /* ---------------- Step 4: Copy ---------------- */
 
+const TS_RE = /\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}/;
+const AUDIO_ONLY_RE = /no speech|music only|^\(.*\)$/i;
+
+function stripQuotes(text: string): string {
+  const t = text.trim();
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("“") && t.endsWith("”"))) {
+    return t.slice(1, -1).trim();
+  }
+  return t;
+}
+
+/** Client-side recovery when older backends omit `blocks` / `spoken_copy`. */
+function parseScriptClient(script: string): ScriptBlock[] {
+  const raw = (script || "").trim();
+  if (!raw) return [];
+
+  const fromPipes: ScriptBlock[] = [];
+  for (const line of raw.split("\n")) {
+    const t = line.trim();
+    if (!t.includes("|")) continue;
+    const parts = t.split("|").map((p) => p.trim());
+    if (parts.length >= 5) {
+      fromPipes.push({
+        timestamp: parts[0],
+        shot: parts[1],
+        text: parts[2],
+        editing: parts[3],
+        why: parts.slice(4).join(" | "),
+      });
+    } else if (parts.length >= 3) {
+      fromPipes.push({
+        timestamp: parts[0] || "",
+        shot: parts[1] || "SHOT",
+        text: parts[2] || "",
+        editing: parts[3] || "",
+        why: parts[4] || "",
+      });
+    }
+  }
+  if (fromPipes.length >= 2) return fromPipes;
+
+  // Split mashed one-liners on timestamp ranges
+  const chunks = raw.split(/(?=\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})/).map((c) => c.trim()).filter(Boolean);
+  const recovered: ScriptBlock[] = [];
+  for (const chunk of chunks) {
+    if (chunk.includes("|")) {
+      const parts = chunk.split("|").map((p) => p.trim());
+      recovered.push({
+        timestamp: parts[0] || "",
+        shot: parts[1] || "MEDIUM shot",
+        text: parts[2] || "",
+        editing: parts[3] || "",
+        why: parts.slice(4).join(" | ") || "",
+      });
+      continue;
+    }
+    const tsMatch = chunk.match(TS_RE);
+    const quotes = [...chunk.matchAll(/"([^"]{3,})"|“([^”]{3,})”/g)].map((m) => m[1] || m[2]);
+    recovered.push({
+      timestamp: tsMatch?.[0] || "",
+      shot: "MEDIUM shot",
+      text: quotes[0] ? `"${quotes[0]}"` : chunk.replace(TS_RE, "").trim(),
+      editing: "",
+      why: "",
+    });
+  }
+  return recovered.length > 0 ? recovered : fromPipes;
+}
+
+function spokenFromBlocks(blocks: ScriptBlock[]): { text: string; isAudioOnly: boolean }[] {
+  return blocks
+    .map((b) => {
+      const text = (b.text || "").trim();
+      if (!text) return null;
+      const isAudioOnly = AUDIO_ONLY_RE.test(text);
+      return { text: isAudioOnly ? text : stripQuotes(text), isAudioOnly };
+    })
+    .filter((x): x is { text: string; isAudioOnly: boolean } => Boolean(x?.text));
+}
+
+function buildExportMarkdown(opts: {
+  creator: string;
+  topic: string;
+  hook: string;
+  spoken: string;
+  blocks: ScriptBlock[];
+  directions: string[];
+  notes: string;
+  wordCount: number;
+}): string {
+  const lines = [
+    `# Viral Formula Studio — Shooting Report`,
+    ``,
+    `- **Creator formula:** ${opts.creator || "—"}`,
+    `- **Topic:** ${opts.topic || "—"}`,
+    `- **Spoken words:** ${opts.wordCount}`,
+    `- **Engine:** IBM Granite 4 on watsonx.ai`,
+    ``,
+    `## Hook`,
+    opts.hook,
+    ``,
+    `## Complete Copy`,
+    opts.spoken || "_(empty)_",
+    ``,
+    `## Timeline`,
+    ...opts.blocks.map(
+      (b, i) =>
+        `### ${b.timestamp || `Block ${i + 1}`} · ${b.shot || "SHOT"}\n` +
+        `**Say:** ${stripQuotes(b.text || "—")}\n` +
+        `**Edit:** ${b.editing || "—"}\n` +
+        `**Why:** ${b.why || "—"}`,
+    ),
+    ``,
+    `## Editing quick reference`,
+    ...opts.directions.map((d, i) => `${i + 1}. ${d}`),
+    ``,
+    `## Honesty / data notes`,
+    opts.notes || "—",
+    ``,
+  ];
+  return lines.join("\n");
+}
+
 function CopyStep({
   hook,
+  creator,
+  topic,
   generating,
   result,
   onGenerate,
@@ -1213,223 +1604,369 @@ function CopyStep({
   onRestart,
 }: {
   hook: string;
+  creator: string;
+  topic: string;
   generating: boolean;
   result: CopyResult | null;
   onGenerate: () => void;
   onNewTopic: () => void;
   onRestart: () => void;
 }) {
-  // Parse shooting script lines into blocks
-  let blocks = result?.script
-    ? result.script.split("\n").filter((l) => l.includes("|"))
-    : [];
-  let isFallback = false;
-  if (result?.script && blocks.length === 0) {
-    isFallback = true;
-    blocks = result.script.split("\n").filter(l => l.trim().length > 0);
-  }
-
   if (!result) {
     return (
-    <div className="space-y-10">
-      <header className="space-y-4 max-w-3xl">
-        <Badge variant="outline" className="gap-1.5">
-          <Wand2 className="h-3 w-3" /> Step 4 of 4
-        </Badge>
-        <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
-          Your script, <span className="text-gradient">ready to shoot</span>.
-        </h1>
-        <p className="text-muted-foreground text-lg leading-relaxed">
-          Up to 200 words, in the creator's cadence, with editing directions aligned to
-          the metrics. Nothing here is a guess — it's evidence transposed.
-        </p>
-      </header>
-      {!generating && (
-        <Card className="p-10 bg-card/70 text-center space-y-5 border-dashed">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-glow">
-            <Play className="h-6 w-6" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="font-display text-xl">Orchestrate final copy</h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              The commentator writes grounded ONLY in collected evidence. No hallucination, no fluff.
-            </p>
-            {hook && (
-              <p className="text-sm text-foreground max-w-md mx-auto pt-2">
-                Hook: &ldquo;{hook}&rdquo;
+      <div className="space-y-10">
+        <header className="space-y-4 max-w-3xl">
+          <Badge variant="outline" className="gap-1.5 border-primary/30 bg-primary/10">
+            <Cpu className="h-3 w-3 text-primary" /> Step 5 · IBM Granite script
+          </Badge>
+          <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
+            Your script, <span className="text-gradient">ready to shoot</span>.
+          </h1>
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            Granite 4 writes a full call sheet: spoken narration, timecodes, shot types and
+            retention psychology — grounded in measured metrics and verified facts.
+          </p>
+        </header>
+        {!generating && (
+          <Card className="p-8 md:p-10 bg-card/70 text-center space-y-5 border-dashed border-primary/30 relative overflow-hidden">
+            <div className="absolute -top-16 right-0 h-40 w-40 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+            <div className="relative inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-glow">
+              <Play className="h-6 w-6" />
+            </div>
+            <div className="relative space-y-2">
+              <h3 className="font-display text-xl">Generate shooting report</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Multi-block timeline · open → develop → close · evidence only.
               </p>
-            )}
-          </div>
-          <Button size="lg" onClick={onGenerate} className="shadow-glow" disabled={!hook}>
-            Generate script <ArrowRight className="h-4 w-4" />
-          </Button>
-        </Card>
-      )}
-      {generating && <SpinnerWithTimer label="Writing the shooting script..." sub="Injecting creator profile + verified facts into Granite 4." />}
-    </div>
+              {hook && (
+                <p className="text-sm text-foreground max-w-lg mx-auto pt-2 rounded-lg bg-primary/10 border border-primary/20 px-4 py-3">
+                  Hook seed: &ldquo;{hook}&rdquo;
+                </p>
+              )}
+            </div>
+            <Button size="lg" onClick={onGenerate} className="shadow-glow relative" disabled={!hook}>
+              Generate with Granite 4 <ArrowRight className="h-4 w-4" />
+            </Button>
+            <p className="text-[11px] text-muted-foreground relative">
+              30–90s · Tavily fact-check · IBM Granite 4 · format polish
+            </p>
+          </Card>
+        )}
+        {generating && (
+          <PhasedWait
+            title="IBM Granite 4 is directing your video"
+            subtitle="Injecting measured creator profile + verified facts. Full narration and shot list — not just the opening hook."
+            phases={COPY_PHASES}
+            mode="copy"
+          />
+        )}
+      </div>
     );
   }
 
-  // Result ready — styled report
-  // Format clean copy as a proper script — narration on separate lines, audio cues styled
-  const scriptLines = blocks.map((line) => {
-    if (isFallback) {
-      const text = line.trim();
-      const isAudioOnly = text.toLowerCase().includes("no speech") || text.toLowerCase().includes("music only") || text.startsWith("(");
-      return { text, isAudioOnly };
-    }
-    const parts = line.split("|").map((p) => p.trim());
-    const text = parts.length >= 3 ? parts[2] : parts[parts.length - 1];
-    const isAudioOnly = text.toLowerCase().includes("no speech") || text.toLowerCase().includes("music only") || text.startsWith("(");
-    return { text, isAudioOnly };
+  const blocks: ScriptBlock[] =
+    result.blocks && result.blocks.length > 0 ? result.blocks : parseScriptClient(result.script);
+
+  const spokenLines =
+    result.spoken_copy && result.spoken_copy.trim().length > 0
+      ? result.spoken_copy
+          .split(/\n\n+/)
+          .map((t) => t.trim())
+          .filter(Boolean)
+          .map((text) => ({
+            text: stripQuotes(text),
+            isAudioOnly: AUDIO_ONLY_RE.test(text),
+          }))
+      : spokenFromBlocks(blocks);
+
+  const spokenWordCount =
+    result.word_count ||
+    spokenLines
+      .filter((s) => !s.isAudioOnly)
+      .map((s) => s.text)
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean).length;
+
+  const thinCopy = spokenWordCount > 0 && spokenWordCount < 40;
+  const clipboardText = spokenLines
+    .filter((s) => !s.isAudioOnly)
+    .map((s) => s.text)
+    .join("\n\n");
+
+  const exportMd = buildExportMarkdown({
+    creator,
+    topic,
+    hook,
+    spoken: clipboardText,
+    blocks,
+    directions: result.editing_directions ?? [],
+    notes: result.data_notes ?? "",
+    wordCount: spokenWordCount,
   });
 
+  function downloadReport() {
+    const blob = new Blob([exportMd], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `viral-formula-${(creator || "report").toLowerCase().replace(/\s+/g, "-")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      {/* Top bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Badge variant="outline" className="gap-1.5">
-          <Wand2 className="h-3 w-3" /> Final Report · {result.word_count} words
-        </Badge>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onRestart}>
-            <RotateCcw className="h-3.5 w-3.5 mr-1" /> New creator
-          </Button>
-          <Button variant="outline" size="sm" onClick={onNewTopic}>
-            <Wand2 className="h-3.5 w-3.5 mr-1" /> New topic
-          </Button>
-        </div>
-      </div>
-
-      {/* Hook banner */}
-      <Card className="p-6 bg-primary/10 border-primary/30 space-y-2">
-        <div className="text-xs uppercase tracking-widest text-primary font-mono">Your Hook</div>
-        <p className="text-lg font-display font-semibold text-foreground leading-snug">{hook}</p>
-      </Card>
-
-      {/* Clean copy — properly formatted script */}
-      <Card className="p-6 md:p-8 bg-card/70 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="font-display font-semibold text-lg">Complete Copy</h2>
-            <span className="text-xs font-mono text-muted-foreground">{result.word_count} words</span>
-          </div>
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigator.clipboard?.writeText(scriptLines.map(s => s.text).filter(Boolean).join("\n\n"))}>
-            <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy
-          </Button>
-        </div>
-        <Separator />
-        <div className="space-y-3">
-          {scriptLines.map((s, i) =>
-            s.text ? (
-              s.isAudioOnly ? (
-                <p key={i} className="text-sm text-muted-foreground italic pl-4 border-l-2 border-primary/30">
-                  {s.text.replace(/^\(|\)$/g, "")}
-                </p>
-              ) : (
-                <p key={i} className="text-[15px] leading-[1.8] text-foreground/90">
-                  {s.text}
-                </p>
-              )
-            ) : null
-          )}
-        </div>
-      </Card>
-
-      {/* Shooting script blocks — with timestamps and editing */}
-      <Card className="p-6 md:p-8 bg-card/70 space-y-4">
-        <h2 className="font-display font-semibold text-lg flex items-center gap-2">
-          <Film className="h-4 w-4 text-primary" /> Shooting Script with Directions
-        </h2>
-        <Separator />
-        <div className="space-y-3">
-        {blocks.map((line, i) => {
-          if (isFallback) {
-            return (
-              <Card key={i} className="p-4 md:p-5 bg-card/80 border-border/40 hover:border-primary/30 transition-colors">
-                <p className="text-sm leading-relaxed text-foreground/90">{line}</p>
-              </Card>
-            );
-          }
-          const parts = line.split("|").map((p) => p.trim());
-          const [timestamp, shot, text, editing, why] = parts.length >= 5 ? parts : ["", line, "", "", ""];
-          return (
-            <Card key={i} className="p-4 md:p-5 bg-card/80 border-border/40 hover:border-primary/30 transition-colors">
-              <div className="flex items-start gap-3 md:gap-4">
-                {/* Left: timestamp + shot type badge */}
-                <div className="shrink-0 w-16 md:w-20 text-center">
-                  <div className="font-mono text-[10px] md:text-xs text-primary font-semibold">{timestamp || `#${i + 1}`}</div>
-                  <div className="mt-1">
-                    <span className="inline-block text-[9px] md:text-[10px] font-mono uppercase tracking-wider bg-secondary/60 text-muted-foreground rounded-full px-1.5 md:px-2 py-0.5">
-                      {shot || "SHOT"}
-                    </span>
-                  </div>
-                </div>
-                {/* Center: spoken text and mobile editing directions */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm leading-relaxed text-foreground/90">{text || line}</p>
-                  
-                  {/* Mobile only: editing + psychology below text */}
-                  {(editing || why) && (
-                    <div className="md:hidden mt-3 space-y-2 border-t border-border/40 pt-3">
-                      {editing && (
-                        <div className="flex items-start gap-1.5">
-                          <Scissors className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                          <span className="text-xs text-muted-foreground leading-tight">{editing}</span>
-                        </div>
-                      )}
-                      {why && (
-                        <div className="flex items-start gap-1.5">
-                          <Zap className="h-3.5 w-3.5 text-yellow-400 mt-0.5 shrink-0" />
-                          <span className="text-xs text-muted-foreground leading-tight">{why}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {/* Right: editing + psychology (Desktop) */}
-                <div className="shrink-0 w-40 hidden md:block space-y-1">
-                  {editing && (
-                    <div className="flex items-start gap-1">
-                      <Scissors className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                      <span className="text-[11px] text-muted-foreground leading-tight">{editing}</span>
-                    </div>
-                  )}
-                  {why && (
-                    <div className="flex items-start gap-1">
-                      <Zap className="h-3 w-3 text-yellow-400 mt-0.5 shrink-0" />
-                      <span className="text-[11px] text-muted-foreground leading-tight">{why}</span>
-                    </div>
-                  )}
-                </div>
+    <div className="space-y-6 max-w-4xl mx-auto animate-studio-in">
+      {/* Call-sheet document */}
+      <div className="rounded-2xl border border-border/60 call-sheet overflow-hidden shadow-elegant">
+        {/* Masthead */}
+        <div className="border-b border-border/50 px-5 md:px-8 py-5 md:py-6 space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="gap-1.5 bg-primary text-primary-foreground">
+                  <FileText className="h-3 w-3" /> Shooting Report
+                </Badge>
+                <Badge variant="outline" className="gap-1.5 border-primary/40 text-[10px]">
+                  <Cpu className="h-3 w-3 text-primary" /> Written by IBM Granite 4
+                </Badge>
+                {result.format_repaired && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    format auto-repaired
+                  </Badge>
+                )}
               </div>
-            </Card>
-          );
-        })}
-      </div>
-      </Card>
+              <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight">
+                Viral Formula Studio
+              </h1>
+              <p className="text-xs text-muted-foreground font-mono uppercase tracking-[0.16em]">
+                Evidence-based playbook · not a template
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigator.clipboard?.writeText(exportMd)}>
+                <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy all
+              </Button>
+              <Button variant="outline" size="sm" onClick={downloadReport}>
+                <Download className="h-3.5 w-3.5 mr-1" /> Export .md
+              </Button>
+              <Button variant="outline" size="sm" onClick={onGenerate}>
+                <RotateCcw className="h-3.5 w-3.5 mr-1" /> Regenerate
+              </Button>
+            </div>
+          </div>
 
-      {/* Editing directions summary */}
-      {result.editing_directions.length > 0 && (
-        <Card className="p-6 bg-card/70 space-y-4">
-          <h3 className="font-display font-semibold text-sm flex items-center gap-2">
-            <Film className="h-4 w-4 text-primary" /> Editing Quick Reference
-          </h3>
-          <div className="grid sm:grid-cols-2 gap-2">
-            {result.editing_directions.map((d, i) => (
-              <div key={i} className="flex gap-2 text-xs text-muted-foreground bg-secondary/40 rounded-lg p-3">
-                <span className="font-mono text-primary shrink-0">{String(i + 1).padStart(2, "0")}</span>
-                <span className="leading-relaxed">{d}</span>
+          {/* Meta grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+            {[
+              { k: "Creator formula", v: creator || "—" },
+              { k: "Your topic", v: topic || "—" },
+              { k: "Spoken words", v: String(spokenWordCount) },
+              { k: "Timeline blocks", v: String(blocks.length) },
+            ].map((m) => (
+              <div key={m.k} className="rounded-xl border border-border/40 bg-background/40 px-3 py-2.5">
+                <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-mono">{m.k}</div>
+                <div className="text-sm font-medium mt-1 truncate" title={m.v}>
+                  {m.v}
+                </div>
               </div>
             ))}
           </div>
-          {result.data_notes && (
-            <div className="text-[11px] text-muted-foreground/70 italic border-t border-border/40 pt-3">
-              {result.data_notes}
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" size="sm" className="text-xs" onClick={onRestart}>
+              <RotateCcw className="h-3.5 w-3.5 mr-1" /> New creator
+            </Button>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={onNewTopic}>
+              <Wand2 className="h-3.5 w-3.5 mr-1" /> New topic
+            </Button>
+          </div>
+        </div>
+
+        {thinCopy && (
+          <div className="mx-5 md:mx-8 mt-5 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-sm">
+            Spoken copy looks short ({spokenWordCount} words). Use <strong>Regenerate</strong> for a
+            fuller Granite pass — timeline directions may still be usable.
+          </div>
+        )}
+
+        <div className="p-5 md:p-8 space-y-8">
+          {/* Hook */}
+          <section className="rounded-xl border border-primary/30 bg-primary/10 p-5 md:p-6 space-y-2">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-primary font-mono flex items-center gap-2">
+              <Zap className="h-3.5 w-3.5" /> Opening hook · first 3 seconds
             </div>
+            <p className="text-lg md:text-xl font-display font-semibold leading-snug">&ldquo;{hook}&rdquo;</p>
+          </section>
+
+          {/* Complete copy — prompter style */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="font-display font-semibold text-lg flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" /> Complete Copy
+                </h2>
+                <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                  Spoken narration only · {spokenWordCount} words · read on camera
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="text-xs"
+                disabled={!clipboardText}
+                onClick={() => navigator.clipboard?.writeText(clipboardText)}
+              >
+                <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy narration
+              </Button>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-background/50 p-5 md:p-7 space-y-4">
+              {spokenLines.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">
+                  No spoken lines recovered. Check the timeline or regenerate.
+                </p>
+              ) : (
+                spokenLines.map((s, i) =>
+                  s.isAudioOnly ? (
+                    <p
+                      key={i}
+                      className="text-sm text-muted-foreground italic pl-4 border-l-2 border-primary/30"
+                    >
+                      {s.text.replace(/^\(|\)$/g, "")}
+                    </p>
+                  ) : (
+                    <p
+                      key={i}
+                      className="text-[16px] md:text-[17px] leading-[1.85] text-foreground/95 font-medium"
+                    >
+                      {s.text}
+                    </p>
+                  ),
+                )
+              )}
+            </div>
+          </section>
+
+          {/* Film timeline */}
+          <section className="space-y-4">
+            <div>
+              <h2 className="font-display font-semibold text-lg flex items-center gap-2">
+                <Film className="h-4 w-4 text-primary" /> Shooting timeline
+              </h2>
+              <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                Timecode · shot · dialogue · edit · retention psychology
+              </p>
+            </div>
+
+            <div className="relative rounded-xl border border-border/50 bg-background/40 overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-2 film-strip opacity-70 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-2 film-strip opacity-70 pointer-events-none" />
+              <div className="pl-4 pr-4 md:pl-6 md:pr-6 py-2 space-y-0">
+                {blocks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap p-4">{result.script}</p>
+                ) : (
+                  blocks.map((block, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "grid grid-cols-1 md:grid-cols-[5.5rem_1fr_11rem] gap-3 md:gap-4 py-4 md:py-5",
+                        i < blocks.length - 1 && "border-b border-border/40",
+                      )}
+                    >
+                      <div className="flex md:flex-col items-center md:items-start gap-2 md:gap-1">
+                        <span className="font-mono text-[11px] md:text-xs text-primary font-semibold tabular-nums">
+                          {block.timestamp || `TAKE ${String(i + 1).padStart(2, "0")}`}
+                        </span>
+                        <span className="inline-flex text-[9px] font-mono uppercase tracking-wider bg-secondary/70 text-muted-foreground rounded-md px-2 py-0.5">
+                          {block.shot || "SHOT"}
+                        </span>
+                        <span className="hidden md:inline text-[9px] font-mono text-muted-foreground/70">
+                          #{String(i + 1).padStart(2, "0")}
+                        </span>
+                      </div>
+                      <div className="min-w-0 space-y-2">
+                        <p className="text-sm md:text-[15px] leading-relaxed text-foreground/95">
+                          {block.text ? stripQuotes(block.text) : "—"}
+                        </p>
+                        {block.why && (
+                          <p className="text-xs text-muted-foreground italic leading-relaxed md:hidden">
+                            {block.why}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2 text-[11px] text-muted-foreground">
+                        {block.editing && (
+                          <div className="flex items-start gap-1.5 rounded-lg bg-secondary/40 p-2">
+                            <Scissors className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                            <span className="leading-snug">{block.editing}</span>
+                          </div>
+                        )}
+                        {block.why && (
+                          <div className="hidden md:flex items-start gap-1.5 rounded-lg bg-secondary/30 p-2">
+                            <Zap className="h-3 w-3 text-warning mt-0.5 shrink-0" />
+                            <span className="leading-snug">{block.why}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Editing + honesty */}
+          {(result.editing_directions?.length > 0 || result.data_notes) && (
+            <section className="grid md:grid-cols-5 gap-4">
+              {result.editing_directions?.length > 0 && (
+                <div className="md:col-span-3 rounded-xl border border-border/50 bg-background/40 p-5 space-y-3">
+                  <h3 className="font-display font-semibold text-sm flex items-center gap-2">
+                    <Scissors className="h-4 w-4 text-primary" /> Editing quick reference
+                  </h3>
+                  <div className="space-y-2">
+                    {result.editing_directions.map((d, i) => (
+                      <div
+                        key={i}
+                        className="flex gap-2 text-xs text-muted-foreground bg-secondary/30 rounded-lg p-2.5"
+                      >
+                        <span className="font-mono text-primary shrink-0">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <span className="leading-relaxed">{d}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {result.data_notes && (
+                <div className="md:col-span-2 rounded-xl border border-border/50 bg-background/40 p-5 space-y-2">
+                  <h3 className="font-display font-semibold text-sm flex items-center gap-2">
+                    <Gauge className="h-4 w-4 text-success" /> Honesty notes
+                  </h3>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">{result.data_notes}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground/70 pt-2 border-t border-border/40">
+                    Verified via Tavily · synthesized by IBM Granite 4
+                  </p>
+                </div>
+              )}
+            </section>
           )}
-        </Card>
-      )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/40">
+            <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+              IBM AI Builders · watsonx.ai · inspiration not imitation
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={onNewTopic}>
+                New topic
+              </Button>
+              <Button size="sm" className="shadow-glow" onClick={onGenerate}>
+                Regenerate with Granite
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

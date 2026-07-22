@@ -19,10 +19,13 @@ from .factory import create_agent
 from .parse import coerce_structured
 from .research import research_theme
 from .schemas import ResearchReport
+from .script_format import normalize_script
 
 logger = logging.getLogger(__name__)
 
 MAX_COPY_WORDS = 200
+MIN_SPOKEN_WORDS = 80
+MIN_SCRIPT_BLOCKS = 6
 
 
 class Hook(BaseModel):
@@ -38,7 +41,9 @@ class VideoCopy(BaseModel):
     script: str = Field(
         description="Shooting script with timeline. Each block shows: [TIMESTAMP] | [SHOT TYPE] | "
         '[TEXT TO SAY] | [CUT/TRANSITION] | [WHY IT WORKS — psychology or editing reason]. '
-        f"Maximum {MAX_COPY_WORDS} words total across all spoken text."
+        f"Maximum {MAX_COPY_WORDS} words total across all spoken text. "
+        f"Minimum {MIN_SCRIPT_BLOCKS} blocks. Spoken TEXT fields alone must total at least "
+        f"{MIN_SPOKEN_WORDS} words forming a COMPLETE narration (not just the opening hook)."
     )
     editing_directions: list[str] = Field(
         description="Per-block editing directions, using the creator's MEASURED NUMBERS (cuts/min, shot length, on-screen text)"
@@ -110,7 +115,12 @@ EXAMPLE:
 
 RULES:
 - CRITICAL: Do NOT use line breaks (newlines) inside a single block. Each timestamp block must be exactly one line.
-- Total spoken words ≤ {MAX_COPY_WORDS} across all blocks.
+- Output AT LEAST {MIN_SCRIPT_BLOCKS} separate lines (blocks). Never collapse the whole video into 1-2 lines.
+- Total spoken words across TEXT fields: between {MIN_SPOKEN_WORDS} and {MAX_COPY_WORDS}.
+- COMPLETE NARRATION: the TEXT fields concatenated must form a full speakable script
+  (open → proof/steps → close). The chosen hook is ONLY the first spoken line — you MUST
+  continue with several more spoken lines. Do NOT stop after the hook.
+- At most 1-2 blocks may use "(no speech — music only)". All other blocks need real dialogue.
 - Every block MUST include all 5 fields separated by `|`: timestamp, shot, text, editing, psychology.
 - SHOT TYPES must match the creator's measured grammar (e.g. "CLOSE-UP face",
   "MEDIUM shot", "SPLIT-SCREEN", "B-ROLL", "TEXT OVERLAY").
@@ -119,6 +129,7 @@ RULES:
 - WHY IT WORKS must explain the retention psychology or editing principle.
   Use terms like: pattern interrupt, curiosity gap, social proof, authority,
   dopamine loop, visual anchor, pacing rhythm, contrast, payoff.
+- Never put the next timestamp inside the WHY field — start a NEW line instead.
 - Respond in English.
 """
 
@@ -192,9 +203,71 @@ def generate_copy(
         f"{_facts_block(research)}\n\n"
         f'USER THEME: {theme}\n'
         f'CHOSEN HOOK: "{chosen_hook}"\n\n'
-        "Generate the COMPLETE SHOOTING SCRIPT. Every block must be EXACTLY ONE LINE separated by 4 pipes: "
-        "[TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY IT WORKS]. "
-        "DO NOT use line breaks inside a block. "
+        "Generate the COMPLETE SHOOTING SCRIPT for a 45–75 second video.\n"
+        f"- Minimum {MIN_SCRIPT_BLOCKS} lines (blocks), each EXACTLY ONE LINE with 4 pipes:\n"
+        "  [TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY IT WORKS]\n"
+        f"- Spoken TEXT fields together must be a FULL narration ({MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} words).\n"
+        f'- Line 1 TEXT must be the chosen hook: "{chosen_hook}"\n'
+        "- Lines 2+ MUST continue the story with new spoken sentences — never repeat only the hook.\n"
+        "- DO NOT put timestamps inside the WHY field; each new moment is a new line.\n"
         "Use the creator's measured cuts/min, shot types, and editing grammar from the profile."
     )
-    return coerce_structured(response.content, VideoCopy, stage="Copy generation")
+    copy = coerce_structured(response.content, VideoCopy, stage="Copy generation")
+    return _normalize_video_copy(copy)
+
+
+def _normalize_video_copy(copy: VideoCopy) -> VideoCopy:
+    """Repair pipe-format drift so API consumers always get a full multi-block script."""
+    normalized = normalize_script(copy.script)
+    if not normalized.blocks:
+        logger.warning("Copy normalization found 0 blocks — returning raw script")
+        return copy
+
+    repaired_script = normalized.script
+    if normalized.was_repaired:
+        logger.info(
+            "Copy script repaired: %d blocks, %d spoken words (was_repaired=True)",
+            len(normalized.blocks),
+            normalized.spoken_word_count,
+        )
+
+    # Keep model editing_directions if rich enough; otherwise synthesize from blocks
+    directions = list(copy.editing_directions or [])
+    if len(directions) < max(3, len(normalized.blocks) // 2):
+        directions = [
+            f"{b.timestamp}: {b.editing}".strip(": ")
+            for b in normalized.blocks
+            if b.editing
+        ] or directions
+
+    return VideoCopy(
+        script=repaired_script,
+        editing_directions=directions,
+        data_notes=copy.data_notes,
+    )
+
+
+def copy_payload(copy: VideoCopy) -> dict:
+    """API-ready dict with structured blocks + spoken narration for the frontend."""
+    normalized = normalize_script(copy.script)
+    spoken = normalized.spoken_copy
+    word_count = normalized.spoken_word_count or len((copy.script or "").split())
+    return {
+        "script": normalized.script or copy.script,
+        "spoken_copy": spoken,
+        "blocks": [
+            {
+                "timestamp": b.timestamp,
+                "shot": b.shot,
+                "text": b.text,
+                "editing": b.editing,
+                "why": b.why,
+            }
+            for b in normalized.blocks
+        ],
+        "editing_directions": copy.editing_directions,
+        "data_notes": copy.data_notes,
+        "word_count": word_count,
+        "format_repaired": normalized.was_repaired,
+        "block_count": len(normalized.blocks),
+    }
