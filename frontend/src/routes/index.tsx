@@ -133,7 +133,7 @@ const STEPS: { id: StepId; label: string; hint: string; icon: typeof LinkIcon }[
   { id: "profile", label: "Profile", hint: "measured formula", icon: Gauge },
   { id: "topic-select", label: "Topic", hint: "your theme", icon: Target },
   { id: "hooks", label: "Hooks", hint: "10 patterns", icon: Target },
-  { id: "copy", label: "Script", hint: "200–250 spoken words", icon: Wand2 },
+  { id: "copy", label: "Script", hint: "shooting report", icon: Wand2 },
 ];
 
 const DEMO_CREATORS = [
@@ -1801,8 +1801,6 @@ function CopyStep({
       .split(/\s+/)
       .filter(Boolean).length;
 
-  // Only flag teaser-length failures — near-target (~180–250) is fine, no nagging banner
-  const thinCopy = spokenWordCount > 0 && spokenWordCount < 70;
   const clipboardText = spokenLines
     .filter((s) => !s.isAudioOnly)
     .map((s) => s.text)
@@ -1893,13 +1891,6 @@ function CopyStep({
             </Button>
           </div>
         </div>
-
-        {thinCopy && (
-          <div className="mx-5 md:mx-8 mt-5 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-sm">
-            Spoken copy is very short ({spokenWordCount} words). Use <strong>Regenerate</strong> for a
-            full monologue — timeline directions may still be usable.
-          </div>
-        )}
 
         <div className="p-5 md:p-8 space-y-8">
           {/* Hook */}
