@@ -208,6 +208,33 @@ def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None 
     return coerce_structured(response.content, HookList, stage="Hook generation")
 
 
+def _slim_profile_json(profile_obj) -> str:
+    """Drop heavy per_video dumps so the model spends tokens on spoken copy."""
+    import json
+
+    slim = profile_obj.model_dump()
+    if isinstance(slim.get("metrics"), dict):
+        m = slim["metrics"]
+        editing = m.get("editing") or {}
+        speech = m.get("speech") or {}
+        slim["metrics"] = {
+            "editing": {
+                "avg_cuts_per_min": editing.get("avg_cuts_per_min"),
+                "avg_shot_length_s": editing.get("avg_shot_length_s"),
+            },
+            "speech": {"avg_wpm": speech.get("avg_wpm")},
+            "signature_ngrams": (m.get("signature_ngrams") or [])[:6],
+        }
+    if isinstance(slim.get("thumbnail"), dict):
+        th = slim["thumbnail"]
+        slim["thumbnail"] = {"score": th.get("score"), "composition": (th.get("composition") or "")[:200]}
+    return json.dumps(slim, ensure_ascii=False, indent=2)
+
+
+def _spoken_word_count(copy: VideoCopy) -> int:
+    return normalize_script(copy.script).spoken_word_count
+
+
 def generate_copy(
     creator: str, theme: str, chosen_hook: str, *, research: ResearchReport | None = None, profile: dict | None = None
 ) -> VideoCopy:
@@ -222,57 +249,82 @@ def generate_copy(
 
     agent = create_agent(
         name=f"copy_director_{creator}",
-        description="Scriptwriter and director of short videos — full 90–120s monologue based on measured data.",
+        description="Scriptwriter for 90–120s short-form monologues (200–250 spoken words).",
         instructions=COPY_INSTRUCTIONS,
         output_schema=VideoCopy,
     )
     logger.info("Generating copy for '%s' x '%s' with the chosen hook...", creator, theme)
 
+    profile_json = _slim_profile_json(profile_obj)
+    facts = _facts_block(research)
+
     base_prompt = (
-        f"CREATOR PROFILE (measured evidence — JSON):\n{profile_obj.model_dump_json(indent=2)}\n"
-        f"{_facts_block(research)}\n\n"
+        f"CREATOR PROFILE (measured evidence — JSON):\n{profile_json}\n"
+        f"{facts}\n\n"
         f"USER THEME: {theme}\n"
         f'CHOSEN HOOK: "{chosen_hook}"\n\n'
-        "Generate the COMPLETE SHOOTING SCRIPT for a 90–120 SECOND video (not a 30s teaser).\n"
-        f"- Minimum {MIN_SCRIPT_BLOCKS} lines (blocks), ideally 8–12, each EXACTLY ONE LINE with 4 pipes:\n"
-        "  [TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY IT WORKS]\n"
-        f"- HARD REQUIREMENT: spoken TEXT fields MUST total {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} words "
-        f"(target ~{TARGET_SPOKEN_WORDS}). Count only words the host says out loud.\n"
-        f'- Line 1 TEXT must be the chosen hook: "{chosen_hook}"\n'
-        "- Lines 2+ MUST continue with NEW spoken sentences: context, 3–5 concrete points/steps, "
-        "risks or nuance, and a clear close/CTA.\n"
-        "- Each speaking block should have 1–3 full sentences (not three-word fragments).\n"
-        "- DO NOT put timestamps inside the WHY field; each new moment is a new line.\n"
-        "Use the creator's measured cuts/min, shot types, and editing grammar from the profile."
+        "Write a COMPLETE 90–120 SECOND shooting script (NOT a 20–40s teaser).\n"
+        f"MANDATORY spoken length: {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} words the host SAYS out loud "
+        f"(target {TARGET_SPOKEN_WORDS}). Under {MIN_SPOKEN_WORDS} is a failed response.\n"
+        f"Use {MIN_SCRIPT_BLOCKS}–12 timeline blocks, one line each:\n"
+        "  [TIMESTAMP] | [SHOT] | [TEXT TO SAY] | [EDITING] | [WHY IT WORKS]\n"
+        f'Block 1 TEXT = exactly the hook: "{chosen_hook}"\n'
+        "Then speak through: context → 4–6 concrete points/steps with examples → risks/nuance → clear close/CTA.\n"
+        "Each speaking block: 2–4 full spoken sentences (roughly 25–45 words per block on average).\n"
+        "At most ONE '(no speech — music only)' block. No timestamps inside WHY.\n"
+        "Use measured cuts/min and shot grammar from the profile."
     )
     response = agent.run(base_prompt)
     copy = coerce_structured(response.content, VideoCopy, stage="Copy generation")
     copy = _normalize_video_copy(copy)
 
-    # One expansion pass if the model under-wrote (common with short hooks / thin profiles)
-    spoken_n = normalize_script(copy.script).spoken_word_count
-    if spoken_n < MIN_SPOKEN_WORDS:
+    # Up to 2 expansion rewrites if Granite under-writes (very common without this loop)
+    for attempt in range(1, 3):
+        spoken_n = _spoken_word_count(copy)
+        if spoken_n >= MIN_SPOKEN_WORDS:
+            break
+        spoken_preview = normalize_script(copy.script).spoken_copy
         logger.warning(
-            "Copy only %d spoken words (min %d) — requesting expansion pass...",
+            "Copy pass %d: only %d spoken words (need %d) — expanding...",
+            attempt,
             spoken_n,
             MIN_SPOKEN_WORDS,
         )
-        expand = agent.run(
-            f"{base_prompt}\n\n"
-            f"YOUR PREVIOUS SCRIPT WAS TOO SHORT ({spoken_n} spoken words). "
-            f"Rewrite a LONGER version with AT LEAST {MIN_SPOKEN_WORDS} spoken words "
-            f"(target {TARGET_SPOKEN_WORDS}). Keep the same hook as line 1. "
-            "Add more spoken blocks with real sentences — steps, examples, caveats, close. "
-            "Still use the pipe format, one block per line."
+        expand_prompt = (
+            f"THEME: {theme}\n"
+            f'HOOK (must stay line 1): "{chosen_hook}"\n'
+            f"{facts}\n\n"
+            f"CURRENT NARRATION IS TOO SHORT ({spoken_n} words). Need AT LEAST {MIN_SPOKEN_WORDS} "
+            f"(target {TARGET_SPOKEN_WORDS}).\n\n"
+            f"CURRENT SPOKEN TEXT:\n---\n{spoken_preview}\n---\n\n"
+            "Rewrite the ENTIRE shooting script longer in pipe format "
+            "([TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY]).\n"
+            f"- Keep the hook as block 1.\n"
+            f"- Produce 10–12 blocks covering 0:00–~1:45.\n"
+            f"- EVERY speaking block needs 2–4 full sentences.\n"
+            f"- Cover: what the topic is, why it matters, 4 practical points, who should be careful, "
+            f"what to do next / CTA.\n"
+            f"- Use only verified facts for numbers; otherwise [INSERT: …].\n"
+            f"- Count spoken words carefully — final TEXT fields must sum to ≥{MIN_SPOKEN_WORDS}."
         )
         try:
-            expanded = coerce_structured(expand.content, VideoCopy, stage="Copy expansion")
+            expand = agent.run(expand_prompt)
+            expanded = coerce_structured(expand.content, VideoCopy, stage=f"Copy expansion {attempt}")
             expanded = _normalize_video_copy(expanded)
-            if normalize_script(expanded.script).spoken_word_count >= spoken_n:
+            new_n = _spoken_word_count(expanded)
+            if new_n > spoken_n:
                 copy = expanded
+                logger.info("Copy expansion %d: %d → %d spoken words", attempt, spoken_n, new_n)
         except Exception:
-            logger.exception("Copy expansion pass failed — keeping first draft")
+            logger.exception("Copy expansion pass %d failed", attempt)
 
+    final_n = _spoken_word_count(copy)
+    if final_n < MIN_SPOKEN_WORDS:
+        logger.warning(
+            "Copy still short after expansion (%d < %d). Returning best effort.",
+            final_n,
+            MIN_SPOKEN_WORDS,
+        )
     return copy
 
 
