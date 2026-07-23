@@ -43,6 +43,63 @@ export const Route = createFileRoute("/")({
 
 const API = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000";
 
+/** Extract FastAPI `{detail: string}` (or array) from error bodies. */
+async function readErrorBody(res: Response): Promise<string> {
+  const text = await res.text();
+  try {
+    const j = JSON.parse(text) as { detail?: unknown };
+    if (typeof j.detail === "string") return j.detail;
+    if (Array.isArray(j.detail)) {
+      return j.detail
+        .map((d) => (typeof d === "object" && d && "msg" in d ? String((d as { msg: string }).msg) : String(d)))
+        .join("; ");
+    }
+  } catch {
+    /* plain text */
+  }
+  return text;
+}
+
+/** Turn raw API / network failures into judge-friendly copy. */
+function humanizeError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err ?? "Unknown error");
+  const t = raw.toLowerCase();
+  if (t.includes("failed to fetch") || t.includes("networkerror") || t.includes("load failed")) {
+    return "Can't reach the API right now (cold start or offline). Wait ~20s and try again — or pick a seed creator.";
+  }
+  if (t.includes("429") || t.includes("rate limit")) {
+    return "Rate limit reached for new analyses this hour. Use a seed creator (jeffnippard / Bryan / kallaway) — unlimited demo cache.";
+  }
+  if (t.includes("timeout") || t.includes("timed out")) {
+    return "Request timed out. Server may be waking up — retry once, or use a pre-analyzed seed.";
+  }
+  if (t.includes("job not found") || t.includes("container may have restarted")) {
+    return "Analysis job was lost (API restarted). Click Decode again — seed creators load instantly from cache.";
+  }
+  if (t.includes("not found") || t.includes("404") || t.includes("no profile")) {
+    return "Profile not found. Decode a seed creator first, or paste public YouTube Shorts links.";
+  }
+  if (t.includes("502") || t.includes("hook generation failed") || t.includes("script generation failed")) {
+    return `${raw.slice(0, 200)} — retry once; if it persists, use a seed creator demo.`;
+  }
+  // Strip HTML / JSON noise for UI
+  const clean = raw
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[{}"[\]]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 220);
+  return clean || "Something went wrong. Retry, or continue with a seed creator demo.";
+}
+
+async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`);
+  if (!res.ok) {
+    throw new Error((await readErrorBody(res)) || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: "POST",
@@ -50,13 +107,55 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const detail = await res.text();
+    const detail = await readErrorBody(res);
     if (res.status === 429) {
       throw new Error(`Rate limit reached: ${detail.slice(0, 200)}`);
     }
     throw new Error(detail.slice(0, 300) || `HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
+}
+
+/** Poll ingest job until done/failed; never hang forever on lost jobs. */
+async function pollJob(
+  jobId: string,
+  onStatus: (line: string) => void,
+  opts?: { intervalMs?: number; maxWaitMs?: number },
+): Promise<void> {
+  const intervalMs = opts?.intervalMs ?? 2000;
+  const maxWaitMs = opts?.maxWaitMs ?? 8 * 60 * 1000;
+  const started = Date.now();
+
+  for (;;) {
+    if (Date.now() - started > maxWaitMs) {
+      throw new Error(
+        "Analysis timed out after 8 minutes. Retry Decode, or use a seed creator (jeffnippard).",
+      );
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+    const res = await fetch(`${API}/api/jobs/${jobId}`);
+    if (res.status === 404) {
+      throw new Error(await readErrorBody(res));
+    }
+    if (!res.ok) {
+      throw new Error((await readErrorBody(res)) || `Job poll failed (${res.status})`);
+    }
+    const job = (await res.json()) as { status?: string; error?: string };
+    if (job.status === "done") return;
+    if (job.status === "failed") {
+      throw new Error(
+        job.error ??
+          "Analysis failed. Try a public YouTube Shorts link or a seed creator (jeffnippard).",
+      );
+    }
+    onStatus(
+      job.status === "ingesting"
+        ? "Downloading and transcribing videos…"
+        : job.status === "analyzing"
+          ? "Measuring cuts and decoding style…"
+          : "Queued…",
+    );
+  }
 }
 
 type Profile = {
@@ -129,12 +228,14 @@ type CopyResult = {
 type StepId = "creator" | "profile" | "topic-select" | "hooks" | "copy";
 
 const STEPS: { id: StepId; label: string; hint: string; icon: typeof LinkIcon }[] = [
-  { id: "creator", label: "Creator", hint: "links or demo", icon: LinkIcon },
+  { id: "creator", label: "Creator", hint: "seed or links", icon: LinkIcon },
   { id: "profile", label: "Profile", hint: "measured formula", icon: Gauge },
-  { id: "topic-select", label: "Topic", hint: "your theme", icon: Target },
-  { id: "hooks", label: "Hooks", hint: "10 patterns", icon: Target },
-  { id: "copy", label: "Script", hint: "shooting report", icon: Wand2 },
+  { id: "topic-select", label: "Topic", hint: "reuse formula", icon: Target },
+  { id: "hooks", label: "Hooks", hint: "10 patterns", icon: Sparkle },
+  { id: "copy", label: "Script", hint: "shooting report", icon: Film },
 ];
+
+const SEED_NAMES = ["bryan", "jeffnippard", "kallaway"] as const;
 
 const DEMO_CREATORS = [
   {
@@ -178,35 +279,54 @@ function Studio() {
   const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
   const [generatingCopy, setGeneratingCopy] = useState(false);
 
-  // Warm up API in background — don't block initial render
+  // Warm up API + keep-alive (Code Engine scales to zero / cold starts)
   useEffect(() => {
-    const t = setTimeout(() => fetch(`${API}/api/health`).catch(() => {}), 500);
-    return () => clearTimeout(t);
+    const ping = () => {
+      fetch(`${API}/api/health`).catch(() => {});
+    };
+    const t = setTimeout(ping, 400);
+    const interval = setInterval(ping, 4 * 60 * 1000);
+    return () => {
+      clearTimeout(t);
+      clearInterval(interval);
+    };
   }, []);
 
   const validLinks = links.filter((l) => l.trim().startsWith("http"));
-  const isSeedCreator = ["bryan", "jeffnippard", "kallaway"].includes(creatorName.trim().toLowerCase());
-  const canAnalyze = creatorName.trim().length >= 2 && (validLinks.length >= 1 || isSeedCreator) && topic.trim().length >= 3;
+  const isSeedCreator = SEED_NAMES.includes(
+    creatorName.trim().toLowerCase() as (typeof SEED_NAMES)[number],
+  );
+  const canAnalyze =
+    creatorName.trim().length >= 2 &&
+    (validLinks.length >= 1 || isSeedCreator) &&
+    topic.trim().length >= 3;
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
 
-  async function runAnalysis() {
+  /** Accept overrides so seed cards can one-tap decode without waiting on setState. */
+  async function runAnalysis(overrides?: { creator?: string; topic?: string }) {
+    const name = (overrides?.creator ?? creatorName).trim();
+    const theme = (overrides?.topic ?? topic).trim();
+    if (overrides?.creator) setCreatorName(overrides.creator);
+    if (overrides?.topic) setTopic(overrides.topic);
+
+    const seed =
+      SEED_NAMES.includes(name.toLowerCase() as (typeof SEED_NAMES)[number]) &&
+      validLinks.length === 0;
+
     setAnalyzing(true);
     setError(null);
 
     // Seed creator without links — skip ingestion, load cached profile directly
-    if (isSeedCreator && validLinks.length === 0) {
+    if (seed) {
       try {
-        setJobStatus("Loading pre-analyzed profile...");
-        const prof = (await (
-          await fetch(`${API}/api/profile/${encodeURIComponent(creatorName.trim())}`)
-        ).json()) as Profile;
-        // Always store a non-poison fingerprint (never N/A / Insufficient…)
+        setJobStatus("Loading pre-analyzed profile…");
+        const prof = await apiGet<Profile>(`/api/profile/${encodeURIComponent(name)}`);
         setProfile({ ...prof, style: healStyleForDisplay(prof) });
         setStep("profile");
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(humanizeError(e));
       } finally {
         setAnalyzing(false);
         setJobStatus(null);
@@ -214,39 +334,26 @@ function Studio() {
       return;
     }
 
+    if (name.length < 2 || validLinks.length < 1 || theme.length < 3) {
+      setError("Pick a seed creator, or enter a name, topic (3+ chars), and at least one public Shorts URL.");
+      setAnalyzing(false);
+      return;
+    }
+
     setJobStatus("Queuing ingestion…");
     try {
       const { job_id } = await apiPost<{ job_id: string; remaining?: number }>("/api/ingest", {
-        creator: creatorName.trim(),
+        creator: name,
         urls: validLinks,
       });
 
-      for (;;) {
-        await new Promise((r) => setTimeout(r, 2000));
-        const job = await (await fetch(`${API}/api/jobs/${job_id}`)).json();
-        if (job.status === "done") break;
-        if (job.status === "failed") {
-          throw new Error(
-            (job.error as string | undefined) ??
-              "Analysis failed. Try a public YouTube Shorts link or a seed creator (jeffnippard).",
-          );
-        }
-        setJobStatus(
-          job.status === "ingesting"
-            ? "Downloading and transcribing videos…"
-            : job.status === "analyzing"
-              ? "Measuring cuts and decoding style…"
-              : "Queued…",
-        );
-      }
+      await pollJob(job_id, setJobStatus);
 
-      const prof = (await (
-        await fetch(`${API}/api/profile/${encodeURIComponent(creatorName.trim())}`)
-      ).json()) as Profile;
+      const prof = await apiGet<Profile>(`/api/profile/${encodeURIComponent(name)}`);
       setProfile({ ...prof, style: healStyleForDisplay(prof) });
       setStep("profile");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(humanizeError(e));
     } finally {
       setAnalyzing(false);
       setJobStatus(null);
@@ -254,25 +361,23 @@ function Studio() {
   }
 
   async function goHooks(newTopic?: string) {
-    console.log("[goHooks] called, topic:", topic, "profile:", !!profile, "creatorName:", creatorName);
     const theme = (newTopic ?? topic).trim();
     if (newTopic) setTopic(newTopic);
     setError(null);
     setHooksLoading(true);
     setPickedHook(null);
+    setCopyResult(null);
     setStep("hooks");
-    console.log("[goHooks] advancing to hooks step");
     try {
       const data = await apiPost<{ hooks: Hook[] }>("/api/hooks", {
         creator: creatorName.trim(),
         topic: theme,
         profile: profile ?? undefined,
       });
-      console.log("[goHooks] received", data.hooks?.length, "hooks");
-      setHooks(data.hooks);
+      setHooks(data.hooks ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setStep("profile");  // go back on error
+      setError(humanizeError(e));
+      setStep(newTopic ? "topic-select" : "profile");
     } finally {
       setHooksLoading(false);
     }
@@ -292,10 +397,18 @@ function Studio() {
       });
       setCopyResult(result);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(humanizeError(e));
     } finally {
       setGeneratingCopy(false);
     }
+  }
+
+  function goWriteScript() {
+    if (pickedHook === null || !hooks[pickedHook]) return;
+    setCopyResult(null);
+    setStep("copy");
+    // Fire generation from the click handler (no useEffect race / StrictMode double-call)
+    void generateCopy();
   }
 
   function newTopic() {
@@ -314,7 +427,24 @@ function Studio() {
     setError(null);
   }
 
-  const canNavigate = (id: StepId) => id === "creator" || profile !== null;
+  const canNavigate = (id: StepId) => {
+    if (id === "creator") return true;
+    if (!profile) return false;
+    if (id === "profile") return true;
+    if (id === "topic-select") return true;
+    if (id === "hooks") return hooks.length > 0 || step === "hooks" || step === "copy";
+    if (id === "copy") return pickedHook !== null || copyResult !== null;
+    return false;
+  };
+
+  const isStepDone = (id: StepId, i: number) => {
+    if (id === "creator") return profile !== null;
+    if (id === "profile") return profile !== null && (hooks.length > 0 || stepIndex > i);
+    if (id === "topic-select") return false; // optional branch — never "required done"
+    if (id === "hooks") return pickedHook !== null || copyResult !== null;
+    if (id === "copy") return copyResult !== null;
+    return i < stepIndex;
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -325,7 +455,7 @@ function Studio() {
         <div className="relative p-6 flex items-center gap-3">
           <div className="relative">
             <div className="absolute -inset-1 rounded-xl bg-primary/30 blur-md" />
-            <button onClick={restart} className="relative cursor-pointer" title="Home">
+            <button type="button" onClick={restart} className="relative cursor-pointer" title="Home">
               <img src={logoUrl} alt="Viral Formula Studio" className="relative h-9 w-9" />
             </button>
           </div>
@@ -335,9 +465,16 @@ function Studio() {
           </div>
         </div>
 
+        <div className="relative px-4 pb-3">
+          <div className="rounded-lg border border-primary/25 bg-primary/10 px-3 py-2 text-[10px] leading-relaxed text-muted-foreground">
+            <span className="text-primary font-semibold tracking-wide uppercase">IBM AI Builders</span>
+            <span className="block mt-0.5">Granite 4 · Llama Vision · Code Engine</span>
+          </div>
+        </div>
+
         <Separator className="bg-sidebar-border relative" />
 
-        <nav className="relative p-4">
+        <nav className="relative p-4" aria-label="Workflow steps">
           <div className="px-2 pb-3 text-[10px] uppercase tracking-[0.24em] text-muted-foreground flex items-center gap-2">
             <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
             Workflow
@@ -348,13 +485,15 @@ function Studio() {
             <div className="space-y-1 relative">
               {STEPS.map((s, i) => {
                 const active = s.id === step;
-                const done = i < stepIndex || (s.id === "creator" && profile !== null);
+                const done = isStepDone(s.id, i);
                 const Icon = s.icon;
                 return (
                   <button
                     key={s.id}
+                    type="button"
                     onClick={() => (canNavigate(s.id) ? setStep(s.id) : null)}
                     disabled={!canNavigate(s.id)}
+                    aria-current={active ? "step" : undefined}
                     className={cn(
                       "w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-all group relative",
                       active && "bg-sidebar-accent shadow-glow ring-1 ring-primary/40",
@@ -390,9 +529,12 @@ function Studio() {
           </div>
         </nav>
 
-        <div className="relative mt-auto p-4 border-t border-sidebar-border">
+        <div className="relative mt-auto p-4 border-t border-sidebar-border space-y-2">
           <p className="text-[10px] text-muted-foreground text-center tracking-wide">
-            Powered by <span className="text-foreground/80 font-medium">IBM Granite</span>
+            Powered by <span className="text-foreground/80 font-medium">IBM watsonx</span>
+          </p>
+          <p className="text-[9px] text-muted-foreground/70 text-center">
+            Measured metrics · not guesses
           </p>
         </div>
       </aside>
@@ -435,16 +577,17 @@ function Studio() {
 
             {/* Mobile / tablet horizontal stepper */}
             <div className="lg:hidden border-t border-border/40 px-2 sm:px-4 py-2 overflow-x-auto">
-              <div className="flex items-center gap-1 min-w-max mx-auto max-w-5xl">
+              <div className="flex items-center gap-1 min-w-max mx-auto max-w-5xl" role="navigation" aria-label="Workflow">
                 {STEPS.map((s, i) => {
                   const active = s.id === step;
-                  const done = i < stepIndex || (s.id === "creator" && profile !== null);
+                  const done = isStepDone(s.id, i);
                   return (
                     <div key={s.id} className="flex items-center">
                       <button
                         type="button"
                         disabled={!canNavigate(s.id)}
                         onClick={() => canNavigate(s.id) && setStep(s.id)}
+                        aria-current={active ? "step" : undefined}
                         className={cn(
                           "flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-medium transition-all",
                           active && "bg-primary text-primary-foreground shadow-glow",
@@ -470,8 +613,20 @@ function Studio() {
 
           <div className="max-w-5xl mx-auto px-4 md:px-10 py-6 md:py-12 animate-studio-in" key={step}>
             {error && (
-              <Card className="mb-6 p-4 border-destructive/50 bg-destructive/10 text-sm text-destructive-foreground">
-                {error}
+              <Card
+                role="alert"
+                className="mb-6 p-4 border-destructive/50 bg-destructive/10 text-sm flex flex-col sm:flex-row sm:items-center gap-3 justify-between"
+              >
+                <p className="text-destructive-foreground leading-relaxed">{error}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 border-destructive/40"
+                  onClick={() => setError(null)}
+                >
+                  Dismiss
+                </Button>
               </Card>
             )}
 
@@ -490,7 +645,7 @@ function Studio() {
               />
             )}
 
-            {step === "profile" && <ProfileStep profile={profile} onNext={goHooks} />}
+            {step === "profile" && <ProfileStep profile={profile} onNext={() => goHooks()} />}
 
             {step === "topic-select" && (
               <TopicSelectStep
@@ -509,7 +664,7 @@ function Studio() {
                 pickedHook={pickedHook}
                 setPickedHook={setPickedHook}
                 onRegenerate={goHooks}
-                onNext={() => setStep("copy")}
+                onNext={goWriteScript}
               />
             )}
 
@@ -526,11 +681,13 @@ function Studio() {
               />
             )}
 
-            {/* Product footer — single quiet IBM credit */}
-            <footer className="mt-14 md:mt-20 pt-6 border-t border-border/50 pb-2">
+            <footer className="mt-14 md:mt-20 pt-6 border-t border-border/50 pb-2 space-y-2">
               <p className="text-center text-[11px] text-muted-foreground tracking-wide">
-                Viral Formula Studio · Powered by{" "}
-                <span className="text-foreground/75 font-medium">IBM Granite</span>
+                Viral Formula Studio ·{" "}
+                <span className="text-foreground/75 font-medium">IBM AI Builders Challenge 2026</span>
+              </p>
+              <p className="text-center text-[10px] text-muted-foreground/70">
+                watsonx · Granite 4 · Llama 3.2 Vision · Code Engine
               </p>
             </footer>
           </div>
@@ -564,51 +721,127 @@ function CreatorStep({
   canAnalyze: boolean;
   analyzing: boolean;
   jobStatus: string | null;
-  runAnalysis: () => void;
+  runAnalysis: (overrides?: { creator?: string; topic?: string }) => void;
 }) {
   const filled = links.filter((l) => l.trim().startsWith("http")).length;
   const selectedDemo = DEMO_CREATORS.find(
     (d) => d.name.toLowerCase() === creatorName.trim().toLowerCase(),
   );
+  const [showAdvanced, setShowAdvanced] = useState(filled > 0 && !selectedDemo);
 
   return (
-    <div className="space-y-10 md:space-y-12">
-      {/* Hero */}
-      <header className="relative overflow-hidden rounded-2xl border border-border/50 call-sheet p-6 md:p-10 space-y-5">
+    <div className="space-y-8 md:space-y-10">
+      {/* Hero — pitch landing for judges */}
+      <header className="relative overflow-hidden rounded-2xl border border-border/50 call-sheet p-6 md:p-10 space-y-6">
         <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-        <div className="relative space-y-4 max-w-3xl">
-          <Badge variant="outline" className="gap-1.5">
-            <Sparkle className="h-3 w-3" /> Multimodal creator studio
+
+        <div className="relative flex flex-wrap items-center gap-2">
+          <Badge className="gap-1.5 bg-primary text-primary-foreground border-0">
+            <Sparkle className="h-3 w-3" /> IBM AI Builders Challenge 2026
           </Badge>
-          <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05] tracking-tight">
-            Reverse-engineer any creator&apos;s{" "}
-            <span className="text-gradient">viral formula</span>
-          </h1>
-          <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-2xl">
-            Measure real cuts, speech rate and hooks — then transpose that grammar onto{" "}
-            <strong className="text-foreground">your</strong> topic with a shoot-ready script.
-            Inspiration, not imitation.
-          </p>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
-              <Youtube className="h-3 w-3 text-red-500" /> YouTube Shorts
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
-              <Scissors className="h-3 w-3 text-success" /> Measured metrics
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
-              <Film className="h-3 w-3 text-primary" /> Shoot-ready script
-            </span>
+          <Badge variant="outline" className="gap-1.5 border-primary/40 text-primary">
+            Creative Industries
+          </Badge>
+          <Badge variant="secondary" className="gap-1.5 text-[10px]">
+            Live on IBM Code Engine
+          </Badge>
+        </div>
+
+        <div className="relative grid lg:grid-cols-5 gap-8 items-start">
+          <div className="lg:col-span-3 space-y-4">
+            <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05] tracking-tight">
+              Reverse-engineer any creator&apos;s{" "}
+              <span className="text-gradient">viral formula</span>
+            </h1>
+            <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-2xl">
+              We <strong className="text-foreground">measure</strong> cuts, speech rate and hooks
+              with ffmpeg — then IBM Granite + Vision decode the grammar and transpose it onto{" "}
+              <strong className="text-foreground">your</strong> topic. Inspiration, not imitation.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
+                <Youtube className="h-3 w-3 text-red-500" /> YouTube Shorts
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
+                <Scissors className="h-3 w-3 text-success" /> Measured, not guessed
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
+                <Film className="h-3 w-3 text-primary" /> Shoot-ready script
+              </span>
+            </div>
+
+            {/* IBM stack strip */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {[
+                "watsonx.ai",
+                "Granite 4",
+                "Llama Vision",
+                "Code Engine",
+                "IBM Bob",
+              ].map((label) => (
+                <span
+                  key={label}
+                  className="font-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-md border border-border/60 bg-background/50 text-muted-foreground"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Output preview — show the deliverable without running pipeline */}
+          <div className="lg:col-span-2 relative">
+            <div className="rounded-xl border border-primary/30 bg-background/60 backdrop-blur-sm p-4 shadow-glow space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-primary">
+                  Output preview
+                </span>
+                <Badge variant="secondary" className="text-[9px]">
+                  Shooting report
+                </Badge>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-3 space-y-2">
+                <div className="text-[9px] font-mono text-muted-foreground uppercase">Hook · 0:00–0:03</div>
+                <p className="text-sm font-display font-semibold leading-snug">
+                  &ldquo;Stop guessing what works — measure it.&rdquo;
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {[
+                  { k: "cuts/min", v: "28.1" },
+                  { k: "WPM", v: "172" },
+                  { k: "words", v: "186" },
+                ].map((m) => (
+                  <div key={m.k} className="rounded-md bg-background/50 border border-border/40 py-1.5">
+                    <div className="font-mono text-xs font-semibold tabular-nums">{m.v}</div>
+                    <div className="text-[8px] uppercase text-muted-foreground">{m.k}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                <div className="flex gap-2 items-start">
+                  <span className="font-mono text-primary shrink-0">0:03</span>
+                  <span>Proof beat · B-roll cut · retention pull</span>
+                </div>
+                <div className="flex gap-2 items-start">
+                  <span className="font-mono text-primary shrink-0">0:28</span>
+                  <span>CTA close · measured n-gram echo</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground/80 leading-relaxed border-t border-border/40 pt-2">
+                Real reports include timestamps, shot types, spoken copy & honesty notes.
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Pipeline strip */}
-        <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+        <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
           {[
-            { icon: Eye, label: "01 · Measure", text: "Cuts/min, speech rate, frames — numbers first", tone: "text-sky-400" },
-            { icon: Brain, label: "02 · Decode", text: "Extract style, hooks and editing grammar", tone: "text-primary" },
-            { icon: Wand2, label: "03 · Transpose", text: "Hooks + shooting script on your topic", tone: "text-emerald-400" },
+            { icon: Eye, label: "01 · Measure", text: "ffmpeg: cuts/min, WPM, frames — no AI guessing", tone: "text-sky-400" },
+            { icon: Brain, label: "02 · Decode", text: "Granite + Vision read style & editing grammar", tone: "text-primary" },
+            { icon: Wand2, label: "03 · Transpose", text: "10 hooks + call-sheet script on your topic", tone: "text-emerald-400" },
           ].map(({ icon: Icon, label, text, tone }) => (
             <div
               key={label}
@@ -631,17 +864,17 @@ function CreatorStep({
       ) : (
         <>
           {/* Demo creators — primary path for judges */}
-          <section className="space-y-4">
+          <section className="space-y-4" aria-labelledby="seed-heading">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.22em] text-primary font-mono mb-1">
-                  Instant demo · pre-analyzed
+                  60-second judge path · pre-analyzed
                 </div>
-                <h2 className="font-display text-xl md:text-2xl font-semibold">
-                  Pick a seed creator
+                <h2 id="seed-heading" className="font-display text-xl md:text-2xl font-semibold">
+                  Pick a seed creator — one tap
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-                  Profiles already measured — no download. Perfect for live demos and judges.
+                  Cached profiles on IBM Code Engine. No upload. Topic is prefilled — Decode runs immediately.
                 </p>
               </div>
               <Badge variant="outline" className="gap-1.5 text-[10px] border-success/40 text-success">
@@ -653,22 +886,17 @@ function CreatorStep({
               {DEMO_CREATORS.map((demo) => {
                 const active = selectedDemo?.name === demo.name;
                 return (
-                  <button
+                  <div
                     key={demo.name}
-                    type="button"
-                    onClick={() => {
-                      setCreatorName(demo.name);
-                      setTopic(demo.topic);
-                    }}
                     className={cn(
-                      "text-left rounded-2xl border p-5 transition-all relative overflow-hidden group",
+                      "text-left rounded-2xl border p-5 transition-all relative overflow-hidden flex flex-col",
                       active
-                        ? "border-primary bg-primary/10 shadow-glow ring-1 ring-primary/40 scale-[1.01]"
+                        ? "border-primary bg-primary/10 shadow-glow ring-1 ring-primary/40"
                         : "border-border/60 bg-card/60 hover:border-primary/40 hover:bg-card",
                     )}
                   >
                     <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", demo.accent)} />
-                    <div className="relative space-y-3">
+                    <div className="relative space-y-3 flex-1 flex flex-col">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="font-display font-semibold text-lg">{demo.name}</div>
@@ -697,140 +925,158 @@ function CreatorStep({
                           </div>
                         ))}
                       </div>
-                      <div className="text-[10px] font-mono text-primary flex items-center gap-1 pt-0.5">
-                        <Check className={cn("h-3 w-3", active ? "opacity-100" : "opacity-0")} />
-                        Topic prefilled · click Decode below
-                      </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-2 pt-1 flex-1">
+                        Topic: <span className="text-foreground/80">{demo.topic}</span>
+                      </p>
+                      <Button
+                        type="button"
+                        size="lg"
+                        className="w-full shadow-glow mt-1"
+                        onClick={() => runAnalysis({ creator: demo.name, topic: demo.topic })}
+                      >
+                        Decode formula
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
           </section>
 
-          {/* Custom creator form */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-              <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                Or analyze your own creator
-              </span>
-              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-            </div>
-
-            <div className="grid lg:grid-cols-5 gap-5">
-              <Card className="lg:col-span-3 p-4 md:p-7 space-y-4 md:space-y-5 bg-card/70 backdrop-blur-sm border-border/60">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div className="font-display font-medium text-sm">Reference creator</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Up to 5 public YouTube Shorts. Empty slots are fine — paste in any row.
-                    </div>
-                  </div>
-                  <span className="font-mono text-xs text-muted-foreground tabular-nums shrink-0">
-                    {filled}/5
-                  </span>
-                </div>
-
-                <div>
-                  <Label htmlFor="creator-name" className="font-display font-medium text-sm">
-                    Creator name
-                  </Label>
-                  <Input
-                    id="creator-name"
-                    value={creatorName}
-                    onChange={(e) => setCreatorName(e.target.value)}
-                    placeholder="e.g. jeffnippard"
-                    className="mt-2 bg-background/60 h-11"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  {links.map((link, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] text-muted-foreground w-5 text-right shrink-0">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-                      <div className="relative flex-1 min-w-0">
-                        <LinkIcon className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          value={link}
-                          onChange={(e) => {
-                            const next = [...links];
-                            next[i] = e.target.value;
-                            setLinks(next);
-                          }}
-                          placeholder="https://www.youtube.com/shorts/..."
-                          className="pl-9 bg-background/60 font-mono text-xs h-10"
-                        />
-                      </div>
-                      {link && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = [...links];
-                            next[i] = "";
-                            setLinks(next);
-                          }}
-                          className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition shrink-0"
-                          aria-label="Clear"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              <Card className="lg:col-span-2 p-4 md:p-7 space-y-4 bg-card/70 backdrop-blur-sm border-border/60 flex flex-col">
-                <div>
-                  <Label htmlFor="topic" className="font-display font-medium text-sm">
-                    Your topic
-                  </Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Formula migrates here — your voice, their technique.
-                  </p>
-                </div>
-                <Textarea
-                  id="topic"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g. how small businesses can use AI without coding."
-                  rows={6}
-                  className="bg-background/60 resize-none flex-1 min-h-[140px]"
-                />
-                <div className="rounded-lg border border-border/60 bg-secondary/40 p-3 text-[11px] text-muted-foreground leading-relaxed">
-                  <span className="text-foreground font-medium">Fact-check on:</span> we verify
-                  checkable claims about your topic and cite sources in the final script.
-                </div>
-              </Card>
-            </div>
-          </section>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-1 pb-2">
-            <div className="text-xs text-muted-foreground flex items-center gap-4 flex-wrap">
-              <span className="flex items-center gap-1.5">
-                <Scissors className="h-3.5 w-3.5 text-success" /> measured cuts/min
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Film className="h-3.5 w-3.5 text-primary" /> shot length
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-warning" /> signature n-grams
-              </span>
-            </div>
-            <Button
-              id="decode-btn"
-              size="lg"
-              disabled={!canAnalyze || analyzing}
-              onClick={runAnalysis}
-              className="min-w-[240px] shadow-glow h-12 text-base"
+          {/* Custom creator — collapsed by default for clean demo */}
+          <section className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className="w-full flex items-center gap-3 group"
+              aria-expanded={showAdvanced}
             >
-              Decode formula
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+              <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-2">
+                {showAdvanced ? "Hide" : "Or analyze your own creator"}
+                <ArrowRight className={cn("h-3 w-3 transition-transform", showAdvanced && "rotate-90")} />
+              </span>
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+            </button>
+
+            {showAdvanced && (
+              <div className="space-y-5 animate-studio-in">
+                <div className="grid lg:grid-cols-5 gap-5">
+                  <Card className="lg:col-span-3 p-4 md:p-7 space-y-4 md:space-y-5 bg-card/70 backdrop-blur-sm border-border/60">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="font-display font-medium text-sm">Reference creator</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Up to 5 public YouTube Shorts. Empty slots are fine — paste in any row.
+                        </div>
+                      </div>
+                      <span className="font-mono text-xs text-muted-foreground tabular-nums shrink-0">
+                        {filled}/5
+                      </span>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="creator-name" className="font-display font-medium text-sm">
+                        Creator name
+                      </Label>
+                      <Input
+                        id="creator-name"
+                        value={creatorName}
+                        onChange={(e) => setCreatorName(e.target.value)}
+                        placeholder="e.g. jeffnippard"
+                        className="mt-2 bg-background/60 h-11"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      {links.map((link, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="font-mono text-[11px] text-muted-foreground w-5 text-right shrink-0">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <div className="relative flex-1 min-w-0">
+                            <LinkIcon className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              value={link}
+                              onChange={(e) => {
+                                const next = [...links];
+                                next[i] = e.target.value;
+                                setLinks(next);
+                              }}
+                              placeholder="https://www.youtube.com/shorts/..."
+                              className="pl-9 bg-background/60 font-mono text-xs h-10"
+                            />
+                          </div>
+                          {link && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = [...links];
+                                next[i] = "";
+                                setLinks(next);
+                              }}
+                              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition shrink-0"
+                              aria-label="Clear link"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+
+                  <Card className="lg:col-span-2 p-4 md:p-7 space-y-4 bg-card/70 backdrop-blur-sm border-border/60 flex flex-col">
+                    <div>
+                      <Label htmlFor="topic" className="font-display font-medium text-sm">
+                        Your topic
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Formula migrates here — your voice, their technique.
+                      </p>
+                    </div>
+                    <Textarea
+                      id="topic"
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      placeholder="e.g. how small businesses can use AI without coding."
+                      rows={6}
+                      className="bg-background/60 resize-none flex-1 min-h-[140px]"
+                    />
+                    <div className="rounded-lg border border-border/60 bg-secondary/40 p-3 text-[11px] text-muted-foreground leading-relaxed">
+                      <span className="text-foreground font-medium">Fact-check on:</span> we verify
+                      checkable claims about your topic and cite sources in the final script.
+                    </div>
+                  </Card>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-1 pb-2">
+                  <div className="text-xs text-muted-foreground flex items-center gap-4 flex-wrap">
+                    <span className="flex items-center gap-1.5">
+                      <Scissors className="h-3.5 w-3.5 text-success" /> measured cuts/min
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Film className="h-3.5 w-3.5 text-primary" /> shot length
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5 text-warning" /> signature n-grams
+                    </span>
+                  </div>
+                  <Button
+                    id="decode-btn"
+                    size="lg"
+                    disabled={!canAnalyze || analyzing}
+                    onClick={() => runAnalysis()}
+                    className="min-w-[240px] shadow-glow h-12 text-base"
+                  >
+                    Decode formula
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </section>
         </>
       )}
     </div>
@@ -1381,21 +1627,14 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
         </Card>
       )}
 
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={(e) => { 
-            e.preventDefault(); 
-            e.stopPropagation(); 
-            console.log("[Button] clicked, calling onNext");
-            onNext(); 
-          }}
-          className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium cursor-pointer bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 rounded-md px-8 min-w-[220px] shadow-glow"
-          style={{ zIndex: 50, position: "relative", cursor: "pointer" }}
-        >
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+        <p className="text-xs text-muted-foreground max-w-md">
+          Next: 10 hooks mapped from this fingerprint onto your topic — fact-checked on watsonx.
+        </p>
+        <Button type="button" size="lg" onClick={onNext} className="min-w-[220px] shadow-glow">
           Generate 10 hooks
           <ArrowRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1477,10 +1716,10 @@ function HooksStep({
     <div className="space-y-10">
       <header className="space-y-4 max-w-3xl">
         <Badge variant="outline" className="gap-1.5">
-          <Target className="h-3 w-3" /> Step 3 of 4
+          <Sparkle className="h-3 w-3" /> Step 4 of 5 · Hooks
         </Badge>
         <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
-          10 hooks <span className="text-gradient">in the creator's technique</span>, on
+          10 hooks <span className="text-gradient">in the creator&apos;s technique</span>, on
           your topic.
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
@@ -1730,7 +1969,7 @@ function CopyStep({
       <div className="space-y-10">
         <header className="space-y-4 max-w-3xl">
           <Badge variant="outline" className="gap-1.5">
-            <Wand2 className="h-3 w-3" /> Final step · shooting script
+            <Wand2 className="h-3 w-3" /> Step 5 of 5 · Shooting script
           </Badge>
           <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
             Your script, <span className="text-gradient">ready to shoot</span>.
@@ -1739,39 +1978,40 @@ function CopyStep({
             Full call sheet: spoken narration, timecodes, shot types and retention psychology —
             grounded in measured metrics and verified facts.
           </p>
-        </header>
-        {!generating && (
-          <Card className="p-8 md:p-10 bg-card/70 text-center space-y-5 border-dashed border-primary/30 relative overflow-hidden">
-            <div className="absolute -top-16 right-0 h-40 w-40 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
-            <div className="relative inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-glow">
-              <Play className="h-6 w-6" />
-            </div>
-            <div className="relative space-y-2">
-              <h3 className="font-display text-xl">Generate shooting report</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Multi-block timeline · open → develop → close · evidence only.
-              </p>
-              {hook && (
-                <p className="text-sm text-foreground max-w-lg mx-auto pt-2 rounded-lg bg-primary/10 border border-primary/20 px-4 py-3">
-                  Hook seed: &ldquo;{hook}&rdquo;
-                </p>
-              )}
-            </div>
-            <Button size="lg" onClick={onGenerate} className="shadow-glow relative" disabled={!hook}>
-              Generate script <ArrowRight className="h-4 w-4" />
-            </Button>
-            <p className="text-[11px] text-muted-foreground relative">
-              Usually 30–90s · fact-check + full narration + format polish
+          {hook && (
+            <p className="text-sm text-foreground max-w-xl rounded-lg bg-primary/10 border border-primary/20 px-4 py-3">
+              Hook seed: &ldquo;{hook}&rdquo;
             </p>
-          </Card>
-        )}
-        {generating && (
+          )}
+        </header>
+        {generating ? (
           <PhasedWait
             title="Writing the complete shooting script"
             subtitle="Injecting creator profile + verified facts. Full narration and shot list — not just the opening hook."
             phases={COPY_PHASES}
             mode="copy"
           />
+        ) : (
+          <Card className="p-8 md:p-10 bg-card/70 text-center space-y-5 border-dashed border-primary/30 relative overflow-hidden">
+            <div className="absolute -top-16 right-0 h-40 w-40 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+            <div className="relative inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-glow">
+              <Play className="h-6 w-6" />
+            </div>
+            <div className="relative space-y-2">
+              <h3 className="font-display text-xl">
+                {hook ? "Generate shooting report" : "Pick a hook first"}
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Multi-block timeline · open → develop → close · evidence only.
+              </p>
+            </div>
+            <Button size="lg" onClick={onGenerate} className="shadow-glow relative" disabled={!hook}>
+              {hook ? "Generate script" : "Need a hook"} <ArrowRight className="h-4 w-4" />
+            </Button>
+            <p className="text-[11px] text-muted-foreground relative">
+              Usually 30–90s · fact-check + full narration + format polish
+            </p>
+          </Card>
         )}
       </div>
     );
@@ -1839,6 +2079,9 @@ function CopyStep({
                 <Badge className="gap-1.5 bg-primary text-primary-foreground">
                   <FileText className="h-3 w-3" /> Shooting Report
                 </Badge>
+                <Badge variant="outline" className="gap-1.5 text-[10px] border-success/40 text-success">
+                  <Check className="h-3 w-3" /> Ready to shoot
+                </Badge>
                 {result.format_repaired && (
                   <Badge variant="secondary" className="text-[10px]">
                     format auto-repaired
@@ -1849,7 +2092,7 @@ function CopyStep({
                 Viral Formula Studio
               </h1>
               <p className="text-xs text-muted-foreground font-mono uppercase tracking-[0.16em]">
-                Evidence-based playbook · not a template
+                Evidence-based playbook · IBM watsonx · not a template
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

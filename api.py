@@ -25,14 +25,22 @@ from studio.pipeline import analyze_creator
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-ALLOWED_ORIGINS = os.getenv(
-    "ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
-).split(",")
+# Local defaults + production web (Code Engine). Env ALLOWED_ORIGINS overrides/extends.
+_DEFAULT_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud",
+]
+_extra = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+ALLOWED_ORIGINS = list(dict.fromkeys(_DEFAULT_ORIGINS + _extra))  # stable unique
 
-app = FastAPI(title="Viral Formula Studio API", version="0.6.0")
+app = FastAPI(title="Viral Formula Studio API", version="0.6.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.codeengine\.appdomain\.cloud",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -75,7 +83,7 @@ class DossierRequest(BaseModel):
 
 
 # Bump when ship-blocking ingest/copy fixes land — use to verify Code Engine pulled the new image
-API_BUILD = "2026-07-23-ship-ready"
+API_BUILD = "2026-07-23-ux-e2e"
 
 
 def _health_payload() -> dict:
@@ -186,16 +194,30 @@ async def _run_ingest_job(job_id: str, creator: str, urls: list[str]) -> None:
 async def start_ingest(req: IngestRequest, request: Request) -> dict:
     ip = request.client.host if request.client else "unknown"
 
-    if not limiter.check_ingest(ip, req.creator):
+    creator = req.creator.strip()
+    urls = [u.strip() for u in req.urls if u and str(u).strip().startswith("http")]
+    if not urls:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No valid http(s) URLs. Paste a full YouTube Shorts link, "
+                "or use seed creators bryan / jeffnippard / kallaway without links."
+            ),
+        )
+
+    if not limiter.check_ingest(ip, creator):
         remaining = limiter.remaining_creators(ip)
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit: max 3 distinct creators per IP. {remaining} slots remaining.",
+            detail=(
+                f"Rate limit: max 8 new creators per IP per hour. "
+                f"{remaining} slots remaining. Seed creators are unlimited."
+            ),
         )
 
     job_id = uuid.uuid4().hex[:12]
-    JOBS[job_id] = {"status": "queued", "creator": req.creator}
-    asyncio.create_task(_run_ingest_job(job_id, req.creator, req.urls))
+    JOBS[job_id] = {"status": "queued", "creator": creator, "urls": len(urls)}
+    asyncio.create_task(_run_ingest_job(job_id, creator, urls))
     return {"job_id": job_id, "remaining_creators": limiter.remaining_creators(ip)}
 
 
@@ -203,7 +225,13 @@ async def start_ingest(req: IngestRequest, request: Request) -> dict:
 def job_status(job_id: str) -> dict:
     job = JOBS.get(job_id)
     if job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Job not found — the API container may have restarted "
+                "(in-memory jobs). Start Decode again."
+            ),
+        )
     return job
 
 
@@ -214,27 +242,53 @@ def _check_rate(request: Request) -> None:
 
 @app.get("/api/profile/{creator}")
 def get_profile(creator: str) -> dict:
-    profile = store.load_profile(creator)
+    profile = store.load_profile(creator.strip())
     if profile is None:
-        raise HTTPException(status_code=404, detail=f"No profile for '{creator}' — run the analysis first.")
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No profile for '{creator}' — run Decode first, "
+                "or use seed creators bryan / jeffnippard / kallaway."
+            ),
+        )
     return profile.model_dump()
 
 
 @app.post("/api/hooks")
 async def hooks(req: HooksRequest) -> dict:
     try:
-        hook_list = await asyncio.to_thread(generate_hooks, req.creator, req.topic, profile=req.profile)
+        hook_list = await asyncio.to_thread(
+            generate_hooks, req.creator.strip(), req.topic.strip(), profile=req.profile
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:  # noqa: BLE001 — surface LLM/provider failures cleanly
+        logger.exception("hooks failed for %s", req.creator)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Hook generation failed: {e!s}"[:280],
+        ) from e
     return {"hooks": [h.model_dump() for h in hook_list.hooks]}
 
 
 @app.post("/api/copy")
 async def copy(req: CopyRequest) -> dict:
     try:
-        result = await asyncio.to_thread(generate_copy, req.creator, req.topic, req.hook, profile=req.profile)
+        result = await asyncio.to_thread(
+            generate_copy,
+            req.creator.strip(),
+            req.topic.strip(),
+            req.hook.strip(),
+            profile=req.profile,
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        logger.exception("copy failed for %s", req.creator)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Script generation failed: {e!s}"[:280],
+        ) from e
     # Structured blocks + spoken_copy so the frontend never depends on brittle pipe parsing alone
     return copy_payload(result)
 
@@ -242,16 +296,28 @@ async def copy(req: CopyRequest) -> dict:
 @app.post("/api/dossier")
 async def dossier(req: DossierRequest, request: Request) -> dict:
     ip = request.client.host if request.client else "unknown"
-    if not limiter.check_dossier(ip, req.creator):
-        remaining = limiter.remaining_dossiers(ip, req.creator)
+    creator = req.creator.strip()
+    if not limiter.check_dossier(ip, creator):
+        remaining = limiter.remaining_dossiers(ip, creator)
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit: max 3 dossier/PDF exports per creator. {remaining} remaining for '{req.creator}'.",
+            detail=(
+                f"Rate limit: max 8 dossier exports per creator per hour. "
+                f"{remaining} remaining for '{creator}'."
+            ),
         )
     try:
-        markdown = await asyncio.to_thread(generate_dossier, req.creator, req.topic, profile_data=req.profile)
+        markdown = await asyncio.to_thread(
+            generate_dossier, creator, req.topic.strip(), profile_data=req.profile
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        logger.exception("dossier failed for %s", creator)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Dossier generation failed: {e!s}"[:280],
+        ) from e
     return {"markdown": markdown}
 
 

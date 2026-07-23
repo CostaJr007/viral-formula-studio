@@ -31,7 +31,15 @@ def save_transcriptions(data: dict[str, list[dict]]) -> None:
 
 
 def get_creator_transcriptions(creator: str) -> list[dict]:
-    return load_transcriptions().get(creator, [])
+    data = load_transcriptions()
+    if creator in data:
+        return data[creator]
+    # Case-insensitive fallback (UI may send "Bryan", disk may use "bryan")
+    lower = creator.lower()
+    for key, rows in data.items():
+        if key.lower() == lower:
+            return rows
+    return []
 
 
 def list_creators() -> list[str]:

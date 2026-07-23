@@ -154,13 +154,19 @@ def _facts_block(research: ResearchReport | None) -> str:
     return f"\nVERIFIED FACTS ABOUT THE THEME (single factual source — JSON):\n{research.model_dump_json(indent=2)}"
 
 
+def _coerce_profile(creator: str, profile: dict | None):
+    """Prefer client-sent profile (survives restarts); fall back to disk; never crash on partial JSON."""
+    if profile is not None:
+        try:
+            return store.CreatorProfile.model_validate(profile)
+        except Exception as e:
+            logger.warning("Client profile invalid for '%s' (%s) — loading from disk", creator, e)
+    return _profile_or_raise(creator)
+
+
 def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None = None, profile: dict | None = None) -> HookList:
     """Step 1: 10 hooks from the creator's formula + verified facts."""
-    if profile is not None:
-        # Use the profile passed from the frontend (survives container restarts)
-        profile_obj = store.CreatorProfile.model_validate(profile)
-    else:
-        profile_obj = _profile_or_raise(creator)
+    profile_obj = _coerce_profile(creator, profile)
 
     if research is None:
         research = research_theme(theme)
@@ -238,10 +244,7 @@ def generate_copy(
     creator: str, theme: str, chosen_hook: str, *, research: ResearchReport | None = None, profile: dict | None = None
 ) -> VideoCopy:
     """Step 2: short-form copy (~170–200 spoken words, ~60–90s) around the chosen hook."""
-    if profile is not None:
-        profile_obj = store.CreatorProfile.model_validate(profile)
-    else:
-        profile_obj = _profile_or_raise(creator)
+    profile_obj = _coerce_profile(creator, profile)
 
     if research is None:
         research = research_theme(theme)

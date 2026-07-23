@@ -77,9 +77,13 @@ user to record and edit their own video applying the formula.
 
 
 def generate_dossier(creator: str, theme: str, *, research: ResearchReport | None = None, profile_data: dict | None = None) -> str:
+    profile = None
     if profile_data is not None:
-        profile = store.CreatorProfile.model_validate(profile_data)
-    else:
+        try:
+            profile = store.CreatorProfile.model_validate(profile_data)
+        except Exception as e:
+            logger.warning("Client profile invalid for dossier '%s' (%s) — disk fallback", creator, e)
+    if profile is None:
         profile = store.load_profile(creator)
     if profile is None:
         raise ValueError(f"Profile for '{creator}' not found. Run the analysis first.")

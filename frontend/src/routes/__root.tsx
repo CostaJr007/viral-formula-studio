@@ -81,21 +81,39 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Viral Formula Studio — decode a creator's viral formula" },
+      {
+        title: "Viral Formula Studio — measured viral formulas | IBM AI Builders",
+      },
       {
         name: "description",
         content:
-          "Multimodal reverse engineering of a creator's viral formula. Measured metrics, hook playbook, and ready-to-shoot copy — grounded in real evidence.",
+          "IBM watsonx reverse-engineering for short-form creators: measure cuts & speech with ffmpeg, decode with Granite 4 + Llama Vision, get hooks and a shoot-ready script. Inspiration, not imitation.",
       },
       { name: "theme-color", content: "#0d0f1f" },
-      { property: "og:title", content: "Viral Formula Studio" },
+      { name: "author", content: "Costa Jr · IBM AI Builders Challenge 2026" },
+      {
+        name: "keywords",
+        content:
+          "IBM watsonx, Granite, viral formula, short-form, content creator, Code Engine, multimodal AI",
+      },
+      { property: "og:title", content: "Viral Formula Studio · IBM AI Builders" },
       {
         property: "og:description",
         content:
-          "Decode a creator's viral formula from 5 short videos and get hooks, copy and editing directions transposed to your topic.",
+          "Measured metrics + Granite 4 + Vision → 10 hooks and a shooting report on your topic. Live on IBM Code Engine.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Viral Formula Studio" },
       { name: "twitter:card", content: "summary_large_image" },
+      {
+        name: "twitter:title",
+        content: "Viral Formula Studio — decode a creator's viral formula",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Measure, decode, transpose. Powered by IBM watsonx · Granite 4 · Code Engine.",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
