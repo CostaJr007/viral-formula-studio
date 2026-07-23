@@ -74,11 +74,19 @@ class DossierRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+# Bump when ship-blocking ingest/copy fixes land — use to verify Code Engine pulled the new image
+API_BUILD = "2026-07-23-ingest-slot-fix"
+
+
 def _health_payload() -> dict:
     from studio.config import get_settings
 
     settings = get_settings()
-    return {"status": "ok", "provider": settings.model_provider}
+    return {
+        "status": "ok",
+        "provider": settings.model_provider,
+        "build": API_BUILD,
+    }
 
 
 @app.get("/api/health")
@@ -141,8 +149,13 @@ async def _run_ingest_job(job_id: str, creator: str, urls: list[str]) -> None:
                     details.append(f"{url} → {reason}" if url else reason)
                 else:
                     details.append(str(item)[:160])
-            for url in (report.get("skipped") or [])[:3]:
-                details.append(f"{str(url)[:48]} → skipped (limit or empty)")
+            for item in (report.get("skipped") or [])[:3]:
+                if isinstance(item, dict):
+                    details.append(
+                        f"{str(item.get('url') or '')[:48]} → {item.get('reason') or 'skipped'}"
+                    )
+                else:
+                    details.append(f"{str(item)[:48]} → skipped")
             detail_txt = " | ".join(details) if details else (
                 "no valid http links received — paste a full YouTube Shorts URL "
                 "(empty slots above/below are fine)"
@@ -150,7 +163,7 @@ async def _run_ingest_job(job_id: str, creator: str, urls: list[str]) -> None:
             job["error"] = (
                 "No video could be ingested. "
                 f"{detail_txt}. "
-                "Tip: one public YouTube Shorts link is enough (any slot), or use seed "
+                "Tip: one public YouTube Shorts link is enough (any row), or use seed "
                 "creators bryan / jeffnippard / kallaway without links."
             )
             return

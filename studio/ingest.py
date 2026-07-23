@@ -288,14 +288,31 @@ def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> di
     transcriptions.setdefault(creator, [])
 
     limit = max_new or settings.max_videos_per_creator
-    report = {"ok": [], "skipped": [], "failed": []}
+    report: dict = {"ok": [], "skipped": [], "failed": [], "reused": []}
 
-    for url in urls:
-        url = url.strip()
-        if not url:
+    # Normalize: only real links, preserve order, drop blanks (1st empty + 2nd filled is fine)
+    clean_urls = []
+    for raw in urls:
+        u = (raw or "").strip()
+        if not u:
             continue
+        if not u.startswith(("http://", "https://")):
+            report["failed"].append({"url": u[:80], "reason": "not a valid http(s) URL"})
+            continue
+        clean_urls.append(u)
+
+    if not clean_urls:
+        report["failed"].append(
+            {
+                "url": "",
+                "reason": "no http links in the request (empty slots are OK — paste at least one full URL in any row)",
+            }
+        )
+        return report
+
+    for url in clean_urls:
         if len(report["ok"]) >= limit:
-            report["skipped"].append(url)
+            report["skipped"].append({"url": url, "reason": f"limit of {limit} videos reached"})
             continue
 
         logger.info("Ingesting: %s", url)
@@ -320,11 +337,10 @@ def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> di
             continue
 
         if video_path.name in existing:
-            # Already have speech for this file — counts as success so re-runs don't fail
-            # with "unknown reason (1 skipped)" when the user pastes the same Short again.
+            # Already have speech for this file — counts as success (not a failure skip)
             logger.info("Already transcribed, reusing: %s", video_path.name)
             report["ok"].append(url)
-            report.setdefault("reused", []).append(url)
+            report["reused"].append(url)
             continue
 
         # Captions first (free); Whisper as fallback
