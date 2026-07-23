@@ -55,8 +55,6 @@ viral videos** and transposes it to the user's own theme and voice.
   evidence, not just text.
 - **Honesty by design** — every output includes `evidence_notes`, `unconfirmed`
   flags, and `[INSERT: ...]` placeholders. The system states what it doesn't know.
-- **Speech hygiene** — URL/API error blobs are filtered so signature phrases never
-  become junk like `https` / `quota` / `ibm` from failed requests.
 - **Production-deployed** — live on IBM Cloud Code Engine with auto-scaling, rate
   limiting, and CI/CD via GitHub Actions → Docker Hub → Code Engine.
 - **Any creator, any language** — Whisper Large v3 handles 99+ languages; Granite 4
