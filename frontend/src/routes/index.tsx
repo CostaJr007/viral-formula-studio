@@ -1801,7 +1801,7 @@ function CopyStep({
       .split(/\s+/)
       .filter(Boolean).length;
 
-  const thinCopy = spokenWordCount > 0 && spokenWordCount < 180;
+  const thinCopy = spokenWordCount > 0 && spokenWordCount < 200;
   const clipboardText = spokenLines
     .filter((s) => !s.isAudioOnly)
     .map((s) => s.text)
@@ -1895,8 +1895,8 @@ function CopyStep({
 
         {thinCopy && (
           <div className="mx-5 md:mx-8 mt-5 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-sm">
-            Spoken copy is short ({spokenWordCount} words). Target is <strong>200–250 words</strong> for a
-            full ~90–120s monologue. Use <strong>Regenerate</strong> — timeline may still be usable.
+            Spoken copy: <strong>{spokenWordCount} / 200+</strong> words (target 200–250 for ~90–120s).
+            Close — hit <strong>Regenerate</strong> once more after API redeploy for a full-length monologue.
           </div>
         )}
 

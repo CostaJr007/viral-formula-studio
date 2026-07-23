@@ -278,35 +278,51 @@ def generate_copy(
     copy = coerce_structured(response.content, VideoCopy, stage="Copy generation")
     copy = _normalize_video_copy(copy)
 
-    # Up to 2 expansion rewrites if Granite under-writes (very common without this loop)
-    for attempt in range(1, 3):
+    # Expansion loop — Granite often lands ~150–180 words; keep rewriting/appending until ≥200
+    for attempt in range(1, 4):
         spoken_n = _spoken_word_count(copy)
         if spoken_n >= MIN_SPOKEN_WORDS:
             break
         spoken_preview = normalize_script(copy.script).spoken_copy
+        deficit = MIN_SPOKEN_WORDS - spoken_n
         logger.warning(
-            "Copy pass %d: only %d spoken words (need %d) — expanding...",
+            "Copy pass %d: only %d spoken words (need %d, short by %d) — expanding...",
             attempt,
             spoken_n,
             MIN_SPOKEN_WORDS,
+            deficit,
         )
-        expand_prompt = (
-            f"THEME: {theme}\n"
-            f'HOOK (must stay line 1): "{chosen_hook}"\n'
-            f"{facts}\n\n"
-            f"CURRENT NARRATION IS TOO SHORT ({spoken_n} words). Need AT LEAST {MIN_SPOKEN_WORDS} "
-            f"(target {TARGET_SPOKEN_WORDS}).\n\n"
-            f"CURRENT SPOKEN TEXT:\n---\n{spoken_preview}\n---\n\n"
-            "Rewrite the ENTIRE shooting script longer in pipe format "
-            "([TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY]).\n"
-            f"- Keep the hook as block 1.\n"
-            f"- Produce 10–12 blocks covering 0:00–~1:45.\n"
-            f"- EVERY speaking block needs 2–4 full sentences.\n"
-            f"- Cover: what the topic is, why it matters, 4 practical points, who should be careful, "
-            f"what to do next / CTA.\n"
-            f"- Use only verified facts for numbers; otherwise [INSERT: …].\n"
-            f"- Count spoken words carefully — final TEXT fields must sum to ≥{MIN_SPOKEN_WORDS}."
-        )
+        # Near-miss (e.g. 178): append NEW blocks only so we don't lose existing length
+        if spoken_n >= 150 and deficit <= 80:
+            expand_prompt = (
+                f"THEME: {theme}\nHOOK (unchanged): \"{chosen_hook}\"\n{facts}\n\n"
+                f"The script below has only {spoken_n} spoken words. "
+                f"You must ADD at least {deficit + 15} more spoken words.\n\n"
+                f"EXISTING SCRIPT (KEEP every line, then APPEND 3–5 NEW blocks after the last timestamp):\n"
+                f"{copy.script}\n\n"
+                "Return the FULL script = all original lines PLUS new pipe-format lines.\n"
+                "New blocks continue the timeline (e.g. after 1:20 → 1:20-1:35, 1:35-1:50…).\n"
+                "Each NEW block TEXT must be 2–4 full spoken sentences (~30–45 words each).\n"
+                "Content ideas: practical how-to, who should avoid this, myth vs fact, clear CTA.\n"
+                f"Final spoken total must be ≥ {MIN_SPOKEN_WORDS} (target {TARGET_SPOKEN_WORDS})."
+            )
+        else:
+            expand_prompt = (
+                f"THEME: {theme}\n"
+                f'HOOK (must stay line 1): "{chosen_hook}"\n'
+                f"{facts}\n\n"
+                f"CURRENT NARRATION IS TOO SHORT ({spoken_n} words). Need AT LEAST {MIN_SPOKEN_WORDS} "
+                f"(target {TARGET_SPOKEN_WORDS}).\n\n"
+                f"CURRENT SPOKEN TEXT:\n---\n{spoken_preview}\n---\n\n"
+                "Rewrite the ENTIRE shooting script LONGER in pipe format "
+                "([TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY]).\n"
+                f"- Keep the hook as block 1.\n"
+                f"- Produce 10–12 blocks covering 0:00–~1:50.\n"
+                f"- EVERY speaking block needs 2–4 full sentences (~30–45 words each).\n"
+                f"- Cover: what it is, why it matters, 4 practical points, caveats, CTA.\n"
+                f"- Use only verified facts for numbers; otherwise [INSERT: …].\n"
+                f"- Spoken TEXT fields alone must sum to ≥{MIN_SPOKEN_WORDS} words."
+            )
         try:
             expand = agent.run(expand_prompt)
             expanded = coerce_structured(expand.content, VideoCopy, stage=f"Copy expansion {attempt}")
@@ -315,6 +331,8 @@ def generate_copy(
             if new_n > spoken_n:
                 copy = expanded
                 logger.info("Copy expansion %d: %d → %d spoken words", attempt, spoken_n, new_n)
+            if new_n >= MIN_SPOKEN_WORDS:
+                break
         except Exception:
             logger.exception("Copy expansion pass %d failed", attempt)
 
