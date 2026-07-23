@@ -1895,8 +1895,8 @@ function CopyStep({
 
         {thinCopy && (
           <div className="mx-5 md:mx-8 mt-5 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-sm">
-            Spoken copy looks short ({spokenWordCount} words). Use <strong>Regenerate</strong> for a
-            fuller script pass — timeline directions may still be usable.
+            Spoken copy is short ({spokenWordCount} words). Target is <strong>200–250 words</strong> for a
+            full ~90–120s monologue. Use <strong>Regenerate</strong> — timeline may still be usable.
           </div>
         )}
 
