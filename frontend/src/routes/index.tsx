@@ -724,7 +724,7 @@ function CreatorStep({
                   <div>
                     <div className="font-display font-medium text-sm">Reference creator</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Up to 5 public YouTube Shorts (TikTok/Reels: local runtime).
+                      Up to 5 public YouTube Shorts. Empty slots are fine — paste in any row.
                     </div>
                   </div>
                   <span className="font-mono text-xs text-muted-foreground tabular-nums shrink-0">

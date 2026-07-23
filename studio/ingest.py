@@ -320,8 +320,11 @@ def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> di
             continue
 
         if video_path.name in existing:
-            logger.info("Already transcribed, skipping: %s", video_path.name)
-            report["skipped"].append(url)
+            # Already have speech for this file — counts as success so re-runs don't fail
+            # with "unknown reason (1 skipped)" when the user pastes the same Short again.
+            logger.info("Already transcribed, reusing: %s", video_path.name)
+            report["ok"].append(url)
+            report.setdefault("reused", []).append(url)
             continue
 
         # Captions first (free); Whisper as fallback

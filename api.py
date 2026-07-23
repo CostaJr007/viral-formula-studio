@@ -125,9 +125,14 @@ async def _run_ingest_job(job_id: str, creator: str, urls: list[str]) -> None:
         job["status"] = "ingesting"
         report = await asyncio.to_thread(ingest_urls, creator, urls)
         job["ingest_report"] = report
-        if not report["ok"]:
+
+        # Proceed if we ingested anything OR the creator already has transcriptions on disk
+        # (e.g. re-paste same link, only 2nd URL slot filled, previous partial run).
+        from studio import store as _store
+
+        has_speech = bool(_store.get_creator_transcriptions(creator))
+        if not report.get("ok") and not has_speech:
             job["status"] = "failed"
-            # Surface concrete per-URL reasons so users/judges aren't stuck on a generic message.
             details = []
             for item in (report.get("failed") or [])[:4]:
                 if isinstance(item, dict):
@@ -136,13 +141,17 @@ async def _run_ingest_job(job_id: str, creator: str, urls: list[str]) -> None:
                     details.append(f"{url} → {reason}" if url else reason)
                 else:
                     details.append(str(item)[:160])
-            detail_txt = " | ".join(details) if details else "unknown reason"
-            skipped = len(report.get("skipped") or [])
+            for url in (report.get("skipped") or [])[:3]:
+                details.append(f"{str(url)[:48]} → skipped (limit or empty)")
+            detail_txt = " | ".join(details) if details else (
+                "no valid http links received — paste a full YouTube Shorts URL "
+                "(empty slots above/below are fine)"
+            )
             job["error"] = (
                 "No video could be ingested. "
-                f"{detail_txt}"
-                + (f" ({skipped} skipped)." if skipped else ".")
-                + " Tip: use public YouTube Shorts, or try seed creators bryan / jeffnippard / kallaway (no upload)."
+                f"{detail_txt}. "
+                "Tip: one public YouTube Shorts link is enough (any slot), or use seed "
+                "creators bryan / jeffnippard / kallaway without links."
             )
             return
 
