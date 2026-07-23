@@ -69,7 +69,7 @@ def load_profile(creator: str) -> CreatorProfile | None:
     # Heal legacy profiles saved with N/A / "Insufficient transcript evidence"
     # so the UI never shows a broken fingerprint again.
     if profile.style is not None:
-        from .analyze_text import _field_is_bad, _fallback_style
+        from .analyze_text import _fallback_style, _field_is_bad
 
         s = profile.style
         if (

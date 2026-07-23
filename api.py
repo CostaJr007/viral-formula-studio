@@ -75,7 +75,7 @@ class DossierRequest(BaseModel):
 
 
 # Bump when ship-blocking ingest/copy fixes land — use to verify Code Engine pulled the new image
-API_BUILD = "2026-07-23-ingest-slot-fix"
+API_BUILD = "2026-07-23-ship-ready"
 
 
 def _health_payload() -> dict:

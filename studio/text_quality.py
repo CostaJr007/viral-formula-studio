@@ -25,7 +25,6 @@ JUNK_TOKENS: set[str] = {
     "api",
     "url",
     "uri",
-    "www",
     "ibm",
     "cloud",
     "watsonx",

@@ -72,9 +72,7 @@ def _field_is_bad(value: str | None) -> bool:
         return True
     if _BAD_FIELD_RE.match(t):
         return True
-    if "insufficient transcript" in t.lower():
-        return True
-    return False
+    return "insufficient transcript" in t.lower()
 
 
 def _first_spoken_line(texts: list[str]) -> str:
