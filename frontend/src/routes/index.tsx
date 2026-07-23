@@ -133,7 +133,7 @@ const STEPS: { id: StepId; label: string; hint: string; icon: typeof LinkIcon }[
   { id: "profile", label: "Profile", hint: "measured formula", icon: Gauge },
   { id: "topic-select", label: "Topic", hint: "your theme", icon: Target },
   { id: "hooks", label: "Hooks", hint: "10 patterns", icon: Target },
-  { id: "copy", label: "Script", hint: "shooting report", icon: Wand2 },
+  { id: "copy", label: "Script", hint: "200–250 spoken words", icon: Wand2 },
 ];
 
 const DEMO_CREATORS = [
@@ -1801,7 +1801,7 @@ function CopyStep({
       .split(/\s+/)
       .filter(Boolean).length;
 
-  const thinCopy = spokenWordCount > 0 && spokenWordCount < 40;
+  const thinCopy = spokenWordCount > 0 && spokenWordCount < 180;
   const clipboardText = spokenLines
     .filter((s) => !s.isAudioOnly)
     .map((s) => s.text)

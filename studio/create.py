@@ -3,8 +3,8 @@
 Step 1 (generate_hooks): 10 hooks built from the creator's MEASURED formula
 (hook patterns + metrics) and the verified facts from the research stage.
 Step 2 (generate_copy): the user picks one hook; the full video copy is
-orchestrated around it — <=200 words (1-2 min videos), the creator's copy
-structure, measured editing directions, and explicit data-honesty notes.
+orchestrated around it — ~200–250 spoken words (~90–120s videos), the creator's
+copy structure, measured editing directions, and explicit data-honesty notes.
 
 Nothing here invents facts: hooks and copy may only use facts from the
 ResearchReport; anything else becomes a placeholder for the user to fill.
@@ -23,9 +23,11 @@ from .script_format import normalize_script
 
 logger = logging.getLogger(__name__)
 
-MAX_COPY_WORDS = 200
-MIN_SPOKEN_WORDS = 80
-MIN_SCRIPT_BLOCKS = 6
+# Target a full short-form monologue (~90–120s at ~140–160 WPM), not a 30s teaser.
+MIN_SPOKEN_WORDS = 200
+TARGET_SPOKEN_WORDS = 225
+MAX_COPY_WORDS = 260
+MIN_SCRIPT_BLOCKS = 8
 
 
 class Hook(BaseModel):
@@ -41,9 +43,9 @@ class VideoCopy(BaseModel):
     script: str = Field(
         description="Shooting script with timeline. Each block shows: [TIMESTAMP] | [SHOT TYPE] | "
         '[TEXT TO SAY] | [CUT/TRANSITION] | [WHY IT WORKS — psychology or editing reason]. '
-        f"Maximum {MAX_COPY_WORDS} words total across all spoken text. "
-        f"Minimum {MIN_SCRIPT_BLOCKS} blocks. Spoken TEXT fields alone must total at least "
-        f"{MIN_SPOKEN_WORDS} words forming a COMPLETE narration (not just the opening hook)."
+        f"Spoken TEXT fields alone must total {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} words "
+        f"(target ~{TARGET_SPOKEN_WORDS}). Minimum {MIN_SCRIPT_BLOCKS} blocks. "
+        "COMPLETE narration — not just the opening hook."
     )
     editing_directions: list[str] = Field(
         description="Per-block editing directions, using the creator's MEASURED NUMBERS (cuts/min, shot length, on-screen text)"
@@ -106,21 +108,23 @@ FORMAT — Every block in the script must be a SINGLE LINE separated by EXACTLY 
 [TIMESTAMP] | [SHOT TYPE] | [TEXT TO SAY] | [EDITING] | [WHY IT WORKS]
 ```
 
-EXAMPLE:
+EXAMPLE (abbreviated — your output must be LONGER, ~{TARGET_SPOKEN_WORDS} spoken words total):
 ```
-0:00-0:03 | CLOSE-UP face | "You think you can survive on only meat?" | Jump cut, bold text overlay | Shock question — breaks viewer's assumption, forces attention in first 3 seconds
-0:03-0:07 | MEDIUM shot | "I tried it for 30 days. Here's what happened." | Slow zoom in | Personal proof — builds curiosity and establishes authority
-0:07-0:12 | B-ROLL (meal prep) | (no speech — music only) | Cut every 1.1s, text: "DAY 1" | Fast cuts keep energy; text anchors the timeline
+0:00-0:05 | CLOSE-UP face | "You think you can survive on only meat?" | Jump cut, bold text overlay | Shock question — breaks viewer's assumption
+0:05-0:15 | MEDIUM shot | "I tried a full carnivore reset for thirty days and tracked energy, sleep, and digestion every morning." | Slow zoom in | Personal proof — curiosity + authority
+0:15-0:28 | B-ROLL (meal prep) | "Breakfast was eggs and ribeye. Lunch was ground beef. Dinner was salmon when I needed variety — still zero plants." | Cut every ~2s, text: "DAY 1" | Concrete detail makes the claim believable
+0:28-0:45 | MEDIUM shot | "By week two my afternoon crash was gone. Focus felt sharper. But I also watched for red flags: fiber loss, electrolyte dips, lipid panels." | Pattern interrupt on risks | Honesty builds trust before the CTA
 ```
 
 RULES:
 - CRITICAL: Do NOT use line breaks (newlines) inside a single block. Each timestamp block must be exactly one line.
-- Output AT LEAST {MIN_SCRIPT_BLOCKS} separate lines (blocks). Never collapse the whole video into 1-2 lines.
-- Total spoken words across TEXT fields: between {MIN_SPOKEN_WORDS} and {MAX_COPY_WORDS}.
-- COMPLETE NARRATION: the TEXT fields concatenated must form a full speakable script
-  (open → proof/steps → close). The chosen hook is ONLY the first spoken line — you MUST
-  continue with several more spoken lines. Do NOT stop after the hook.
-- At most 1-2 blocks may use "(no speech — music only)". All other blocks need real dialogue.
+- Output AT LEAST {MIN_SCRIPT_BLOCKS} separate lines (blocks), ideally 8–12, covering ~0:00 to ~1:30–2:00.
+- HARD LENGTH TARGET: spoken words in TEXT fields MUST be between {MIN_SPOKEN_WORDS} and {MAX_COPY_WORDS}.
+  Aim for ~{TARGET_SPOKEN_WORDS}. Scripts under {MIN_SPOKEN_WORDS} spoken words are INVALID — expand with
+  steps, proof, caveats, and a clear close (do NOT pad with filler words only).
+- COMPLETE NARRATION arc: hook → context → 3–5 concrete points/steps → risks or nuance → takeaway/CTA.
+  The chosen hook is ONLY the first spoken line — you MUST continue with substantial dialogue.
+- At most ONE block may use "(no speech — music only)". Almost every block needs real dialogue (1–3 sentences each).
 - Every block MUST include all 5 fields separated by `|`: timestamp, shot, text, editing, psychology.
 - SHOT TYPES must match the creator's measured grammar (e.g. "CLOSE-UP face",
   "MEDIUM shot", "SPLIT-SCREEN", "B-ROLL", "TEXT OVERLAY").
@@ -207,7 +211,7 @@ def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None 
 def generate_copy(
     creator: str, theme: str, chosen_hook: str, *, research: ResearchReport | None = None, profile: dict | None = None
 ) -> VideoCopy:
-    """Step 2: full orchestrated copy (<=200 words) around the user's chosen hook."""
+    """Step 2: full orchestrated copy (~200–250 spoken words) around the user's chosen hook."""
     if profile is not None:
         profile_obj = store.CreatorProfile.model_validate(profile)
     else:
@@ -218,27 +222,58 @@ def generate_copy(
 
     agent = create_agent(
         name=f"copy_director_{creator}",
-        description="Scriptwriter and director of short videos — dopaminergic copy based on measured data.",
+        description="Scriptwriter and director of short videos — full 90–120s monologue based on measured data.",
         instructions=COPY_INSTRUCTIONS,
         output_schema=VideoCopy,
     )
     logger.info("Generating copy for '%s' x '%s' with the chosen hook...", creator, theme)
-    response = agent.run(
+
+    base_prompt = (
         f"CREATOR PROFILE (measured evidence — JSON):\n{profile_obj.model_dump_json(indent=2)}\n"
         f"{_facts_block(research)}\n\n"
-        f'USER THEME: {theme}\n'
+        f"USER THEME: {theme}\n"
         f'CHOSEN HOOK: "{chosen_hook}"\n\n'
-        "Generate the COMPLETE SHOOTING SCRIPT for a 45–75 second video.\n"
-        f"- Minimum {MIN_SCRIPT_BLOCKS} lines (blocks), each EXACTLY ONE LINE with 4 pipes:\n"
+        "Generate the COMPLETE SHOOTING SCRIPT for a 90–120 SECOND video (not a 30s teaser).\n"
+        f"- Minimum {MIN_SCRIPT_BLOCKS} lines (blocks), ideally 8–12, each EXACTLY ONE LINE with 4 pipes:\n"
         "  [TIMESTAMP] | [SHOT] | [TEXT] | [EDITING] | [WHY IT WORKS]\n"
-        f"- Spoken TEXT fields together must be a FULL narration ({MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} words).\n"
+        f"- HARD REQUIREMENT: spoken TEXT fields MUST total {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} words "
+        f"(target ~{TARGET_SPOKEN_WORDS}). Count only words the host says out loud.\n"
         f'- Line 1 TEXT must be the chosen hook: "{chosen_hook}"\n'
-        "- Lines 2+ MUST continue the story with new spoken sentences — never repeat only the hook.\n"
+        "- Lines 2+ MUST continue with NEW spoken sentences: context, 3–5 concrete points/steps, "
+        "risks or nuance, and a clear close/CTA.\n"
+        "- Each speaking block should have 1–3 full sentences (not three-word fragments).\n"
         "- DO NOT put timestamps inside the WHY field; each new moment is a new line.\n"
         "Use the creator's measured cuts/min, shot types, and editing grammar from the profile."
     )
+    response = agent.run(base_prompt)
     copy = coerce_structured(response.content, VideoCopy, stage="Copy generation")
-    return _normalize_video_copy(copy)
+    copy = _normalize_video_copy(copy)
+
+    # One expansion pass if the model under-wrote (common with short hooks / thin profiles)
+    spoken_n = normalize_script(copy.script).spoken_word_count
+    if spoken_n < MIN_SPOKEN_WORDS:
+        logger.warning(
+            "Copy only %d spoken words (min %d) — requesting expansion pass...",
+            spoken_n,
+            MIN_SPOKEN_WORDS,
+        )
+        expand = agent.run(
+            f"{base_prompt}\n\n"
+            f"YOUR PREVIOUS SCRIPT WAS TOO SHORT ({spoken_n} spoken words). "
+            f"Rewrite a LONGER version with AT LEAST {MIN_SPOKEN_WORDS} spoken words "
+            f"(target {TARGET_SPOKEN_WORDS}). Keep the same hook as line 1. "
+            "Add more spoken blocks with real sentences — steps, examples, caveats, close. "
+            "Still use the pipe format, one block per line."
+        )
+        try:
+            expanded = coerce_structured(expand.content, VideoCopy, stage="Copy expansion")
+            expanded = _normalize_video_copy(expanded)
+            if normalize_script(expanded.script).spoken_word_count >= spoken_n:
+                copy = expanded
+        except Exception:
+            logger.exception("Copy expansion pass failed — keeping first draft")
+
+    return copy
 
 
 def _normalize_video_copy(copy: VideoCopy) -> VideoCopy:
