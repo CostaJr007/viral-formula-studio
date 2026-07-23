@@ -125,25 +125,36 @@ def probe(url: str) -> dict:
 
 
 def fetch_captions(url: str, out_dir: Path) -> str | None:
-    """Try to get free captions (YouTube). Returns plain text or None."""
+    """Try to get free captions (YouTube). Returns plain text or None.
+
+    Subtitle 429s / missing tracks must NOT fail the whole ingest — Whisper is the fallback.
+    """
     opts = _base_opts(out_dir) | {
         "skip_download": True,
         "writesubtitles": True,
         "writeautomaticsub": True,
-        "subtitleslangs": CAPTION_LANGS,
+        "subtitleslangs": CAPTION_LANGS + ["en.*", "pt.*"],
         "subtitlesformat": "vtt",
+        # Don't raise when one language track is rate-limited
+        "ignoreerrors": True,
     }
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            if not info:
+                return None
             base = Path(ydl.prepare_filename(info))
     except Exception:
-        logger.exception("Failed to fetch captions for %s", url)
+        logger.warning("Failed to fetch captions for %s — will try Whisper.", url)
         return None
 
-    for vtt in sorted(out_dir.glob(f"{base.stem}.*.vtt")):
-        text = parse_vtt(vtt.read_text(encoding="utf-8", errors="ignore"))
-        vtt.unlink(missing_ok=True)
+    stem = base.stem
+    candidates = list(out_dir.glob(f"{stem}.*.vtt")) + list(out_dir.glob("*.vtt"))
+    for vtt in sorted(set(candidates)):
+        try:
+            text = parse_vtt(vtt.read_text(encoding="utf-8", errors="ignore"))
+        finally:
+            vtt.unlink(missing_ok=True)
         if len(text.split()) >= get_settings().min_transcription_words:
             return text
     return None
@@ -215,18 +226,21 @@ def _transcribe_with_whisper(video_path: Path) -> str | None:
 
 
 def _fix_transcription_coherence(text: str) -> str:
-    """Use Granite 4 to fix garbled words and restore coherence in auto-captions.
+    """Optionally polish auto-captions with an LLM — NEVER replace good speech with errors.
 
-Regex catches known patterns (HTML entities, broken contractions). But
-transcription artifacts are unpredictable — stuttering ("th th there"),
-misrecognition ("wnt" → "went"), garbled segments. An LLM understands
-context and fixes what regex can't.
+    If watsonx/OpenAI returns quota/HTML/error text, we keep the regex-cleaned Whisper
+    transcript. A bad "fix" previously caused ingest to reject valid videos.
+    """
+    from .text_quality import is_error_blob, is_speech_like
 
-Falls back to the regex-cleaned text if the LLM is unavailable.
-"""
+    original = (text or "").strip()
+    if not original:
+        return original
+
     try:
-        from .factory import get_model
         from agno.agent import Agent
+
+        from .factory import get_model
 
         agent = Agent(
             model=get_model(),
@@ -236,15 +250,31 @@ Falls back to the regex-cleaned text if the LLM is unavailable.
                 "You are a transcript cleaner. Fix garbled words, broken sentences, "
                 "stuttering, transcription artifacts, and HTML entities. Preserve the "
                 "original meaning, tone, and word count as closely as possible. "
-                "Return ONLY the cleaned text — no explanations, no headers."
+                "Return ONLY the cleaned spoken transcript — no explanations, no headers, "
+                "no apologies, no system messages."
             ),
         )
-        response = agent.run(f"Clean this transcript:\n\n{text}")
-        if isinstance(response.content, str) and len(response.content.strip()) > 10:
-            return response.content.strip()
+        response = agent.run(f"Clean this transcript:\n\n{original}")
+        if not isinstance(response.content, str):
+            return original
+        fixed = response.content.strip()
+        if len(fixed) < 10:
+            return original
+        # Reject model failures that look like API errors / refusals
+        if is_error_blob(fixed):
+            logger.warning("Coherence fix returned error-like text — keeping Whisper/captions original.")
+            return original
+        if not is_speech_like(fixed, min_tokens=6) and is_speech_like(original, min_tokens=6):
+            logger.warning("Coherence fix destroyed speech quality — keeping original.")
+            return original
+        # If the model gutted the transcript, keep original
+        if len(fixed.split()) < max(8, int(len(original.split()) * 0.4)):
+            logger.warning("Coherence fix too short vs original — keeping original.")
+            return original
+        return fixed
     except Exception:
         logger.warning("Transcription coherence fix failed — using regex-cleaned text.")
-    return text
+    return original
 
 
 def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> dict:
@@ -308,27 +338,31 @@ def ingest_urls(creator: str, urls: list[str], max_new: int | None = None) -> di
             report["failed"].append({"url": url, "reason": reason})
             continue
 
-        # Clean: regex first (fast, catches known patterns), then LLM for coherence
+        # Clean: regex first; optional LLM polish (must not replace good speech with errors)
         cleaned = _clean_transcription(text)
         fixed = _fix_transcription_coherence(cleaned)
 
-        # Refuse to persist API/error/URL blobs as if they were speech — they poison
-        # n-grams ("https", "ibm", "quota") and cause hallucinated fingerprints.
         from .text_quality import is_error_blob, is_speech_like
 
-        if is_error_blob(fixed) or not is_speech_like(fixed, min_tokens=6):
-            report["failed"].append(
-                {
-                    "url": url,
-                    "reason": (
-                        "transcription looks like an error/empty blob, not spoken audio "
-                        "(refusing to save — re-try with captions or valid GROQ_API_KEY)"
-                    ),
-                }
-            )
-            continue
+        # Prefer polished text, but fall back to cleaned Whisper/captions if polish is junk
+        final_text = fixed
+        if is_error_blob(final_text) or not is_speech_like(final_text, min_tokens=6):
+            if is_speech_like(cleaned, min_tokens=6) and not is_error_blob(cleaned):
+                logger.warning("Using raw cleaned transcript (polish rejected) for %s", video_path.name)
+                final_text = cleaned
+            else:
+                report["failed"].append(
+                    {
+                        "url": url,
+                        "reason": (
+                            "no usable spoken transcript after captions/Whisper "
+                            "(empty, too short, or error text). Check GROQ_API_KEY and try again."
+                        ),
+                    }
+                )
+                continue
 
-        transcriptions[creator].append({"video": video_path.name, "transcription": fixed})
+        transcriptions[creator].append({"video": video_path.name, "transcription": final_text})
         store.save_transcriptions(transcriptions)  # incremental save
         logger.info("[OK] %s ingested (%s, %ds)", video_path.name, meta["uploader"], meta["duration"])
         report["ok"].append(url)
