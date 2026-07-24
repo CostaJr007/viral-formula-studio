@@ -107,18 +107,25 @@ Rules:
 - Vary the patterns: no more than 2 hooks using the same pattern.
 """
 
-# Extra rules when running on Groq (weaker structured-output than Granite)
+# Extra rules when running on Groq (no native JSON-schema response_format)
 GROQ_COPY_EXTRA = f"""
 GROQ / EMERGENCY PATH RULES (CRITICAL):
-- The `script` field MUST contain AT LEAST {MIN_SCRIPT_BLOCKS} separate lines.
-- EACH line must have EXACTLY 4 pipe characters `|` (5 fields).
-- EACH line's TEXT TO SAY field must be real spoken dialogue in quotes — not a shot name.
-- Total spoken words across ALL TEXT fields: {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} (target {TARGET_SPOKEN_WORDS}).
-- Do NOT return only the hook. Blocks 2–7 must continue the monologue.
-- Example of ONE valid line:
-  0:05-0:15 | MEDIUM shot | "Here is the second sentence the host says on camera." | Jump cut every 2s | Curiosity
+- Respond with a single JSON object only (no markdown fences) with keys:
+  "script" (string), "editing_directions" (array of strings), "data_notes" (string).
+- The "script" value MUST contain AT LEAST {MIN_SCRIPT_BLOCKS} lines separated by \\n.
+- EACH line must have EXACTLY 4 pipe characters `|` (5 fields):
+  TIMESTAMP | SHOT | "DIALOGUE" | EDITING | WHY
+- EACH DIALOGUE field must be real spoken words in quotes — never a shot name alone.
+- Total spoken words across ALL dialogue fields: {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} (target {TARGET_SPOKEN_WORDS}).
+- Do NOT return only the hook. Lines 2–7 must continue the monologue with 20–35 words each.
+- Example line:
+  0:05-0:15 | MEDIUM shot | "Here is the second sentence the host says on camera with real detail." | Jump cut every 2s | Curiosity
 - editing_directions: 5–8 short strings. data_notes: honesty + sources.
-- Output ONLY valid JSON matching the schema. No markdown outside JSON.
+"""
+
+GROQ_HOOKS_EXTRA = """
+GROQ PATH: Return ONLY a JSON object: {"hooks":[{"text":"...","pattern":"..."}, ...]} with EXACTLY 10 hooks.
+No markdown fences. Every hook is a full spoken sentence (5+ words) about the user's theme.
 """
 
 COPY_INSTRUCTIONS = f"""
@@ -429,11 +436,14 @@ def generate_hooks(
     )
 
     def _hooks_agent(*, force_model_id: str | None = None, force_provider: str | None = None):
+        instr = HOOKS_INSTRUCTIONS
+        if force_provider == "groq":
+            instr = HOOKS_INSTRUCTIONS + "\n" + GROQ_HOOKS_EXTRA
         return create_agent(
             name=f"hook_strategist_{creator}",
             description="Hook strategist based on creators' measured formulas.",
-            instructions=HOOKS_INSTRUCTIONS,
-            output_schema=HookList,
+            instructions=instr,
+            output_schema=HookList if force_provider != "groq" else None,
             temperature=0.4,
             force_model_id=force_model_id,
             force_provider=force_provider,
@@ -442,9 +452,13 @@ def generate_hooks(
 
     def _run_hooks(stage: str, **agent_kw) -> HookList:
         response = _hooks_agent(**agent_kw).run(prompt)
-        if looks_like_provider_error(response.content):
-            raise RuntimeError(f"{stage} error payload: {str(response.content)[:280]}")
-        return coerce_structured(response.content, HookList, stage=stage)
+        content = response.content
+        if looks_like_provider_error(content):
+            raise RuntimeError(f"{stage} error payload: {str(content)[:280]}")
+        # Groq free-text JSON path when output_schema is disabled
+        if agent_kw.get("force_provider") == "groq" and isinstance(content, str):
+            return coerce_structured(content, HookList, stage=stage)
+        return coerce_structured(content, HookList, stage=stage)
 
     logger.info("Generating 10 hooks from '%s' for '%s'...", creator, theme)
     raw: HookList | None = None
@@ -567,7 +581,8 @@ def generate_copy(
                 name=f"copy_director_{creator}",
                 description="Scriptwriter for 60–90s short-form monologues (170–200 spoken words max).",
                 instructions=COPY_INSTRUCTIONS + "\n" + GROQ_COPY_EXTRA,
-                output_schema=VideoCopy,
+                # No output_schema on Groq — native response_format breaks on many models
+                output_schema=None,
                 temperature=0.35,
                 force_provider="groq",
                 use_provider_fallbacks=False,
@@ -590,9 +605,10 @@ def generate_copy(
             run_prompt = prompt + "\n" + GROQ_COPY_EXTRA
         try:
             response = agent.run(run_prompt)
-            if looks_like_provider_error(response.content):
-                raise RuntimeError(f"Provider error: {str(response.content)[:240]}")
-            copy = coerce_structured(response.content, VideoCopy, stage=stage)
+            content = response.content
+            if looks_like_provider_error(content):
+                raise RuntimeError(f"Provider error: {str(content)[:240]}")
+            copy = coerce_structured(content, VideoCopy, stage=stage)
             return _normalize_video_copy(copy)
         except Exception as err:
             if _copy_route is None:

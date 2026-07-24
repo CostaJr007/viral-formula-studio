@@ -46,13 +46,14 @@ def _build_groq(*, temperature: float = 0.2, max_tokens: int | None = None) -> M
         return None
     from agno.models.groq import Groq
 
-    # Prefer JSON-schema path so VideoCopy.script is not truncated prose
+    # Do NOT set supports_json_schema_outputs=True — Groq rejects response_format
+    # for several models and returns 400 (breaks hooks/copy for judges).
+    # We parse structured JSON from the model text via coerce_structured instead.
     return Groq(
         id=settings.groq_llm_model_id or "llama-3.3-70b-versatile",
         api_key=settings.groq_api_key,
         temperature=temperature,
         max_tokens=max_tokens or 8192,
-        supports_json_schema_outputs=True,
     )
 
 
@@ -165,7 +166,10 @@ def looks_like_provider_error(content: object) -> bool:
         if "errors" in content or content.get("status_code") in (401, 403, 429, 500, 502, 503):
             return True
         err = content.get("error")
-        if isinstance(err, dict) and err.get("code"):
+        if isinstance(err, dict) and (err.get("code") or err.get("message")):
+            return True
+        # Groq/OpenAI style: {"error": {"message": "...", "param": "response_format"}}
+        if "error" in content and "script" not in content and "hooks" not in content:
             return True
     if isinstance(content, str):
         low = content.lower()
@@ -174,6 +178,8 @@ def looks_like_provider_error(content: object) -> bool:
         if "token_quota" in low or "exceeded_limit" in low:
             return True
         if "failure during chat" in low:
+            return True
+        if "response_format" in low and "error" in low:
             return True
     return False
 
