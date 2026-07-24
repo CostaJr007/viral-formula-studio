@@ -83,7 +83,7 @@ class DossierRequest(BaseModel):
 
 
 # Bump when ship-blocking ingest/copy fixes land — use to verify Code Engine pulled the new image
-API_BUILD = "2026-07-24-groq-no-json-schema"
+API_BUILD = "2026-07-24-groq-key-check"
 
 
 def _health_payload() -> dict:

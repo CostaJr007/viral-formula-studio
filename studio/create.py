@@ -479,13 +479,19 @@ def generate_hooks(
                 logger.warning("Hooks IBM path failed — Groq LLM fallback")
                 raw = _run_hooks("Hook generation (Groq fallback)", force_provider="groq")
             except Exception as groq_err:
-                errors.append(f"groq: {groq_err}")
+                err_s = str(groq_err)
+                if "invalid_api_key" in err_s.lower() or "invalid api key" in err_s.lower():
+                    errors.append(
+                        "groq: INVALID GROQ_API_KEY on server — set a valid key on vfs-api env"
+                    )
+                else:
+                    errors.append(f"groq: {groq_err}")
         if raw is None:
             raise RuntimeError(
                 "Hook generation failed on primary"
                 + (" + IBM fallback" if fb_id else "")
-                + (" + Groq" if groq_llm_available() else "")
-                + f": {'; '.join(errors)[:400]}"
+                + (" + Groq" if groq_llm_available() else " (Groq unavailable — set GROQ_API_KEY)")
+                + f": {'; '.join(errors)[:500]}"
             ) from primary_err
 
     cleaned = filter_hooks(raw.hooks, theme)

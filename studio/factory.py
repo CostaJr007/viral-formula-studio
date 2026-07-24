@@ -168,7 +168,7 @@ def looks_like_provider_error(content: object) -> bool:
         err = content.get("error")
         if isinstance(err, dict) and (err.get("code") or err.get("message")):
             return True
-        # Groq/OpenAI style: {"error": {"message": "...", "param": "response_format"}}
+        # Groq/OpenAI style: {"error": {"message": "...", "code": "invalid_api_key"}}
         if "error" in content and "script" not in content and "hooks" not in content:
             return True
     if isinstance(content, str):
@@ -181,6 +181,12 @@ def looks_like_provider_error(content: object) -> bool:
             return True
         if "response_format" in low and "error" in low:
             return True
+        if "invalid_api_key" in low or "invalid api key" in low:
+            return True
+        if '"error"' in low and "hooks" not in low and "script" not in low:
+            # JSON error blob returned as string content
+            if any(k in low for k in ("invalid", "unauthorized", "quota", "rate_limit", "forbidden")):
+                return True
     return False
 
 
