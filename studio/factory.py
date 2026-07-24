@@ -50,7 +50,7 @@ def _build_groq(*, temperature: float = 0.2, max_tokens: int | None = None) -> M
     # for several models and returns 400 (breaks hooks/copy for judges).
     # We parse structured JSON from the model text via coerce_structured instead.
     return Groq(
-        id=settings.groq_llm_model_id or "llama-3.3-70b-versatile",
+        id=settings.groq_llm_model_id or "llama-3.1-8b-instant",
         api_key=settings.groq_api_key,
         temperature=temperature,
         max_tokens=max_tokens or 8192,

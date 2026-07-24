@@ -74,7 +74,8 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     groq_whisper_model: str = "whisper-large-v3-turbo"
     # Chat model for hooks/copy emergency fallback (same GROQ_API_KEY)
-    groq_llm_model_id: str = "llama-3.3-70b-versatile"
+    # 8b-instant has higher free TPD than 70b (70b free ~100k tokens/day)
+    groq_llm_model_id: str = "llama-3.1-8b-instant"
     # On when GROQ_API_KEY is set (demo safety net for watsonx 403 token_quota)
     groq_llm_fallback: bool = True
 
