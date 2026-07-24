@@ -83,7 +83,7 @@ class DossierRequest(BaseModel):
 
 
 # Bump when ship-blocking ingest/copy fixes land — use to verify Code Engine pulled the new image
-API_BUILD = "2026-07-24-ibm-fallback-v2"
+API_BUILD = "2026-07-24-groq-fallback"
 
 
 def _health_payload() -> dict:
@@ -98,6 +98,8 @@ def _health_payload() -> dict:
     if settings.model_provider == "watsonx":
         payload["model"] = settings.watsonx_model_id
         payload["fallback_model"] = settings.watsonx_fallback_model_id or None
+        payload["groq_fallback"] = bool(settings.groq_llm_fallback and settings.groq_api_key)
+        payload["groq_model"] = settings.groq_llm_model_id if payload["groq_fallback"] else None
         payload["openai_fallback"] = bool(settings.openai_fallback)
     return payload
 

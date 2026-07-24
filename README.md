@@ -78,10 +78,12 @@ Seed creator  ──┐
 | Scout | Verified facts about **your topic** (not the influencer’s biography) | Tavily HTTP (cached per theme) |
 | Hook strategist | 10 hooks + quality filter | Granite 4 |
 | Script director | Call-sheet script + length repair/trim | Granite 4 |
-| Fallback (same watsonx API) | Second model id if Granite fails (429 / transient) | e.g. Llama 3.3 70B — **no new cloud app** |
-| OpenAI | Opt-in last resort only (`OPENAI_FALLBACK=true`) | Off by default for IBM-only path |
+| Fallback (same watsonx API) | Second model id if Granite fails | e.g. Llama 3.3 70B — **no new cloud app** |
+| Fallback (demo safety) | Groq LLM if watsonx **token_quota / 403** | Same `GROQ_API_KEY` as Whisper · text only |
+| OpenAI | Opt-in last resort (`OPENAI_FALLBACK=true`) | Off by default |
 
-Granite 4 is the **product voice**. Fallback is another model on the **same** watsonx project/key (API-only). Fact-check targets the **user’s theme** — we measure the videos you provide; we do not scrape influencer “how-to” blogs.
+**Primary voice:** Granite 4 on watsonx.  
+**Chain:** Granite → IBM Llama (same project) → **Groq** (if `GROQ_API_KEY` set) so hooks/script still work when Lite quota is exhausted. Vision stays on watsonx; seed profiles already cache editing metrics.
 
 ### Quality without extra agents
 
@@ -117,6 +119,7 @@ Smoke checks against the live Code Engine apps:
 | `GET /api/health` | OK · `provider=watsonx` · `build` includes `ibm-fallback` |
 | Primary model | `ibm/granite-4-h-small` |
 | IBM API fallback model | `meta-llama/llama-3-3-70b-instruct` (same project/key — no extra instance) |
+| Groq LLM fallback | **on** when `GROQ_API_KEY` is set (`llama-3.3-70b-versatile`) — survives watsonx token_quota |
 | OpenAI fallback | **off** (`openai_fallback=false`) |
 | `GET /api/creators` | Seeds **Bryan**, **jeffnippard**, **kallaway** with profiles |
 | `GET /api/profile/jeffnippard` | OK · metrics (e.g. cuts/min, WPM) + style + editing |
@@ -130,7 +133,7 @@ curl -s https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud/api/hea
 #  "fallback_model":"meta-llama/llama-3-3-70b-instruct","openai_fallback":false}
 ```
 
-**If hooks/copy return 502:** almost always watsonx **token quota / 403** on the Lite plan (API is up; inference is denied). Fix in IBM Cloud → watsonx project (quota, model access, or API key on `vfs-api` env). The app retries once on the IBM fallback model id automatically.
+**If hooks/copy return 502:** often watsonx **token quota / 403** on Lite. The API retries **IBM fallback model**, then **Groq LLM** (needs `GROQ_API_KEY` on `vfs-api`). After deploying the Groq fallback build, hooks should work even with watsonx quota exhausted.
 
 **Production checklist**
 
@@ -174,7 +177,9 @@ WATSONX_FALLBACK_MODEL_ID=meta-llama/llama-3-3-70b-instruct   # same API/project
 WATSONX_VISION_MODEL_ID=meta-llama/llama-3-2-11b-vision-instruct
 OPENAI_FALLBACK=false
 OPENAI_API_KEY=          # only if OPENAI_FALLBACK=true
-GROQ_API_KEY=            # Whisper when captions fail
+GROQ_API_KEY=            # Whisper + LLM text fallback
+GROQ_LLM_MODEL_ID=llama-3.3-70b-versatile
+GROQ_LLM_FALLBACK=true
 TAVILY_API_KEY=          # topic fact-check
 ```
 

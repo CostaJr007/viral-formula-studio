@@ -63,16 +63,20 @@ class Settings(BaseSettings):
     # structured JSON (hook lists, dossiers). 4096 is enough for our schemas.
     # Long shooting scripts (200–250 spoken words + pipe metadata) need headroom
     watsonx_max_tokens: int = 6144
-    # OpenAI as last-resort fallback (default off — IBM-only path for submission)
+    # OpenAI as last-resort fallback (default off)
     openai_fallback: bool = False
 
     # Google Gemini
     google_api_key: str | None = None
     gemini_model_id: str = "gemini-2.0-flash"  # fast multimodal Llama/Granite equivalents
 
-    # Groq Whisper (audio transcription)
+    # Groq — Whisper (audio) + optional LLM text fallback when watsonx quota fails
     groq_api_key: str | None = None
     groq_whisper_model: str = "whisper-large-v3-turbo"
+    # Chat model for hooks/copy emergency fallback (same GROQ_API_KEY)
+    groq_llm_model_id: str = "llama-3.3-70b-versatile"
+    # On when GROQ_API_KEY is set (demo safety net for watsonx 403 token_quota)
+    groq_llm_fallback: bool = True
 
     # Tavily (optional web research)
     tavily_api_key: str | None = None

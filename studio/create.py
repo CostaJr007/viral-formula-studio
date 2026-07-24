@@ -20,7 +20,12 @@ from difflib import SequenceMatcher
 from pydantic import BaseModel, Field
 
 from . import store
-from .factory import create_agent, looks_like_provider_error, watsonx_text_fallback_id
+from .factory import (
+    create_agent,
+    groq_llm_available,
+    looks_like_provider_error,
+    watsonx_text_fallback_id,
+)
 from .parse import coerce_structured
 from .research import research_theme
 from .schemas import ResearchReport
@@ -409,7 +414,7 @@ def generate_hooks(
         "Return structured JSON only — be concise."
     )
 
-    def _hooks_agent(*, force_model_id: str | None = None):
+    def _hooks_agent(*, force_model_id: str | None = None, force_provider: str | None = None):
         return create_agent(
             name=f"hook_strategist_{creator}",
             description="Hook strategist based on creators' measured formulas.",
@@ -417,32 +422,43 @@ def generate_hooks(
             output_schema=HookList,
             temperature=0.4,
             force_model_id=force_model_id,
-            use_provider_fallbacks=force_model_id is None,
+            force_provider=force_provider,
+            use_provider_fallbacks=force_model_id is None and force_provider is None,
         )
+
+    def _run_hooks(stage: str, **agent_kw) -> HookList:
+        response = _hooks_agent(**agent_kw).run(prompt)
+        if looks_like_provider_error(response.content):
+            raise RuntimeError(f"{stage} error payload: {str(response.content)[:280]}")
+        return coerce_structured(response.content, HookList, stage=stage)
 
     logger.info("Generating 10 hooks from '%s' for '%s'...", creator, theme)
     raw: HookList | None = None
+    errors: list[str] = []
     try:
-        response = _hooks_agent().run(prompt)
-        if looks_like_provider_error(response.content):
-            raise RuntimeError(f"Primary model error payload: {str(response.content)[:240]}")
-        raw = coerce_structured(response.content, HookList, stage="Hook generation")
+        raw = _run_hooks("Hook generation")
     except Exception as primary_err:
+        errors.append(f"primary: {primary_err}")
         fb_id = watsonx_text_fallback_id()
-        if not fb_id:
-            raise
-        logger.warning(
-            "Hooks primary failed (%s) — retrying on watsonx fallback %s",
-            primary_err,
-            fb_id,
-        )
-        response = _hooks_agent(force_model_id=fb_id).run(prompt)
-        if looks_like_provider_error(response.content):
+        if fb_id:
+            try:
+                logger.warning("Hooks primary failed — watsonx fallback %s", fb_id)
+                raw = _run_hooks("Hook generation (IBM fallback)", force_model_id=fb_id)
+            except Exception as ibm_err:
+                errors.append(f"ibm_fallback: {ibm_err}")
+        if raw is None and groq_llm_available():
+            try:
+                logger.warning("Hooks IBM path failed — Groq LLM fallback")
+                raw = _run_hooks("Hook generation (Groq fallback)", force_provider="groq")
+            except Exception as groq_err:
+                errors.append(f"groq: {groq_err}")
+        if raw is None:
             raise RuntimeError(
-                f"Hook generation failed on primary and IBM fallback ({fb_id}): "
-                f"{str(response.content)[:240]}"
+                "Hook generation failed on primary"
+                + (" + IBM fallback" if fb_id else "")
+                + (" + Groq" if groq_llm_available() else "")
+                + f": {'; '.join(errors)[:400]}"
             ) from primary_err
-        raw = coerce_structured(response.content, HookList, stage="Hook generation (IBM fallback)")
 
     cleaned = filter_hooks(raw.hooks, theme)
     if len(cleaned) < 10:
@@ -528,21 +544,32 @@ def generate_copy(
         "At most ONE '(no speech — music only)' block. Cite measured cuts/min or WPM in ≥2 EDITING fields."
     )
 
-    _copy_force_id: str | None = None
+    # None | watsonx model id | "groq"
+    _copy_route: str | None = None
 
     def _copy_agent():
+        if _copy_route == "groq":
+            return create_agent(
+                name=f"copy_director_{creator}",
+                description="Scriptwriter for 60–90s short-form monologues (170–200 spoken words max).",
+                instructions=COPY_INSTRUCTIONS,
+                output_schema=VideoCopy,
+                temperature=0.25,
+                force_provider="groq",
+                use_provider_fallbacks=False,
+            )
         return create_agent(
             name=f"copy_director_{creator}",
             description="Scriptwriter for 60–90s short-form monologues (170–200 spoken words max).",
             instructions=COPY_INSTRUCTIONS,
             output_schema=VideoCopy,
             temperature=0.25,
-            force_model_id=_copy_force_id,
-            use_provider_fallbacks=_copy_force_id is None,
+            force_model_id=_copy_route if _copy_route not in (None, "groq") else None,
+            use_provider_fallbacks=_copy_route is None,
         )
 
     def _once(prompt: str, stage: str) -> VideoCopy:
-        nonlocal _copy_force_id
+        nonlocal _copy_route
         agent = _copy_agent()
         try:
             response = agent.run(prompt)
@@ -551,18 +578,22 @@ def generate_copy(
             copy = coerce_structured(response.content, VideoCopy, stage=stage)
             return _normalize_video_copy(copy)
         except Exception as err:
-            fb_id = watsonx_text_fallback_id()
-            if _copy_force_id or not fb_id:
+            if _copy_route is None:
+                fb_id = watsonx_text_fallback_id()
+                if fb_id:
+                    logger.warning("Copy primary failed (%s) — IBM fallback %s", err, fb_id)
+                    _copy_route = fb_id
+                    return _once(prompt, f"{stage} (IBM fallback)")
+                if groq_llm_available():
+                    logger.warning("Copy primary failed (%s) — Groq fallback", err)
+                    _copy_route = "groq"
+                    return _once(prompt, f"{stage} (Groq fallback)")
                 raise
-            logger.warning("Copy primary failed (%s) — switching to IBM fallback %s", err, fb_id)
-            _copy_force_id = fb_id
-            response = _copy_agent().run(prompt)
-            if looks_like_provider_error(response.content):
-                raise RuntimeError(
-                    f"Copy failed on primary and IBM fallback ({fb_id}): {str(response.content)[:240]}"
-                ) from err
-            copy = coerce_structured(response.content, VideoCopy, stage=f"{stage} (IBM fallback)")
-            return _normalize_video_copy(copy)
+            if _copy_route != "groq" and groq_llm_available():
+                logger.warning("Copy IBM fallback failed (%s) — Groq fallback", err)
+                _copy_route = "groq"
+                return _once(prompt, f"{stage} (Groq fallback)")
+            raise
 
     copy = _once(base_prompt, "Copy generation")
 
