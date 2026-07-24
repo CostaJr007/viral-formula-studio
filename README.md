@@ -31,8 +31,6 @@ Seed creators are **pre-analyzed** — no upload, no wait for yt-dlp.
 
 Optional: light/dark toggle · **New topic** reuses the same creator formula · custom Shorts via *Or analyze your own creator*.
 
-> Demo script and pitch notes: [docs/HACKATHON_DEMO.md](docs/HACKATHON_DEMO.md)
-
 ---
 
 ## Problem
@@ -206,7 +204,6 @@ docs/                   # Innovation, deploy, hackathon demo
 | Doc | Contents |
 |-----|----------|
 | [docs/INNOVATION.md](docs/INNOVATION.md) | Why measured + multimodal + IBM |
-| [docs/HACKATHON_DEMO.md](docs/HACKATHON_DEMO.md) | Judge path + pitch checklist |
 | [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md) | Code Engine deploy |
 | [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md) | Alternate host notes |
 | [AGENTS.md](AGENTS.md) | Contributor / agent rules |
