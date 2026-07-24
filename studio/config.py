@@ -51,13 +51,20 @@ class Settings(BaseSettings):
     # granite-3-8b-instruct lacks tools/structured-output support on watsonx;
     # granite-4-h-small supports both (verified live)
     watsonx_model_id: str = "ibm/granite-4-h-small"
+    # Same watsonx project/API key — second model id only (no new Code Engine / project).
+    # Used when primary Granite fails (429, timeout, transient error). Agno retries on this.
+    watsonx_fallback_model_id: str = "meta-llama/llama-3-3-70b-instruct"
     # watsonx has no Granite vision model in the current regions; the frame-analysis
     # stage uses this supporting vision model while Granite stays the product's voice
     watsonx_vision_model_id: str = "meta-llama/llama-3-2-11b-vision-instruct"
+    # Optional second vision model on the same watsonx API (leave empty to skip)
+    watsonx_fallback_vision_model_id: str | None = None
     # Unspecified max_tokens falls back to 1024 on watsonx and truncates long
     # structured JSON (hook lists, dossiers). 4096 is enough for our schemas.
     # Long shooting scripts (200–250 spoken words + pipe metadata) need headroom
     watsonx_max_tokens: int = 6144
+    # OpenAI as last-resort fallback (default off — IBM-only path for submission)
+    openai_fallback: bool = False
 
     # Google Gemini
     google_api_key: str | None = None

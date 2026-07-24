@@ -83,18 +83,23 @@ class DossierRequest(BaseModel):
 
 
 # Bump when ship-blocking ingest/copy fixes land — use to verify Code Engine pulled the new image
-API_BUILD = "2026-07-23-copy-quality"
+API_BUILD = "2026-07-24-ibm-fallback"
 
 
 def _health_payload() -> dict:
     from studio.config import get_settings
 
     settings = get_settings()
-    return {
+    payload = {
         "status": "ok",
         "provider": settings.model_provider,
         "build": API_BUILD,
     }
+    if settings.model_provider == "watsonx":
+        payload["model"] = settings.watsonx_model_id
+        payload["fallback_model"] = settings.watsonx_fallback_model_id or None
+        payload["openai_fallback"] = bool(settings.openai_fallback)
+    return payload
 
 
 @app.get("/api/health")

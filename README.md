@@ -76,9 +76,10 @@ Seed creator  ──┐
 | Scout | Verified facts about **your topic** (not the influencer’s biography) | Tavily HTTP (cached per theme) |
 | Hook strategist | 10 hooks + quality filter | Granite 4 |
 | Script director | Call-sheet script + length repair/trim | Granite 4 |
-| Fallback | Rate-limit / outage safety net | OpenAI GPT-4o (optional) |
+| Fallback (same watsonx API) | Second model id if Granite fails (429 / transient) | e.g. Llama 3.3 70B — **no new cloud app** |
+| OpenAI | Opt-in last resort only (`OPENAI_FALLBACK=true`) | Off by default for IBM-only path |
 
-Granite 4 is the **product voice**. OpenAI is fallback only. Fact-check targets the **user’s theme** so scripts stay honest — we do **not** scrape “how famous creator X edits” from the web; we measure the videos you provide.
+Granite 4 is the **product voice**. Fallback is another model on the **same** watsonx project/key (API-only). Fact-check targets the **user’s theme** — we measure the videos you provide; we do not scrape influencer “how-to” blogs.
 
 ### Quality without extra agents
 
