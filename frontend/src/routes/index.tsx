@@ -13,10 +13,12 @@ import {
   Gauge,
   Link as LinkIcon,
   Loader2,
+  Moon,
   Play,
   RotateCcw,
   Scissors,
   Sparkle,
+  Sun,
   Target,
   Trash2,
   Wand2,
@@ -33,7 +35,26 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { useTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
+
+function ThemeToggle({ className }: { className?: string }) {
+  const { theme, toggleTheme, isDark } = useTheme();
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      onClick={toggleTheme}
+      className={cn("touch-target shrink-0 border-border/60", className)}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      title={isDark ? "Light mode" : "Dark mode"}
+    >
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      <span className="sr-only">{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+    </Button>
+  );
+}
 
 export const Route = createFileRoute("/")({
   component: Studio,
@@ -447,7 +468,7 @@ function Studio() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-dvh flex flex-col bg-background text-foreground overflow-x-clip">
       <div className="flex flex-1 min-h-0">
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground relative">
@@ -455,14 +476,15 @@ function Studio() {
         <div className="relative p-6 flex items-center gap-3">
           <div className="relative">
             <div className="absolute -inset-1 rounded-xl bg-primary/30 blur-md" />
-            <button type="button" onClick={restart} className="relative cursor-pointer" title="Home">
+            <button type="button" onClick={restart} className="relative cursor-pointer touch-target" title="Home">
               <img src={logoUrl} alt="Viral Formula Studio" className="relative h-9 w-9" />
             </button>
           </div>
-          <div className="leading-tight">
+          <div className="leading-tight flex-1 min-w-0">
             <div className="font-display font-semibold text-[15px]">Viral Formula</div>
             <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Studio</div>
           </div>
+          <ThemeToggle />
         </div>
 
         <div className="relative px-4 pb-3">
@@ -540,16 +562,16 @@ function Studio() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 min-w-0 relative">
+      <main className="flex-1 min-w-0 relative w-full">
         <div className="absolute inset-0 bg-hero pointer-events-none" />
         <div className="absolute inset-0 bg-grid pointer-events-none opacity-50 hidden sm:block" />
 
         <div className="relative">
           {/* Sticky chrome: progress + mobile stepper */}
-          <div className="border-b border-border/60 backdrop-blur-md bg-background/75 sticky top-0 z-20">
-            <div className="max-w-5xl mx-auto px-4 md:px-10 py-3 flex items-center gap-3">
+          <div className="border-b border-border/60 backdrop-blur-md bg-background/85 sticky top-0 z-20 pt-safe">
+            <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-10 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
               <div className="lg:hidden flex items-center gap-2 shrink-0">
-                <button onClick={restart} className="cursor-pointer" title="Home">
+                <button type="button" onClick={restart} className="cursor-pointer touch-target flex items-center justify-center" title="Home">
                   <img src={logoUrl} alt="Viral Formula Studio" className="h-7 w-7" />
                 </button>
               </div>
@@ -557,39 +579,46 @@ function Studio() {
                 <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground tabular-nums shrink-0">
                   {String(stepIndex + 1).padStart(2, "0")}/{String(STEPS.length).padStart(2, "0")}
                 </span>
-                <Progress value={progress} className="h-1.5 flex-1" />
+                <Progress value={progress} className="h-1.5 flex-1 min-w-0" />
                 <span className="hidden sm:inline text-[10px] font-mono uppercase tracking-[0.2em] text-primary tabular-nums shrink-0">
                   {Math.round(progress)}%
                 </span>
               </div>
-              {profile && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={restart}
-                  className="gap-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">New</span>
-                </Button>
-              )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <ThemeToggle className="lg:hidden h-9 w-9" />
+                {profile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={restart}
+                    className="gap-1.5 text-xs text-muted-foreground hover:text-foreground touch-target px-2 sm:px-3"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">New</span>
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* Mobile / tablet horizontal stepper */}
-            <div className="lg:hidden border-t border-border/40 px-2 sm:px-4 py-2 overflow-x-auto">
-              <div className="flex items-center gap-1 min-w-max mx-auto max-w-5xl" role="navigation" aria-label="Workflow">
+            {/* Mobile / tablet horizontal stepper — scroll-snap */}
+            <div className="lg:hidden border-t border-border/40 px-2 sm:px-4 py-2 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] scrollbar-none">
+              <div
+                className="flex items-center gap-1 min-w-max snap-x snap-mandatory pb-0.5"
+                role="navigation"
+                aria-label="Workflow"
+              >
                 {STEPS.map((s, i) => {
                   const active = s.id === step;
                   const done = isStepDone(s.id, i);
                   return (
-                    <div key={s.id} className="flex items-center">
+                    <div key={s.id} className="flex items-center snap-start">
                       <button
                         type="button"
                         disabled={!canNavigate(s.id)}
                         onClick={() => canNavigate(s.id) && setStep(s.id)}
                         aria-current={active ? "step" : undefined}
                         className={cn(
-                          "flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-medium transition-all",
+                          "flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-medium transition-all touch-target",
                           active && "bg-primary text-primary-foreground shadow-glow",
                           done && !active && "bg-success/15 text-success",
                           !done && !active && "bg-secondary/50 text-muted-foreground",
@@ -599,10 +628,10 @@ function Studio() {
                         <span className="font-mono text-[10px] opacity-80">
                           {done && !active ? "✓" : String(i + 1).padStart(2, "0")}
                         </span>
-                        <span>{s.label}</span>
+                        <span className={cn(active ? "inline" : "max-[380px]:hidden")}>{s.label}</span>
                       </button>
                       {i < STEPS.length - 1 && (
-                        <span className="w-3 sm:w-5 h-px bg-border mx-0.5 sm:mx-1 shrink-0" />
+                        <span className="w-2 sm:w-4 h-px bg-border mx-0.5 shrink-0" aria-hidden />
                       )}
                     </div>
                   );
@@ -611,7 +640,10 @@ function Studio() {
             </div>
           </div>
 
-          <div className="max-w-5xl mx-auto px-4 md:px-10 py-6 md:py-12 animate-studio-in" key={step}>
+          <div
+            className="max-w-5xl mx-auto px-3 sm:px-4 md:px-10 py-5 sm:py-6 md:py-12 pb-safe animate-studio-in"
+            key={step}
+          >
             {error && (
               <Card
                 role="alert"
@@ -730,31 +762,31 @@ function CreatorStep({
   const [showAdvanced, setShowAdvanced] = useState(filled > 0 && !selectedDemo);
 
   return (
-    <div className="space-y-8 md:space-y-10">
+    <div className="space-y-6 sm:space-y-8 md:space-y-10">
       {/* Hero — pitch landing for judges */}
-      <header className="relative overflow-hidden rounded-2xl border border-border/50 call-sheet p-6 md:p-10 space-y-6">
+      <header className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-border/50 call-sheet p-4 sm:p-6 md:p-10 space-y-5 sm:space-y-6">
         <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
 
-        <div className="relative flex flex-wrap items-center gap-2">
-          <Badge className="gap-1.5 bg-primary text-primary-foreground border-0">
-            <Sparkle className="h-3 w-3" /> IBM AI Builders Challenge 2026
+        <div className="relative flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <Badge className="gap-1.5 bg-primary text-primary-foreground border-0 text-[10px] sm:text-xs">
+            <Sparkle className="h-3 w-3" /> IBM AI Builders 2026
           </Badge>
-          <Badge variant="outline" className="gap-1.5 border-primary/40 text-primary">
+          <Badge variant="outline" className="gap-1.5 border-primary/40 text-primary text-[10px] sm:text-xs">
             Creative Industries
           </Badge>
-          <Badge variant="secondary" className="gap-1.5 text-[10px]">
+          <Badge variant="secondary" className="gap-1.5 text-[10px] hidden xs:inline-flex sm:inline-flex">
             Live on IBM Code Engine
           </Badge>
         </div>
 
-        <div className="relative grid lg:grid-cols-5 gap-8 items-start">
-          <div className="lg:col-span-3 space-y-4">
-            <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05] tracking-tight">
+        <div className="relative grid lg:grid-cols-5 gap-5 sm:gap-8 items-start">
+          <div className="lg:col-span-3 space-y-3 sm:space-y-4">
+            <h1 className="text-[1.65rem] leading-[1.12] sm:text-3xl md:text-5xl font-display font-semibold sm:leading-[1.05] tracking-tight">
               Reverse-engineer any creator&apos;s{" "}
               <span className="text-gradient">viral formula</span>
             </h1>
-            <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-2xl">
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg leading-relaxed max-w-2xl">
               We <strong className="text-foreground">measure</strong> cuts, speech rate and hooks
               with ffmpeg — then IBM Granite + Vision decode the grammar and transpose it onto{" "}
               <strong className="text-foreground">your</strong> topic. Inspiration, not imitation.
@@ -791,8 +823,8 @@ function CreatorStep({
           </div>
 
           {/* Output preview — show the deliverable without running pipeline */}
-          <div className="lg:col-span-2 relative">
-            <div className="rounded-xl border border-primary/30 bg-background/60 backdrop-blur-sm p-4 shadow-glow space-y-3">
+          <div className="lg:col-span-2 relative order-last lg:order-none">
+            <div className="rounded-xl border border-primary/30 bg-background/60 backdrop-blur-sm p-3 sm:p-4 shadow-glow space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-primary">
                   Output preview
@@ -882,14 +914,14 @@ function CreatorStep({
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {DEMO_CREATORS.map((demo) => {
                 const active = selectedDemo?.name === demo.name;
                 return (
                   <div
                     key={demo.name}
                     className={cn(
-                      "text-left rounded-2xl border p-5 transition-all relative overflow-hidden flex flex-col",
+                      "text-left rounded-xl sm:rounded-2xl border p-4 sm:p-5 transition-all relative overflow-hidden flex flex-col",
                       active
                         ? "border-primary bg-primary/10 shadow-glow ring-1 ring-primary/40"
                         : "border-border/60 bg-card/60 hover:border-primary/40 hover:bg-card",
@@ -898,19 +930,21 @@ function CreatorStep({
                     <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", demo.accent)} />
                     <div className="relative space-y-3 flex-1 flex flex-col">
                       <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="font-display font-semibold text-lg">{demo.name}</div>
+                        <div className="min-w-0">
+                          <div className="font-display font-semibold text-base sm:text-lg truncate">{demo.name}</div>
                           <div className="text-[11px] text-muted-foreground mt-0.5">{demo.tag}</div>
                         </div>
                         <Badge
                           variant={active ? "default" : "secondary"}
-                          className="text-[9px] uppercase tracking-wider"
+                          className="text-[9px] uppercase tracking-wider shrink-0"
                         >
                           {active ? "Selected" : "Demo"}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{demo.desc}</p>
-                      <div className="grid grid-cols-3 gap-2 pt-1">
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-none">
+                        {demo.desc}
+                      </p>
+                      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1">
                         {[
                           { k: "cuts/min", v: demo.metrics.cuts },
                           { k: "WPM", v: demo.metrics.wpm },
@@ -918,10 +952,14 @@ function CreatorStep({
                         ].map((m) => (
                           <div
                             key={m.k}
-                            className="rounded-lg bg-background/50 border border-border/40 px-2 py-1.5 text-center"
+                            className="rounded-lg bg-background/50 border border-border/40 px-1.5 sm:px-2 py-1.5 text-center"
                           >
-                            <div className="font-mono text-xs font-semibold text-foreground tabular-nums">{m.v}</div>
-                            <div className="text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5">{m.k}</div>
+                            <div className="font-mono text-[11px] sm:text-xs font-semibold text-foreground tabular-nums">
+                              {m.v}
+                            </div>
+                            <div className="text-[8px] sm:text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5">
+                              {m.k}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -931,7 +969,7 @@ function CreatorStep({
                       <Button
                         type="button"
                         size="lg"
-                        className="w-full shadow-glow mt-1"
+                        className="w-full shadow-glow mt-1 h-12 touch-target text-sm sm:text-base"
                         onClick={() => runAnalysis({ creator: demo.name, topic: demo.topic })}
                       >
                         Decode formula
@@ -1051,8 +1089,8 @@ function CreatorStep({
                   </Card>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-1 pb-2">
-                  <div className="text-xs text-muted-foreground flex items-center gap-4 flex-wrap">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 pt-1 pb-2 sticky bottom-0 sm:static z-10 -mx-3 px-3 sm:mx-0 sm:px-0 py-3 sm:py-0 bg-background/95 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none border-t border-border/50 sm:border-0 pb-safe">
+                  <div className="text-xs text-muted-foreground hidden sm:flex items-center gap-4 flex-wrap">
                     <span className="flex items-center gap-1.5">
                       <Scissors className="h-3.5 w-3.5 text-success" /> measured cuts/min
                     </span>
@@ -1068,7 +1106,7 @@ function CreatorStep({
                     size="lg"
                     disabled={!canAnalyze || analyzing}
                     onClick={() => runAnalysis()}
-                    className="min-w-[240px] shadow-glow h-12 text-base"
+                    className="w-full sm:w-auto sm:min-w-[240px] shadow-glow h-12 text-base touch-target"
                   >
                     Decode formula
                     <ArrowRight className="h-4 w-4" />
@@ -1419,10 +1457,10 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
             {profile.creator}
           </Badge>
         </div>
-        <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-semibold leading-[1.1] sm:leading-[1.05]">
           Formula <span className="text-gradient">measured</span>, not guessed.
         </h1>
-        <p className="text-muted-foreground text-lg leading-relaxed">
+        <p className="text-muted-foreground text-sm sm:text-base md:text-lg leading-relaxed">
           Numbers from ffmpeg plus stylistic and visual reading of the videos.
           Each line becomes an instruction in your final call sheet.
         </p>
@@ -1442,14 +1480,16 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
         </Card>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {metricCards.map((m) => (
-          <Card key={m.label} className="p-4 md:p-5 bg-card/70 relative overflow-hidden border-border/60">
+          <Card key={m.label} className="p-3 sm:p-4 md:p-5 bg-card/70 relative overflow-hidden border-border/60">
             <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-success via-primary to-primary/40" />
-            <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">{m.label}</div>
-            <div className="mt-3 font-display text-3xl font-semibold tabular-nums">
+            <div className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider leading-tight">
+              {m.label}
+            </div>
+            <div className="mt-2 sm:mt-3 font-display text-2xl sm:text-3xl font-semibold tabular-nums">
               {m.value}
-              <span className="text-base text-muted-foreground ml-1">{m.unit}</span>
+              <span className="text-sm sm:text-base text-muted-foreground ml-1">{m.unit}</span>
             </div>
             <div className="mt-2 text-[10px] font-mono text-success/90">
               measured · deterministic
@@ -1627,11 +1667,11 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
         </Card>
       )}
 
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-        <p className="text-xs text-muted-foreground max-w-md">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 sticky bottom-0 z-10 -mx-3 px-3 sm:mx-0 sm:px-0 sm:static py-3 sm:py-0 bg-background/95 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none border-t border-border/40 sm:border-0 pb-safe">
+        <p className="text-xs text-muted-foreground max-w-md hidden sm:block">
           Next: 10 hooks mapped from this fingerprint onto your topic — fact-checked on watsonx.
         </p>
-        <Button type="button" size="lg" onClick={onNext} className="min-w-[220px] shadow-glow">
+        <Button type="button" size="lg" onClick={onNext} className="w-full sm:w-auto sm:min-w-[220px] shadow-glow h-12 touch-target">
           Generate 10 hooks
           <ArrowRight className="h-4 w-4" />
         </Button>
@@ -1718,12 +1758,12 @@ function HooksStep({
         <Badge variant="outline" className="gap-1.5">
           <Sparkle className="h-3 w-3" /> Step 4 of 5 · Hooks
         </Badge>
-        <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-semibold leading-[1.1] sm:leading-[1.05]">
           10 hooks <span className="text-gradient">in the creator&apos;s technique</span>, on
           your topic.
         </h1>
-        <p className="text-muted-foreground text-lg leading-relaxed">
-          Every hook follows a measured pattern from the creator's fingerprint. Pick one
+        <p className="text-muted-foreground text-sm sm:text-base md:text-lg leading-relaxed">
+          Every hook follows a measured pattern from the creator&apos;s fingerprint. Pick one
           — it becomes the seed of the script.
         </p>
 
@@ -1770,15 +1810,16 @@ function HooksStep({
       )}
 
       {!loading && hooks.length > 0 && (
-        <div className="grid md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
           {hooks.map((h, i) => {
             const active = pickedHook === i;
             return (
               <button
                 key={i}
+                type="button"
                 onClick={() => setPickedHook(i)}
                 className={cn(
-                  "text-left p-5 rounded-xl border transition-all group relative",
+                  "text-left p-4 sm:p-5 rounded-xl border transition-all group relative touch-target",
                   active
                     ? "border-primary bg-primary/10 shadow-glow"
                     : "border-border bg-card/60 hover:border-primary/40 hover:bg-card",
@@ -1805,13 +1846,18 @@ function HooksStep({
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
-        <p className="text-xs text-muted-foreground">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 pt-2 sticky bottom-0 z-10 -mx-3 px-3 sm:mx-0 sm:px-0 sm:static py-3 sm:py-0 bg-background/95 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none border-t border-border/40 sm:border-0 pb-safe">
+        <p className="text-xs text-muted-foreground text-center sm:text-left">
           {pickedHook !== null
             ? `Hook ${String(pickedHook + 1).padStart(2, "0")} selected.`
             : "Pick a hook to generate the full script."}
         </p>
-        <Button size="lg" disabled={pickedHook === null} onClick={onNext} className="min-w-[220px] shadow-glow">
+        <Button
+          size="lg"
+          disabled={pickedHook === null}
+          onClick={onNext}
+          className="w-full sm:w-auto sm:min-w-[220px] shadow-glow h-12 touch-target"
+        >
           Write script
           <ArrowRight className="h-4 w-4" />
         </Button>
@@ -1971,10 +2017,10 @@ function CopyStep({
           <Badge variant="outline" className="gap-1.5">
             <Wand2 className="h-3 w-3" /> Step 5 of 5 · Shooting script
           </Badge>
-          <h1 className="text-3xl md:text-5xl font-display font-semibold leading-[1.05]">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-semibold leading-[1.1] sm:leading-[1.05]">
             Your script, <span className="text-gradient">ready to shoot</span>.
           </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed">
+          <p className="text-muted-foreground text-sm sm:text-base md:text-lg leading-relaxed">
             Full call sheet: spoken narration, timecodes, shot types and retention psychology —
             grounded in measured metrics and verified facts.
           </p>
@@ -2095,14 +2141,14 @@ function CopyStep({
                 Evidence-based playbook · IBM watsonx · not a template
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigator.clipboard?.writeText(exportMd)}>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="touch-target flex-1 sm:flex-none" onClick={() => navigator.clipboard?.writeText(exportMd)}>
                 <CopyIcon className="h-3.5 w-3.5 mr-1" /> Copy all
               </Button>
-              <Button variant="outline" size="sm" onClick={downloadReport}>
+              <Button variant="outline" size="sm" className="touch-target flex-1 sm:flex-none" onClick={downloadReport}>
                 <Download className="h-3.5 w-3.5 mr-1" /> Export .md
               </Button>
-              <Button variant="outline" size="sm" onClick={onGenerate}>
+              <Button variant="outline" size="sm" className="touch-target flex-1 sm:flex-none" onClick={onGenerate}>
                 <RotateCcw className="h-3.5 w-3.5 mr-1" /> Regenerate
               </Button>
             </div>
