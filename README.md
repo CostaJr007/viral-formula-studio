@@ -1,443 +1,233 @@
 # Viral Formula Studio
 
-**Multimodal reverse engineering of a content creator's viral formula.** Paste up to
-5 short-video links (YouTube Shorts, TikTok, Instagram Reels) from any creator and
-your topic — the AI watches, learns their technique, and delivers an actionable
-shooting script with hooks, editing directions, and retention psychology transposed
-to *your* theme, in *your* voice.
+**Multimodal reverse engineering of a content creator’s viral formula.**
 
-> Inspiration, not imitation. Every great creator started by studying someone.
-> We hand you the notebook that used to take months to build.
+Paste short-form links (or pick a seed creator) + your topic. The system **measures** cuts, speech rate and patterns with ffmpeg, **decodes** style with IBM Granite 4 and editing grammar with Llama Vision on watsonx.ai, then delivers **10 hooks** and a **shoot-ready call-sheet script** (~60–90s) on *your* theme — in *your* voice.
 
-🚀 **Live demo (production on IBM Code Engine):** [bit.ly/viral-studio](https://bit.ly/viral-studio)
+> **Inspiration, not imitation.** We hand you the notebook that used to take months to build.
+
+| | |
+|---|---|
+| **Live demo** | [bit.ly/viral-studio](https://bit.ly/viral-studio) |
+| **Challenge** | IBM AI Builders · July 2026 · *Reimagine Creative Industries with AI* |
+| **Hosting** | IBM Cloud Code Engine (us-south) |
+| **Repo** | [CostaJr007/viral-formula-studio](https://github.com/CostaJr007/viral-formula-studio) |
 
 ![Demo](demo.gif)
 
-**Built with IBM technologies:** IBM Bob (architecture & implementation), IBM Granite 4 (language model), Llama 3.2 Vision (frame analysis), IBM watsonx.ai (deployment), IBM Code Engine (serverless hosting).
+**IBM stack:** watsonx.ai (Granite 4 + Llama 3.2 Vision) · Code Engine · Container Registry · IBM Bob (dev partner)
 
 ---
 
-## Problem Statement
+## For judges (2 minutes)
 
-Content creators spend months studying successful creators before finding their own
-voice. They watch hundreds of videos, manually note hook patterns, editing rhythm,
-speech pace, persuasion triggers — and still end up guessing. Marketing teams and
-agencies lack a systematic, data-driven method to decode *why* specific short-form
-content goes viral and transpose those techniques to a new topic.
+Seed creators are **pre-analyzed** — no upload, no wait for yt-dlp.
 
-Existing AI writing tools generate generic scripts from prompts with no connection
-to real creator behavior. They don't *measure* anything — they guess based on the
-model's prior training, producing hallucinated claims like "this creator uses fast
-cuts" without ever counting a single cut.
+1. Open **[bit.ly/viral-studio](https://bit.ly/viral-studio)**
+2. Tap **Decode formula** on **jeffnippard** (or Bryan / kallaway)
+3. Review the **measured** profile (cuts/min, WPM, style, editing)
+4. **Generate 10 hooks** → pick one
+5. **Write script** → shooting report (spoken copy + timeline + export `.md`)
+
+Optional: light/dark toggle · **New topic** reuses the same creator formula · custom Shorts via *Or analyze your own creator*.
+
+> Demo script and pitch notes: [docs/HACKATHON_DEMO.md](docs/HACKATHON_DEMO.md)
 
 ---
+
+## Problem
+
+Creators spend weeks watching others and still **guess** what works — hooks, cut pace, speech rhythm. Generic AI writers invent claims (“fast cuts”) without ever measuring a frame.
 
 ## Solution
 
-Viral Formula Studio **reverse-engineers the measurable formula behind any creator's
-viral videos** and transposes it to the user's own theme and voice.
+| Principle | What we do |
+|-----------|------------|
+| **Measured, not guessed** | ffmpeg/Python: cuts/min, shot length, WPM, n-grams — before any LLM |
+| **Multimodal evidence** | Transcripts → Granite 4 · frames → Llama Vision · metrics stay ground truth |
+| **Transpose, don’t clone** | Patterns applied to *your* topic; user voice stays |
+| **Honesty by design** | `evidence_notes`, `unconfirmed`, `[INSERT: …]` when facts are missing |
+| **Ship-ready** | Live on Code Engine, rate limits, seed cache, mobile + light mode |
 
-**How it works:**
-1. The user picks a seed creator **or** pastes up to 5 short-video links (any slot) + a topic.
-2. The system **measures** (not estimates) editing cadence, speech rate, n-gram
-   frequency, and shot structure using deterministic tools (ffmpeg, Python).
-3. AI interprets those measurements — text style via Granite 4, visual editing
-   grammar via Llama 3.2 Vision — and caches a reusable creator profile.
-4. The system generates 10 hooks from the creator's *measured* patterns, then a
-   **~60–90s** shooting script (**~170–200 spoken words**) with timestamps, shot types,
-   editing directions, and retention psychology — for *your* topic, in *your* voice.
-
-**What makes it different:**
-- **Measured, not guessed** — the AI interprets deterministic ffmpeg numbers, never
-  invents metrics. Every claim has a source.
-- **Multimodal** — text analysis (Granite 4) + frame-by-frame visual analysis
-  (Llama 3.2 Vision) + deterministic metrics (ffmpeg/Python). Three layers of
-  evidence, not just text.
-- **Honesty by design** — every output includes `evidence_notes`, `unconfirmed`
-  flags, and `[INSERT: ...]` placeholders. The system states what it doesn't know.
-- **Production-deployed** — live on IBM Cloud Code Engine with auto-scaling, rate
-  limiting, and CI/CD via GitHub Actions → Docker Hub → Code Engine.
-- **Any creator, any language** — Whisper Large v3 handles 99+ languages; Granite 4
-  extracts universal style patterns from native-language transcriptions.
-- **Product-first UI** — clean wizard + call-sheet report; IBM credit as
-  *Powered by IBM Granite* in the footer (not plastered on every screen).
-
-> 📖 For a deep dive into what makes this approach unique, see
-> [docs/INNOVATION.md](docs/INNOVATION.md).
+Deep dive: [docs/INNOVATION.md](docs/INNOVATION.md)
 
 ---
 
-## Selected Challenge Theme
-
-**IBM AI Builders Challenge — July 2026 · "Reimagine Creative Industries with AI"**
-
-The creative industry's core bottleneck is not *generating* content — it's
-*understanding what works and why*. This project reimagines the creator workflow by
-turning weeks of manual study into a measured, evidence-based playbook generated in
-minutes, powered entirely by the IBM AI stack.
-
----
-
-## Quick Start (Try it in 2 minutes)
-
-The demo ships with **3 pre-analyzed creators** — no uploads needed:
-
-1. Open **[bit.ly/viral-studio](https://bit.ly/viral-studio)**
-2. Click a seed card (**Bryan**, **jeffnippard**, or **kallaway**) — or type the name
-3. Topic is prefilled (edit freely), e.g. **`carnivore diet`**
-4. Click **"Decode formula"** → cached profile (metrics + style + editing)
-5. **"Generate 10 hooks"** → pick one
-6. **"Generate script"** → call-sheet report (~170–200 spoken words, ~60–90s short)
-
-> 💡 **New Topic** reuses the same creator with zero re-analysis.  
-> 💡 Custom links: paste **one or more** public YouTube Shorts in **any** URL row (empty rows are fine).  
-> 💡 Prefer Shorts with real speech; captions or `GROQ_API_KEY` (Whisper) required for new creators.
-
----
-
-## Use Cases
-
-- **Content Creators:** Copy winning strategies from creators in your niche — hooks, pacing, editing rhythm
-- **Marketing Teams:** Reverse-engineer viral campaigns and adapt them to your brand voice
-- **Influencer Agencies:** Analyze client competitors and generate data-backed scripts in minutes
-- **Course Creators:** Study how top educators capture attention and convert viewers
-- **Social Teams:** Generate 10 variations of hooks from a single creator's pattern
-
----
-
-## AI Approach & Architecture
-
-### Pipeline Overview
+## How it works
 
 ```
-┌──────────────────────┐     ┌─────────────────────────────────┐     ┌──────────────────────┐
-│       INPUT          │     │           PIPELINE               │     │       OUTPUT         │
-├──────────────────────┤     ├─────────────────────────────────┤     ├──────────────────────┤
-│ YouTube Shorts       │ ──▶ │ ① yt-dlp download + transcribe  │ ──▶ │ Creator profile      │
-│ TikTok               │     │ ② ffmpeg cuts / WPM / n-grams   │     │ 10 AI hooks          │
-│ Instagram Reels      │     │ ③ Granite 4 text style analysis │     │ Shooting script      │
-│                      │     │ ④ Llama Vision reads frames      │     │ Editing directions   │
-│                      │     │ ⑤ Llama Vision reads thumbnail   │     │ Retention psychology │
-│                      │     │ ⑥ Tavily fact-checks topic       │     │ Thumbnail analysis   │
-│                      │     │ ⑦ Granite 4 writes final copy    │     │                      │
-└──────────────────────┘     └─────────────────────────────────┘     └──────────────────────┘
+INPUT                         PIPELINE                              OUTPUT
+─────                         ────────                              ──────
+Seed creator  ──┐
+  or            ├──▶  0 MEASURE   ffmpeg (no AI)              ──▶  Profile
+1–5 Shorts      │     1 EVIDENCE  Granite style ∥ Vision      ──▶  10 hooks
++ your topic  ──┘     2 SCOUT     Tavily (topic facts, cached)──▶  Shooting script
+                      3 CREATE    Granite hooks + copy        ──▶  Call-sheet report
 ```
 
-**Example flow:** Creator → Profile → Topic → 10 Hooks → Pick Hook → Copy → Report
+**Product defaults (short-form):** ~**170–200** spoken words · **~60–90s** · **6–9** timeline blocks.
 
-**Transcription pipeline:**
+### Evidence stages (specialized, not one mega-prompt)
 
-```
-Raw captions → regex cleanup (HTML entities, contractions) → Granite 4 coherence fix
-```
+| Stage | Role | Engine |
+|-------|------|--------|
+| Measure | Cuts/min, shot length, WPM, n-grams | ffmpeg + Python |
+| Textual analyst | Tone, hooks, copy structure | Granite 4 (watsonx) |
+| Visual editor | Editing grammar from frames | Llama 3.2 Vision (watsonx) |
+| Thumbnail analyst | First-frame CTR signals | Llama 3.2 Vision |
+| Scout | Verified facts about **your topic** (not the influencer’s biography) | Tavily HTTP (cached per theme) |
+| Hook strategist | 10 hooks + quality filter | Granite 4 |
+| Script director | Call-sheet script + length repair/trim | Granite 4 |
+| Fallback | Rate-limit / outage safety net | OpenAI GPT-4o (optional) |
 
-### Multi-Agent Orchestration
+Granite 4 is the **product voice**. OpenAI is fallback only. Fact-check targets the **user’s theme** so scripts stay honest — we do **not** scrape “how famous creator X edits” from the web; we measure the videos you provide.
 
-The system does not rely on a single monolithic prompt. Instead, it employs an **orchestrated multi-agent architecture** where specialized personas work in sequence or parallel, each with a narrow, well-defined scope:
+### Quality without extra agents
 
-1. **The Textual Analyst (Agent 4.1):** Reads transcriptions and metrics to extract the creator's copywriting fingerprint, tone, and hook patterns.
-2. **The Visual Editor (Agent 4.2):** Analyzes video frames to decode the creator's editing grammar, cut cadence, and visual retention tricks.
-3. **The Thumbnail Analyst (Agent 4.5):** Evaluates the first frame for composition, color palette, and click-through effectiveness.
-4. **The Fact-Checker / Scout (Agent 5.1):** Acts as an independent researcher, browsing the web to find verified facts about the user's chosen topic.
-5. **The Content Strategist / Commentator (Agent 5.2):** The final orchestrator. It receives the outputs from all previous agents (text profile, visual profile, thumbnail data, and verified facts) and synthesizes the final actionable playbook.
-
-This separation of concerns ensures that the final script is based on *real evidence* and verified facts rather than a single LLM hallucinating both the style and the content simultaneously.
-
-### Four-Stage Evidence Chain
-
-Every output is grounded in **measured evidence**:
-- **Stage 0 — MEASURE (no AI):** ffmpeg computes cuts/min, shot length, words/min, n-grams
-- **Stage 1 — EVIDENCE (cached):** Granite 4 decodes text style + vision model reads frames
-- **Stage 2 — SCOUT:** Tavily + Granite 4 verify facts about the topic with source URLs
-- **Stage 3 — COMMENTATOR:** Granite 4 synthesizes a shooting script with timestamps, shot types, editing directions, and retention psychology
-
-### AI Models Deep Dive
-
-<table width="100%">
-  <thead>
-    <tr>
-      <th width="25%">Stage</th>
-      <th width="55%">Model</th>
-      <th width="20%">Runs On</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>🎤 Transcription</td>
-      <td>Whisper Large v3 Turbo</td>
-      <td>Groq</td>
-    </tr>
-    <tr>
-      <td>📊 Metrics</td>
-      <td>Python + ffmpeg (deterministic, no AI)</td>
-      <td>IBM Code Engine</td>
-    </tr>
-    <tr>
-      <td>✍️ Text Analysis</td>
-      <td><strong>Granite 4</strong> (<code>ibm/granite-4-h-small</code>)</td>
-      <td><strong>IBM watsonx.ai</strong></td>
-    </tr>
-    <tr>
-      <td>👁️ Visual Analysis</td>
-      <td><strong>Llama 3.2 11B Vision</strong></td>
-      <td><strong>IBM watsonx.ai</strong></td>
-    </tr>
-    <tr>
-      <td>🔍 Fact-Check</td>
-      <td><strong>Granite 4</strong> + Tavily</td>
-      <td><strong>IBM watsonx.ai</strong></td>
-    </tr>
-    <tr>
-      <td>📝 Hooks & Copy</td>
-      <td><strong>Granite 4</strong></td>
-      <td><strong>IBM watsonx.ai</strong></td>
-    </tr>
-    <tr>
-      <td>🛡️ Fallback</td>
-      <td>GPT-4o</td>
-      <td>OpenAI</td>
-    </tr>
-  </tbody>
-</table>
-
-**Granite 4** (`ibm/granite-4-h-small`) is the **single voice** of the product.
-Every sentence the user reads — from the creator's style fingerprint to the final
-video script — is generated by Granite on watsonx.ai.
-
-**OpenAI GPT-4o** is configured only as an automatic safety net: if watsonx
-experiences rate limits or an outage, agents transparently fall back to OpenAI.
-In normal operation, all AI traffic goes through IBM watsonx.
-
-### 🏗️ Built on IBM Cloud — 100% End-to-End
-
-| Component | IBM Service |
-|---|---|
-| **AI Engine** | IBM watsonx.ai (Granite 4 text + Llama 3.2 Vision multimodal) |
-| **Hosting** | IBM Cloud Code Engine (serverless, auto-scale) |
-| **Registry** | IBM Container Registry (CI/CD pipeline) |
-| **Developer AI** | IBM Bob (architecture, implementation, debugging) |
-
-**Every output:** Granite 4 on watsonx.ai
-**Every frame analysis:** Llama 3.2 Vision on watsonx.ai
-**Every deployment:** Code Engine container
-
-### Production Status
-
-This is **not a prototype** — the system is deployed and serving real traffic:
-
-- **API:** `vfs-api` on IBM Code Engine (us-south), serverless, scales 0→2 instances
-- **Web:** `vfs-web` on IBM Code Engine, React 19 SSR
-- **CI/CD:** GitHub Actions → Docker Hub → Code Engine (automatic on push to `main`)
-- **Rate limiting:** IP-based, max 8 creator analyses + 8 dossier exports per IP/hour
-- **Seed data:** 3 pre-analyzed creators baked into the Docker image for instant demo
-- **Cold start:** ~30s on free tier (min-scale 0); set min-scale 1 on demo day
-
-### Infrastructure & Feasibility
-
-**Production Environment:**
-- **Hosting:** IBM Cloud Code Engine (auto-scaling, free tier, $0 when idle)
-- **Pipeline:** GitHub → Docker Hub (via GitHub Actions) → Code Engine auto-deploy
-- **Rate Limiting:** Per-IP rate limiter in production (measured, not guessed)
-- **Database:** SQLite (local dev) + persistent volume (Code Engine)
-- **CDN:** Code Engine's built-in edge caching for static assets
-
-**Why This Stack:**
-- Video processing (ffmpeg, yt-dlp) runs only when needed → serverless cost efficiency
-- No infrastructure lock-in — can redeploy to Railway, Render, or on-prem in <1 hour
-- All credentials stored in environment variables, never in code (`.env` + `.gitignore`)
-- CI/CD tested and live since July 14, 2026
-
-**Live URL:** [bit.ly/viral-studio](https://bit.ly/viral-studio) (production Code Engine deployment)
-
-For detailed deployment instructions, see [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md).
+- Slim measured profile into prompts (metrics + formula only)
+- Hook post-filter (drop transcript garbage / near-dupes) + pad to 10
+- Copy: word budget, hook alignment repair, hard truncate to ~200 spoken words
+- Role-specific temperatures · parallel style/vision after metrics · research cache (hooks + copy share one Tavily call)
 
 ---
 
-## How IBM Bob Was Used
+## Built on IBM Cloud
 
-IBM Bob acted as a core development partner throughout the project, accelerating the build process while ensuring architectural consistency. Instead of just generating code, Bob was used as a spec-driven assistant for system design, debugging, and infrastructure planning.
+| Component | Service |
+|-----------|---------|
+| Language + vision | **IBM watsonx.ai** — `ibm/granite-4-h-small` + `meta-llama/llama-3-2-11b-vision-instruct` |
+| Hosting | **IBM Cloud Code Engine** — `vfs-api` + `vfs-web` (serverless) |
+| Images | Container registry via CI (GitHub Actions → Docker Hub → Code Engine) |
+| Build partner | **IBM Bob** — architecture, watsonx wiring, deploy debugging |
 
-**Key Contributions:**
+| App | Role | Notes |
+|-----|------|--------|
+| `vfs-api` | FastAPI + ffmpeg | Port 8000 · seeds in image · env secrets |
+| `vfs-web` | React UI | Port 4173 · `VITE_API_URL` at **build** time |
 
-- **Architecture Restructuring:** Transitioned the legacy flat codebase into a modular, decoupled engine (`studio/` package) with clear boundaries for configuration, parsing, and state management.
-- **Resilience & Fallbacks:** Designed the provider-switch pattern for seamless IBM watsonx integration and implemented the automatic fallback mechanism to handle rate limits and outages.
-- **Debugging Complex LLM Issues:** Diagnosed and fixed edge cases like the `max_tokens` truncation issue that broke structured JSON outputs, implementing a robust recovery parser.
-- **Deployment Optimization:** Assisted with the IBM Cloud Code Engine deployment, optimizing container configurations to stay within the serverless free tier while managing cross-origin environments.
-- **Testing & Quality Assurance:** Expanded the test suite significantly to ensure deterministic measurements and schema validations worked perfectly without requiring API keys.
+Deploy guide: [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md)
 
-Bob's role was strictly collaborative: all final code decisions and business logic were defined by the human developer, while Bob executed the implementation details and proposed structural best practices.
+**Production checklist**
 
----
-
-## Honesty by Design
-
-- **Measured, not guessed** — the AI interprets deterministic ffmpeg numbers
-- **Ground truth injection** — synthesis only receives extracted profiles and verified facts
-- **Honesty rules** — every prompt requires `evidence_notes`, `unconfirmed`, and `[INSERT: ...]` placeholders
-- **Graceful degradation** — no captions → Whisper; no search → structural mode; provider down → fallback
-
-### Any Creator, Any Language
-
-The pipeline masters creators from any country, in any language:
-
-- **Transcription:** Whisper Large v3 handles 99+ languages. YouTube auto-captions tried first.
-- **Text analysis:** Granite 4 reads native-language transcriptions and extracts universal style patterns.
-- **Visual analysis:** Editing grammar is language-independent — the vision model reads frames.
-- **Output:** Analysis in English, creator's expressions preserved in original.
-
-### Security & Rate Limiting
-
-- **IP-based rate limiting:** max 8 new creator analyses + 8 dossier exports per IP/hour
-- **Seed creators** (Bryan, jeffnippard, kallaway) are exempt — unlimited demo usage
-- **WatsonX token cap:** `max_tokens=4096` prevents structured JSON truncation
-- **Resilient parsing:** `studio/parse.py` recovers Pydantic output from raw/fenced/truncated JSON
+- Rate limit: 8 new creators / IP / hour (seeds unlimited)
+- Health: `GET /api/health` → `status`, `provider`, `build`
+- Cold start ~30–90s on free tier (min-scale 0); use **min-scale 1** on pitch day
+- Prefer public **YouTube Shorts** in cloud; TikTok/IG may block datacenter IPs
 
 ---
 
-## Tech Stack
+## Tech stack
 
-| Layer | Technology |
-|---|---|
-| AI Runtime | IBM watsonx.ai (Granite 4 + Llama 3.2 Vision) |
-| Backend | Python 3.12, FastAPI, Pydantic, Agno 2.7 |
-| Frontend | React 19, Vite, TanStack Start, Tailwind 4, shadcn/ui |
-| Transcription | Groq Whisper Large v3 Turbo |
-| Media | ffmpeg/ffprobe (scene detection, frame sampling) |
-| Ingestion | yt-dlp (YouTube Shorts, TikTok, Instagram Reels) |
-| Fact-Check | Tavily Search API |
-| Hosting | IBM Cloud Code Engine (serverless containers) |
-| CI/CD | GitHub Actions → Docker Hub → Code Engine |
-| Testing | pytest, ruff |
-| Responsive | Mobile-first — phones, tablets, desktop |
-
-### Script length (product default)
-
-| Setting | Value |
-|---|---|
-| Spoken words | **~170–200** (target ~185, hard cap 200) |
-| Intended duration | **~60–90 seconds** (Shorts / Reels) |
-| Timeline blocks | **6–9** |
+| Layer | Stack |
+|-------|--------|
+| AI | watsonx.ai · Agno 2.7 · structured Pydantic outputs |
+| API | Python 3.12 · FastAPI · uvicorn |
+| UI | React 19 · Vite · TanStack Start · Tailwind 4 · shadcn/ui |
+| Media | yt-dlp · ffmpeg · Groq Whisper (when captions fail) |
+| Facts | Tavily |
+| Tests | pytest (no live keys) · ruff |
 
 ---
 
-## Running Locally
+## Run locally
 
 ```bash
 git clone https://github.com/CostaJr007/viral-formula-studio.git
 cd viral-formula-studio
 uv sync
+cp .env.example .env   # fill keys — never commit .env
 ```
 
-Create `.env` from `.env.example` (never commit secrets):
-
-```bash
+```env
 MODEL_PROVIDER=watsonx
-IBM_WATSONX_API_KEY=your_key
-IBM_WATSONX_PROJECT_ID=your_project
+IBM_WATSONX_API_KEY=
+IBM_WATSONX_PROJECT_ID=
 IBM_WATSONX_URL=https://us-south.ml.cloud.ibm.com
 WATSONX_MODEL_ID=ibm/granite-4-h-small
 WATSONX_VISION_MODEL_ID=meta-llama/llama-3-2-11b-vision-instruct
-OPENAI_API_KEY=your_key             # automatic fallback only
-GROQ_API_KEY=your_key               # Whisper when captions fail
-TAVILY_API_KEY=your_key             # fact-checking
+OPENAI_API_KEY=          # optional fallback
+GROQ_API_KEY=            # Whisper fallback
+TAVILY_API_KEY=          # topic fact-check
 ```
 
 ```bash
-uv run python api.py                      # Backend → http://localhost:8000
-cd frontend && npm install && npm run dev # Frontend → http://localhost:3000
+uv run python api.py                       # http://localhost:8000
+cd frontend && npm install && npm run dev  # http://localhost:3000
 ```
-
-Smoke-check API:
 
 ```bash
 curl -s http://localhost:8000/api/health
-# {"status":"ok","provider":"watsonx","build":"..."}
+uv run pytest
+uv run ruff check .
 ```
 
-## Project Structure
+---
+
+## Project structure
 
 ```
-studio/
-├── config.py            # pydantic-settings: keys, paths, provider switch
-├── factory.py           # ONLY place that knows the LLM provider + fallback
-├── schemas.py           # Pydantic contracts (CreatorStyle, EditingProfile, etc.)
-├── limits.py            # IP rate limiter
-├── parse.py             # Resilient structured-output recovery
-├── store.py             # JSON persistence (+ heals legacy empty fingerprints)
-├── text_quality.py      # Speech vs URL/API-error filters (n-grams / ingest)
-├── script_format.py     # Normalize pipe scripts → spoken_copy + blocks
-├── ingest.py            # yt-dlp, captions-first, Whisper fallback
-├── transcribe.py        # Transcription helpers
-├── frames.py            # ffmpeg frame sampling
-├── metrics.py           # Deterministic cuts/min, WPM, n-grams
-├── analyze_text.py      # Transcripts + metrics → CreatorStyle
-├── analyze_visual.py    # Frames → EditingProfile
-├── analyze_thumbnail.py # First frame → ThumbnailAnalysis
-├── research.py          # Fast Tavily HTTP fact-check
-├── dossier.py           # Viralization playbook
-├── create.py            # Hooks + shooting script (length targets)
-└── pipeline.py          # Per-creator orchestration
-api.py                   # FastAPI backend (production)
-app.py                   # Gradio UI (local demos)
-main.py                  # Terminal CLI
-frontend/                # React 19 + Vite + TanStack Start wizard
-tests/                   # pytest suite (no live API keys required)
-data/                    # Seed transcripts + creator profiles
+studio/                 # Product engine (measure → analyze → create)
+  config.py             # Settings / env
+  factory.py            # Provider switch + fallback + per-role temperature
+  metrics.py            # Deterministic measurements (no LLM)
+  analyze_text.py       # CreatorStyle
+  analyze_visual.py     # EditingProfile
+  analyze_thumbnail.py  # ThumbnailAnalysis
+  research.py           # Tavily scout (cached)
+  create.py             # Hooks + shooting script + quality gates
+  script_format.py      # Pipe script → blocks + spoken_copy
+  pipeline.py           # Per-creator orchestration (parallel LLM stages)
+  parse.py · store.py · limits.py · schemas.py · …
+api.py                  # FastAPI (production)
+frontend/               # Wizard UI (seeds, light mode, mobile)
+data/profiles/          # Seed creators (bryan, jeffnippard, kallaway)
+tests/                  # pytest — no API keys required
+docs/                   # Innovation, deploy, hackathon demo
 ```
 
-## Testing
+### API
 
-```bash
-uv run pytest          # unit/integration tests (no API keys needed)
-uv run ruff check .    # lint
-```
-
-## API Endpoints
-
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/health` | Health + provider + `build` stamp (verify deploys) |
-| `GET /api/creators` | List analyzed creators |
-| `POST /api/ingest` | Start analysis (1–5 URLs → job; any slot OK) |
-| `GET /api/jobs/{id}` | Poll analysis progress / errors |
-| `GET /api/profile/{creator}` | Cached creator profile |
-| `POST /api/hooks` | Generate 10 hooks in creator's technique |
-| `POST /api/copy` | Shooting script (~170–200 spoken words + blocks) |
-| `POST /api/dossier` | Export viralization playbook |
-| `GET /api/usage` | Rate limit status |
-
-### Production env (Code Engine `vfs-api`)
-
-Set the same keys as `.env` on the **API** app only. Frontend needs `VITE_API_URL` at **build** time. After deploy, confirm:
-
-```bash
-curl -s https://<vfs-api-url>/api/health
-# must include "build" and "provider":"watsonx"
-```
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/health` | Status + provider + build id |
+| GET | `/api/creators` | Listed / seed creators |
+| POST | `/api/ingest` | 1–5 URLs → async job |
+| GET | `/api/jobs/{id}` | Job status |
+| GET | `/api/profile/{creator}` | Cached profile |
+| POST | `/api/hooks` | 10 hooks (+ optional client profile) |
+| POST | `/api/copy` | Script payload (`blocks`, `spoken_copy`, word count) |
+| POST | `/api/dossier` | Full markdown playbook |
+| GET | `/api/usage` | Rate-limit remaining |
 
 ---
 
 ## Documentation
 
-| Document | Description |
-|---|---|
-| [docs/INNOVATION.md](docs/INNOVATION.md) | Deep dive into what makes this approach unique — measured foundation, multimodal processing, IBM ecosystem mastery, honesty layer |
-| [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md) | Step-by-step IBM Cloud Code Engine deployment guide (production) |
-| [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md) | Railway deployment guide (alternative/fallback) |
-| [DOCUMENTATION_IA.md](DOCUMENTATION_IA.md) | Full project memory — architecture decisions, change log, and IBM switching strategy |
-| [AGENTS.md](AGENTS.md) | Guidance for AI agents and human contributors working on this repo |
+| Doc | Contents |
+|-----|----------|
+| [docs/INNOVATION.md](docs/INNOVATION.md) | Why measured + multimodal + IBM |
+| [docs/HACKATHON_DEMO.md](docs/HACKATHON_DEMO.md) | Judge path + pitch checklist |
+| [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md) | Code Engine deploy |
+| [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md) | Alternate host notes |
+| [AGENTS.md](AGENTS.md) | Contributor / agent rules |
+| [DOCUMENTATION_IA.md](DOCUMENTATION_IA.md) | Extended project memory |
 
 ---
 
-## Cross-Platform Video Support
+## How IBM Bob was used
 
-The ingestion engine is natively platform-agnostic and supports videos from **YouTube Shorts**, **TikTok**, **Instagram Reels**, and **X/Twitter**.
+Bob was a **spec-driven build partner**, not a black-box code dump:
 
-*   **Cloud Deployment Note:** When deploying to public cloud services (like IBM Cloud Code Engine), platforms with aggressive anti-bot protections (TikTok/Instagram) may block datacenter IPs. For these platforms, it is recommended to run the engine locally, pass a local browser `cookies.txt` file, or manually download the `.mp4` files and place them directly into the `/videos` directory for processing. YouTube Shorts are generally accessible without restrictions in the cloud.
+- Modular `studio/` engine and provider factory (watsonx primary, OpenAI fallback)
+- Structured-output recovery (`parse.py`) and script normalization
+- Code Engine deploy, CORS, and free-tier constraints
+- Test suite expansion for metrics/schemas without live LLM keys
+
+Product decisions and honesty rules remain human-owned.
 
 ---
 
 ## License
 
-© 2026 Costa Jr. All rights reserved. Shared publicly for review as part of the
-IBM AI Builders Challenge (July 2026).
+© 2026 Costa Jr. All rights reserved.  
+Shared publicly for review as part of the **IBM AI Builders Challenge (July 2026)**.
