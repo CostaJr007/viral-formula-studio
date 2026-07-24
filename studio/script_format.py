@@ -28,9 +28,13 @@ class ScriptBlock:
     why: str
 
     def to_pipe_line(self) -> str:
+        ts = self.timestamp.strip() if self.timestamp else ""
+        # Never invent "0:00-0:00" ghost timestamps (confuses the UI timeline)
+        if not ts or ts in ("0:00-0:00", "0:00 - 0:00"):
+            ts = "0:00-0:08"
         return " | ".join(
             [
-                self.timestamp or "0:00-0:00",
+                ts,
                 self.shot or "MEDIUM shot",
                 self.text or "(no speech — music only)",
                 self.editing or "Match creator cut cadence",
@@ -248,29 +252,64 @@ def normalize_script(script: str) -> NormalizedScript:
     if len(blocks) != before:
         repaired = True
 
-    # Drop empty junk blocks
-    blocks = [b for b in blocks if any([b.timestamp, b.text, b.editing, b.why])]
+    # Drop empty junk / ghost blocks (timestamp-only with no content)
+    cleaned_blocks: list[ScriptBlock] = []
+    for b in blocks:
+        if not any([b.text, b.editing, b.why, b.shot]):
+            continue
+        # Drop pure-empty text ghosts that only exist as "0:00-0:00 | MEDIUM | ..."
+        ts = (b.timestamp or "").replace(" ", "")
+        if ts in ("0:00-0:00", "") and not (b.text or "").strip():
+            continue
+        # If dialogue landed in editing/why but text is a shot label, swap back
+        text = (b.text or "").strip()
+        if text and re.match(
+            r"^(CLOSE-?UP|MEDIUM|WIDE|B-?ROLL|SPLIT|TEXT OVERLAY|POV|SHOT)\b",
+            text,
+            re.I,
+        ):
+            for alt in (b.editing, b.why):
+                if alt and len(alt.split()) >= 6 and not re.match(
+                    r"^(CLOSE-?UP|MEDIUM|WIDE|B-?ROLL|cut|jump)\b", alt, re.I
+                ):
+                    b = ScriptBlock(
+                        timestamp=b.timestamp,
+                        shot=text[:48],
+                        text=f'"{alt}"' if not alt.startswith('"') else alt,
+                        editing=b.editing if alt != b.editing else "",
+                        why=b.why if alt != b.why else "",
+                    )
+                    repaired = True
+                    break
+        cleaned_blocks.append(b)
+    blocks = cleaned_blocks
 
     spoken_lines: list[str] = []
     for b in blocks:
         s = b.spoken()
-        if s:
+        if s and not re.match(
+            r"^(CLOSE-?UP|MEDIUM|WIDE|B-?ROLL|SPLIT|TEXT OVERLAY|POV|SHOT)\b", s, re.I
+        ):
             spoken_lines.append(s)
 
-    if not spoken_lines:
-        spoken_lines = _extract_spoken_fallback(raw)
-        if spoken_lines:
+    if len(spoken_lines) < 3:
+        # Recover quoted speech from raw script (Groq often puts prose outside pipes)
+        recovered = _extract_spoken_fallback(raw)
+        if len(recovered) > len(spoken_lines):
+            spoken_lines = recovered
             repaired = True
-            if not blocks:
-                # Synthesize minimal blocks so the shooting board isn't empty
-                for i, line in enumerate(spoken_lines):
+            if len(blocks) < len(recovered):
+                blocks = []
+                for i, line in enumerate(recovered):
+                    start = i * 8
+                    end = start + 7
                     blocks.append(
                         ScriptBlock(
-                            timestamp=f"0:{i * 8:02d}-0:{i * 8 + 7:02d}",
-                            shot="MEDIUM shot",
+                            timestamp=f"0:{start:02d}-0:{end:02d}" if end < 60 else f"1:00-1:10",
+                            shot="MEDIUM shot" if i % 2 == 0 else "CLOSE-UP face",
                             text=f'"{line}"',
-                            editing="Match creator cadence",
-                            why="Recovered narration from unstructured model output",
+                            editing="Match creator cut cadence",
+                            why="Recovered narration from model output",
                         )
                     )
 

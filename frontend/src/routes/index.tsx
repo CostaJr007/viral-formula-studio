@@ -2066,26 +2066,42 @@ function CopyStep({
   const blocks: ScriptBlock[] =
     result.blocks && result.blocks.length > 0 ? result.blocks : parseScriptClient(result.script);
 
-  const spokenLines =
+  // Prefer blocks when they carry more dialogue than spoken_copy (Groq often
+  // returns a thin spoken_copy while timeline blocks still have full lines).
+  const fromBlocks = spokenFromBlocks(blocks);
+  const fromSpokenCopy =
     result.spoken_copy && result.spoken_copy.trim().length > 0
       ? result.spoken_copy
           .split(/\n\n+/)
           .map((t) => t.trim())
           .filter(Boolean)
+          .filter((t) => !/^(CLOSE-?UP|MEDIUM|WIDE|B-?ROLL|SPLIT|SHOT)\b/i.test(t))
           .map((text) => ({
             text: stripQuotes(text),
             isAudioOnly: AUDIO_ONLY_RE.test(text),
           }))
-      : spokenFromBlocks(blocks);
+      : [];
 
-  const spokenWordCount =
-    result.word_count ||
-    spokenLines
+  const wordsOf = (lines: { text: string; isAudioOnly: boolean }[]) =>
+    lines
       .filter((s) => !s.isAudioOnly)
       .map((s) => s.text)
       .join(" ")
       .split(/\s+/)
       .filter(Boolean).length;
+
+  const spokenLines =
+    wordsOf(fromBlocks) >= wordsOf(fromSpokenCopy) && fromBlocks.length > 0
+      ? fromBlocks
+      : fromSpokenCopy.length > 0
+        ? fromSpokenCopy
+        : fromBlocks;
+
+  const spokenWordCount = Math.max(
+    result.word_count || 0,
+    wordsOf(spokenLines),
+    wordsOf(fromBlocks),
+  );
 
   const clipboardText = spokenLines
     .filter((s) => !s.isAudioOnly)

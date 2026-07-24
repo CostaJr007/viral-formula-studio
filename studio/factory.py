@@ -36,18 +36,23 @@ def _build_watsonx(model_id: str, *, temperature: float) -> Model:
     )
 
 
-def _build_groq(*, temperature: float = 0.2) -> Model | None:
-    """Groq chat LLM — emergency text path when watsonx is out of quota."""
+def _build_groq(*, temperature: float = 0.2, max_tokens: int | None = None) -> Model | None:
+    """Groq chat LLM — emergency text path when watsonx is out of quota.
+
+    Headroom matters for full shooting scripts (~170–200 spoken words + pipe metadata).
+    """
     settings = get_settings()
     if not settings.groq_api_key:
         return None
     from agno.models.groq import Groq
 
+    # Prefer JSON-schema path so VideoCopy.script is not truncated prose
     return Groq(
         id=settings.groq_llm_model_id or "llama-3.3-70b-versatile",
         api_key=settings.groq_api_key,
         temperature=temperature,
-        max_tokens=min(8192, settings.watsonx_max_tokens or 6144),
+        max_tokens=max_tokens or 8192,
+        supports_json_schema_outputs=True,
     )
 
 

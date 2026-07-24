@@ -107,6 +107,20 @@ Rules:
 - Vary the patterns: no more than 2 hooks using the same pattern.
 """
 
+# Extra rules when running on Groq (weaker structured-output than Granite)
+GROQ_COPY_EXTRA = f"""
+GROQ / EMERGENCY PATH RULES (CRITICAL):
+- The `script` field MUST contain AT LEAST {MIN_SCRIPT_BLOCKS} separate lines.
+- EACH line must have EXACTLY 4 pipe characters `|` (5 fields).
+- EACH line's TEXT TO SAY field must be real spoken dialogue in quotes — not a shot name.
+- Total spoken words across ALL TEXT fields: {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} (target {TARGET_SPOKEN_WORDS}).
+- Do NOT return only the hook. Blocks 2–7 must continue the monologue.
+- Example of ONE valid line:
+  0:05-0:15 | MEDIUM shot | "Here is the second sentence the host says on camera." | Jump cut every 2s | Curiosity
+- editing_directions: 5–8 short strings. data_notes: honesty + sources.
+- Output ONLY valid JSON matching the schema. No markdown outside JSON.
+"""
+
 COPY_INSTRUCTIONS = f"""
 You are a scriptwriter and director of short videos specialized in retention
 psychology and viral editing grammar.
@@ -552,9 +566,9 @@ def generate_copy(
             return create_agent(
                 name=f"copy_director_{creator}",
                 description="Scriptwriter for 60–90s short-form monologues (170–200 spoken words max).",
-                instructions=COPY_INSTRUCTIONS,
+                instructions=COPY_INSTRUCTIONS + "\n" + GROQ_COPY_EXTRA,
                 output_schema=VideoCopy,
-                temperature=0.25,
+                temperature=0.35,
                 force_provider="groq",
                 use_provider_fallbacks=False,
             )
@@ -571,8 +585,11 @@ def generate_copy(
     def _once(prompt: str, stage: str) -> VideoCopy:
         nonlocal _copy_route
         agent = _copy_agent()
+        run_prompt = prompt
+        if _copy_route == "groq" and "GROQ / EMERGENCY PATH" not in run_prompt:
+            run_prompt = prompt + "\n" + GROQ_COPY_EXTRA
         try:
-            response = agent.run(prompt)
+            response = agent.run(run_prompt)
             if looks_like_provider_error(response.content):
                 raise RuntimeError(f"Provider error: {str(response.content)[:240]}")
             copy = coerce_structured(response.content, VideoCopy, stage=stage)
@@ -597,35 +614,42 @@ def generate_copy(
 
     copy = _once(base_prompt, "Copy generation")
 
-    # Expand if too short
-    spoken_n = _spoken_word_count(copy)
-    if spoken_n < MIN_SPOKEN_WORDS:
+    # Expand if too short (up to 2 passes — Groq often returns hook-only first)
+    for expand_i in range(2):
+        spoken_n = _spoken_word_count(copy)
+        if spoken_n >= MIN_SPOKEN_WORDS:
+            break
         logger.warning(
-            "Copy only %d spoken words (min %d) — one expansion pass...",
+            "Copy only %d spoken words (min %d) — expansion pass %d...",
             spoken_n,
             MIN_SPOKEN_WORDS,
+            expand_i + 1,
         )
         spoken_preview = normalize_script(copy.script).spoken_copy
         expand_prompt = (
             f"THEME: {theme}\n"
-            f'HOOK (must stay line 1): "{chosen_hook}"\n'
+            f'HOOK (must stay line 1 TEXT exactly): "{chosen_hook}"\n'
             f"{facts}\n\n"
-            f"CURRENT NARRATION IS TOO SHORT ({spoken_n} words). "
-            f"Rewrite to {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} spoken words "
-            f"(target {TARGET_SPOKEN_WORDS}, NEVER over {MAX_COPY_WORDS}).\n\n"
-            f"CURRENT SPOKEN TEXT:\n---\n{spoken_preview}\n---\n\n"
-            "Pipe format, 6–9 blocks, ~0:00–1:20 max. Punchy short-form, not a lecture."
+            f"CURRENT NARRATION IS TOO SHORT ({spoken_n} words). THIS IS A HARD FAIL.\n"
+            f"Rewrite the FULL `script` with {MIN_SCRIPT_BLOCKS}–9 pipe lines.\n"
+            f"Spoken words MUST be {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} (target {TARGET_SPOKEN_WORDS}).\n"
+            "Every block after the hook MUST add 20–35 spoken words of new dialogue.\n"
+            "Do not put shot names in the TEXT field — only words the host says aloud.\n\n"
+            f"CURRENT SPOKEN TEXT:\n---\n{spoken_preview or copy.script[:1500]}\n---\n\n"
+            "Return full VideoCopy JSON with a complete multi-line script field."
         )
+        if _copy_route == "groq" or groq_llm_available():
+            expand_prompt += "\n" + GROQ_COPY_EXTRA
         try:
-            expanded = _once(expand_prompt, "Copy expansion")
+            expanded = _once(expand_prompt, f"Copy expansion {expand_i + 1}")
             new_n = _spoken_word_count(expanded)
-            if MIN_SPOKEN_WORDS <= new_n <= MAX_COPY_WORDS or (
-                new_n > spoken_n and new_n <= MAX_COPY_WORDS + 20
-            ):
+            if new_n > spoken_n:
                 copy = expanded
-                logger.info("Copy expansion: %d → %d spoken words", spoken_n, new_n)
+                logger.info("Copy expansion %d: %d → %d spoken words", expand_i + 1, spoken_n, new_n)
+            if new_n >= MIN_SPOKEN_WORDS:
+                break
         except Exception:
-            logger.exception("Copy expansion pass failed")
+            logger.exception("Copy expansion pass %d failed", expand_i + 1)
 
     # Align opening hook if model drifted
     norm = normalize_script(copy.script)
@@ -685,8 +709,18 @@ def generate_copy(
 def copy_payload(copy: VideoCopy) -> dict:
     """API-ready dict with structured blocks + spoken narration for the frontend."""
     normalized = normalize_script(copy.script)
-    spoken = normalized.spoken_copy
-    word_count = normalized.spoken_word_count or len((copy.script or "").split())
+    # Prefer per-block spoken lines (avoids short/stale spoken_copy if fields were healed)
+    spoken_parts: list[str] = []
+    for b in normalized.blocks:
+        s = b.spoken()
+        if s and not re.match(
+            r"^(CLOSE-?UP|MEDIUM|WIDE|B-?ROLL|SPLIT|TEXT OVERLAY|POV|SHOT)\b", s, re.I
+        ):
+            spoken_parts.append(s)
+    spoken = "\n\n".join(spoken_parts).strip() or normalized.spoken_copy
+    word_count = len(spoken.split()) if spoken else (
+        normalized.spoken_word_count or len((copy.script or "").split())
+    )
     return {
         "script": normalized.script or copy.script,
         "spoken_copy": spoken,
