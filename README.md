@@ -207,7 +207,6 @@ docs/                   # Innovation, deploy, hackathon demo
 | [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md) | Code Engine deploy |
 | [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md) | Alternate host notes |
 | [AGENTS.md](AGENTS.md) | Contributor / agent rules |
-| [DOCUMENTATION_IA.md](DOCUMENTATION_IA.md) | Extended project memory |
 
 ---
 

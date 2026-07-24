@@ -52,15 +52,14 @@ Metrics + Transcripts → Granite 4 → CreatorStyle
 | **Metrics** | ffmpeg + Python + regex | Deterministic algorithms | Cuts/min, WPM, n-grams, shot length | ✅ Only one |
 
 ### Why Multimodal Wins
-**Football commentary example:**
-- Text alone: "The referee made a controversial call"
-- Vision alone: Sees players arguing, but no context
-- **Together:** "The referee made a controversial call [text]. Watch the replays show it was [visual evidence]. The narrative is [metrics: repeated in 3 of 5 recent videos]"
 
-Other projects either:
-- Skip vision entirely (Dribble Studio, Kickoff Buddy)
-- Use expensive vision APIs as decorations (PlotWeaver)
-- Process only structured data (BioTactix, RaceRecapAI)
+Single-channel approaches leave gaps:
+
+- **Text alone** hears what was said — not how it was cut or framed.
+- **Vision alone** sees pacing and overlays — not hook language or WPM.
+- **Metrics alone** give numbers — without interpretation of style or psychology.
+
+**Together:** measured cuts/min + spoken patterns + frame grammar produce a formula the user can apply to a new topic — without inventing what was never measured.
 
 ---
 
