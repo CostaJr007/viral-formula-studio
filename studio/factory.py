@@ -95,16 +95,25 @@ def create_agent(
     tools: list | None = None,
     vision: bool = False,
     temperature: float = 0.2,
+    force_model_id: str | None = None,
+    use_provider_fallbacks: bool = True,
 ) -> Agent:
     """Build an agent on the active provider with the project's defaults.
 
     Temperature is role-specific: lower for analysis (0.15), mid for hooks (0.4),
     controlled for copy (0.25). Defaults keep prior behaviour (~0.2).
+
+    force_model_id: when provider is watsonx, pin this model id (used for explicit
+    IBM fallback retry after a primary API error body).
     """
     settings = get_settings()
     model_id = settings.openai_vision_model_id if vision else settings.openai_model_id
-    model = _build_model(model_id, vision, temperature=temperature)
-    fallbacks = _fallback_chain(vision, temperature=temperature)
+    if force_model_id and settings.model_provider == "watsonx":
+        model = _build_watsonx(force_model_id, temperature=temperature)
+        fallbacks: list[Model] = []
+    else:
+        model = _build_model(model_id, vision, temperature=temperature)
+        fallbacks = _fallback_chain(vision, temperature=temperature) if use_provider_fallbacks else []
     return Agent(
         model=model,
         name=name,
@@ -117,3 +126,32 @@ def create_agent(
         retries=3,
         delay_between_retries=2,
     )
+
+
+def looks_like_provider_error(content: object) -> bool:
+    """True when the model client returned an API error payload instead of schema JSON."""
+    if isinstance(content, dict):
+        if "errors" in content or content.get("status_code") in (401, 403, 429, 500, 502, 503):
+            return True
+        # watsonx / IBM error shapes
+        err = content.get("error")
+        if isinstance(err, dict) and err.get("code"):
+            return True
+    if isinstance(content, str):
+        low = content.lower()
+        if "status_code" in low and any(c in low for c in ("403", "401", "429", "token")):
+            return True
+        if "token_quota" in low or "exceeded_limit" in low:
+            return True
+    return False
+
+
+def watsonx_text_fallback_id() -> str | None:
+    settings = get_settings()
+    if settings.model_provider != "watsonx":
+        return None
+    fb = (settings.watsonx_fallback_model_id or "").strip()
+    primary = (settings.watsonx_model_id or "").strip()
+    if fb and fb != primary:
+        return fb
+    return None

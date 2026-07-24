@@ -9,6 +9,8 @@ Paste short-form links (or pick a seed creator) + your topic. The system **measu
 | | |
 |---|---|
 | **Live demo** | [bit.ly/viral-studio](https://bit.ly/viral-studio) |
+| **API** | `https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud` |
+| **Web** | `https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud` |
 | **Challenge** | IBM AI Builders · July 2026 · *Reimagine Creative Industries with AI* |
 | **Hosting** | IBM Cloud Code Engine (us-south) |
 | **Repo** | [CostaJr007/viral-formula-studio](https://github.com/CostaJr007/viral-formula-studio) |
@@ -106,12 +108,37 @@ Granite 4 is the **product voice**. Fallback is another model on the **same** wa
 
 Deploy guide: [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md)
 
+### Production status (verified 2026-07-24)
+
+Smoke checks against the live Code Engine apps:
+
+| Check | Result |
+|-------|--------|
+| `GET /api/health` | OK · `provider=watsonx` · `build` includes `ibm-fallback` |
+| Primary model | `ibm/granite-4-h-small` |
+| IBM API fallback model | `meta-llama/llama-3-3-70b-instruct` (same project/key — no extra instance) |
+| OpenAI fallback | **off** (`openai_fallback=false`) |
+| `GET /api/creators` | Seeds **Bryan**, **jeffnippard**, **kallaway** with profiles |
+| `GET /api/profile/jeffnippard` | OK · metrics (e.g. cuts/min, WPM) + style + editing |
+| `GET /api/usage` | OK · rate window active |
+| Web UI | HTTP 200 · Viral Formula Studio loads |
+| CORS | Web origin allowed on API |
+
+```bash
+curl -s https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud/api/health
+# {"status":"ok","provider":"watsonx","build":"...","model":"ibm/granite-4-h-small",
+#  "fallback_model":"meta-llama/llama-3-3-70b-instruct","openai_fallback":false}
+```
+
+**If hooks/copy return 502:** almost always watsonx **token quota / 403** on the Lite plan (API is up; inference is denied). Fix in IBM Cloud → watsonx project (quota, model access, or API key on `vfs-api` env). The app retries once on the IBM fallback model id automatically.
+
 **Production checklist**
 
 - Rate limit: 8 new creators / IP / hour (seeds unlimited)
-- Health: `GET /api/health` → `status`, `provider`, `build`
+- Health: `GET /api/health` → `status`, `provider`, `build`, `model`, `fallback_model`
 - Cold start ~30–90s on free tier (min-scale 0); use **min-scale 1** on pitch day
 - Prefer public **YouTube Shorts** in cloud; TikTok/IG may block datacenter IPs
+- Confirm watsonx Lite quota before a live pitch (seed decode works offline of LLM; hooks/script need inference)
 
 ---
 
@@ -143,9 +170,11 @@ IBM_WATSONX_API_KEY=
 IBM_WATSONX_PROJECT_ID=
 IBM_WATSONX_URL=https://us-south.ml.cloud.ibm.com
 WATSONX_MODEL_ID=ibm/granite-4-h-small
+WATSONX_FALLBACK_MODEL_ID=meta-llama/llama-3-3-70b-instruct   # same API/project
 WATSONX_VISION_MODEL_ID=meta-llama/llama-3-2-11b-vision-instruct
-OPENAI_API_KEY=          # optional fallback
-GROQ_API_KEY=            # Whisper fallback
+OPENAI_FALLBACK=false
+OPENAI_API_KEY=          # only if OPENAI_FALLBACK=true
+GROQ_API_KEY=            # Whisper when captions fail
 TAVILY_API_KEY=          # topic fact-check
 ```
 

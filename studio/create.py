@@ -20,7 +20,7 @@ from difflib import SequenceMatcher
 from pydantic import BaseModel, Field
 
 from . import store
-from .factory import create_agent
+from .factory import create_agent, looks_like_provider_error, watsonx_text_fallback_id
 from .parse import coerce_structured
 from .research import research_theme
 from .schemas import ResearchReport
@@ -398,17 +398,8 @@ def generate_hooks(
     if research is None:
         research = research_theme(theme)
 
-    agent = create_agent(
-        name=f"hook_strategist_{creator}",
-        description="Hook strategist based on creators' measured formulas.",
-        instructions=HOOKS_INSTRUCTIONS,
-        output_schema=HookList,
-        temperature=0.4,
-    )
     slim = slim_profile_for_prompt(profile_obj)
-
-    logger.info("Generating 10 hooks from '%s' for '%s'...", creator, theme)
-    response = agent.run(
+    prompt = (
         f"USER'S THEME (the hooks MUST be about this topic): {theme}\n\n"
         f"Creator profile (measured evidence — compact JSON):\n"
         f"{json.dumps(slim, ensure_ascii=False, indent=2)}\n"
@@ -417,7 +408,42 @@ def generate_hooks(
         "Apply the creator's patterns to THIS theme — do NOT use the creator's original topic. "
         "Return structured JSON only — be concise."
     )
-    raw = coerce_structured(response.content, HookList, stage="Hook generation")
+
+    def _hooks_agent(*, force_model_id: str | None = None):
+        return create_agent(
+            name=f"hook_strategist_{creator}",
+            description="Hook strategist based on creators' measured formulas.",
+            instructions=HOOKS_INSTRUCTIONS,
+            output_schema=HookList,
+            temperature=0.4,
+            force_model_id=force_model_id,
+            use_provider_fallbacks=force_model_id is None,
+        )
+
+    logger.info("Generating 10 hooks from '%s' for '%s'...", creator, theme)
+    raw: HookList | None = None
+    try:
+        response = _hooks_agent().run(prompt)
+        if looks_like_provider_error(response.content):
+            raise RuntimeError(f"Primary model error payload: {str(response.content)[:240]}")
+        raw = coerce_structured(response.content, HookList, stage="Hook generation")
+    except Exception as primary_err:
+        fb_id = watsonx_text_fallback_id()
+        if not fb_id:
+            raise
+        logger.warning(
+            "Hooks primary failed (%s) — retrying on watsonx fallback %s",
+            primary_err,
+            fb_id,
+        )
+        response = _hooks_agent(force_model_id=fb_id).run(prompt)
+        if looks_like_provider_error(response.content):
+            raise RuntimeError(
+                f"Hook generation failed on primary and IBM fallback ({fb_id}): "
+                f"{str(response.content)[:240]}"
+            ) from primary_err
+        raw = coerce_structured(response.content, HookList, stage="Hook generation (IBM fallback)")
+
     cleaned = filter_hooks(raw.hooks, theme)
     if len(cleaned) < 10:
         logger.info("Hooks after filter: %d — padding to 10 with measured-pattern templates", len(cleaned))
@@ -467,13 +493,6 @@ def generate_copy(
     if research is None:
         research = research_theme(theme)
 
-    agent = create_agent(
-        name=f"copy_director_{creator}",
-        description="Scriptwriter for 60–90s short-form monologues (170–200 spoken words max).",
-        instructions=COPY_INSTRUCTIONS,
-        output_schema=VideoCopy,
-        temperature=0.25,
-    )
     logger.info("Generating copy for '%s' x '%s' with the chosen hook...", creator, theme)
 
     profile_json = json.dumps(slim_profile_for_prompt(profile_obj), ensure_ascii=False, indent=2)
@@ -509,10 +528,41 @@ def generate_copy(
         "At most ONE '(no speech — music only)' block. Cite measured cuts/min or WPM in ≥2 EDITING fields."
     )
 
+    _copy_force_id: str | None = None
+
+    def _copy_agent():
+        return create_agent(
+            name=f"copy_director_{creator}",
+            description="Scriptwriter for 60–90s short-form monologues (170–200 spoken words max).",
+            instructions=COPY_INSTRUCTIONS,
+            output_schema=VideoCopy,
+            temperature=0.25,
+            force_model_id=_copy_force_id,
+            use_provider_fallbacks=_copy_force_id is None,
+        )
+
     def _once(prompt: str, stage: str) -> VideoCopy:
-        response = agent.run(prompt)
-        copy = coerce_structured(response.content, VideoCopy, stage=stage)
-        return _normalize_video_copy(copy)
+        nonlocal _copy_force_id
+        agent = _copy_agent()
+        try:
+            response = agent.run(prompt)
+            if looks_like_provider_error(response.content):
+                raise RuntimeError(f"Provider error: {str(response.content)[:240]}")
+            copy = coerce_structured(response.content, VideoCopy, stage=stage)
+            return _normalize_video_copy(copy)
+        except Exception as err:
+            fb_id = watsonx_text_fallback_id()
+            if _copy_force_id or not fb_id:
+                raise
+            logger.warning("Copy primary failed (%s) — switching to IBM fallback %s", err, fb_id)
+            _copy_force_id = fb_id
+            response = _copy_agent().run(prompt)
+            if looks_like_provider_error(response.content):
+                raise RuntimeError(
+                    f"Copy failed on primary and IBM fallback ({fb_id}): {str(response.content)[:240]}"
+                ) from err
+            copy = coerce_structured(response.content, VideoCopy, stage=f"{stage} (IBM fallback)")
+            return _normalize_video_copy(copy)
 
     copy = _once(base_prompt, "Copy generation")
 
