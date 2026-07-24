@@ -2,10 +2,13 @@
 
 Stage order matters: the deterministic measurements (studio/metrics.py) run
 BEFORE the LLM analyses, so the models interpret measured numbers instead of
-guessing. Runs once per creator; the dossier step consumes the cached profile.
+guessing. Style + vision stages run in parallel after metrics.
 """
 
+from __future__ import annotations
+
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from . import store
 from .analyze_text import analyze_style
@@ -39,23 +42,38 @@ def analyze_creator(
     profile.metrics = measure_creator(creator, max_videos)
 
     transcriptions = store.get_creator_transcriptions(creator)
+    n_videos = min(len(transcriptions), max_videos or settings.max_videos_per_creator) if transcriptions else 0
+
+    def _style():
+        return analyze_style(creator, max_videos, metrics=profile.metrics)
+
+    def _editing():
+        try:
+            return analyze_editing(creator, max_videos, metrics=profile.metrics)
+        except (FileNotFoundError, ValueError) as e:
+            logger.warning("Visual analysis skipped: %s", e)
+            return None
+
+    def _thumbnail():
+        try:
+            return analyze_thumbnail(creator, max_videos)
+        except (FileNotFoundError, ValueError) as e:
+            logger.warning("Thumbnail analysis skipped: %s", e)
+            return None
+
+    # Parallel LLM stages (independent after metrics)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        fut_style = pool.submit(_style)
+        fut_edit = pool.submit(_editing)
+        fut_thumb = pool.submit(_thumbnail)
+        profile.style = fut_style.result()
+        profile.editing = fut_edit.result()
+        profile.thumbnail = fut_thumb.result()
+
     if transcriptions:
-        # analyze_style always returns a UI-usable fingerprint (LLM or metrics fallback)
-        profile.style = analyze_style(creator, max_videos, metrics=profile.metrics)
-        profile.videos_analyzed = min(len(transcriptions), max_videos or settings.max_videos_per_creator)
-    else:
-        logger.warning("No transcriptions for '%s' — metrics-backed style fallback.", creator)
-        profile.style = analyze_style(creator, max_videos, metrics=profile.metrics)
-
-    try:
-        profile.editing = analyze_editing(creator, max_videos, metrics=profile.metrics)
-    except (FileNotFoundError, ValueError) as e:
-        logger.warning("Visual analysis skipped: %s", e)
-
-    try:
-        profile.thumbnail = analyze_thumbnail(creator, max_videos)
-    except (FileNotFoundError, ValueError) as e:
-        logger.warning("Thumbnail analysis skipped: %s", e)
+        profile.videos_analyzed = n_videos or profile.videos_analyzed
+    elif profile.videos_analyzed == 0 and profile.style is not None:
+        profile.videos_analyzed = 0
 
     if profile.style is None and profile.editing is None:
         raise RuntimeError(f"Nothing to analyze in '{creator}': no transcriptions or videos.")

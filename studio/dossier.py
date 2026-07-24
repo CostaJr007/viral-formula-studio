@@ -123,6 +123,7 @@ def generate_dossier(creator: str, theme: str, *, research: ResearchReport | Non
         name=f"dossier_strategist_{creator}",
         description="Content strategist who turns creator analysis into an action plan.",
         instructions=INSTRUCTIONS + ("\n" + "\n".join(honesty_notes) if honesty_notes else ""),
+        temperature=0.25,
     )
 
     logger.info("Generating dossier for '%s' on theme '%s'...", creator, theme)

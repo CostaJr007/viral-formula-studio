@@ -76,6 +76,7 @@ def analyze_thumbnail(creator: str, max_videos: int | None = None) -> ThumbnailA
         instructions=INSTRUCTIONS,
         output_schema=ThumbnailAnalysis,
         vision=True,
+        temperature=0.15,
     )
 
     logger.info("Analyzing thumbnail for %s...", creator)

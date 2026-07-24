@@ -10,7 +10,12 @@ Nothing here invents facts: hooks and copy may only use facts from the
 ResearchReport; anything else becomes a placeholder for the user to fill.
 """
 
+from __future__ import annotations
+
+import json
 import logging
+import re
+from difflib import SequenceMatcher
 
 from pydantic import BaseModel, Field
 
@@ -28,6 +33,11 @@ MIN_SPOKEN_WORDS = 150
 TARGET_SPOKEN_WORDS = 185
 MAX_COPY_WORDS = 200
 MIN_SCRIPT_BLOCKS = 6
+
+_GARBAGE_HOOK_RE = re.compile(
+    r"\bgt\b|https?://|www\.|&[a-z]+;|<\s*\w+|transcription|quota|rate.?limit",
+    re.IGNORECASE,
+)
 
 
 class Hook(BaseModel):
@@ -96,9 +106,8 @@ COPY_INSTRUCTIONS = f"""
 You are a scriptwriter and director of short videos specialized in retention
 psychology and viral editing grammar.
 
-You receive: (1) a creator's MEASURED profile (copy structure, tone, rhythm in
-words/minute, editing grammar — cuts per minute, shot types, text overlays),
-(2) verified facts about the theme, and (3) the hook the user chose.
+You receive a COMPACT measured profile (tone, structure, hook patterns, cuts/min,
+WPM) plus verified facts and the chosen hook.
 
 Your task: orchestrate a COMPLETE SHOOTING SCRIPT — not just words to say, but
 exactly HOW to shoot and edit each moment, and WHY each technique works.
@@ -116,25 +125,230 @@ EXAMPLE (abbreviated — your output must be LONGER, ~{TARGET_SPOKEN_WORDS} spok
 0:28-0:45 | MEDIUM shot | "By week two my afternoon crash was gone. Focus felt sharper. But I also watched for red flags: fiber loss, electrolyte dips, lipid panels." | Pattern interrupt on risks | Honesty builds trust before the CTA
 ```
 
+NARRATION ARC + WORD BUDGET (~{TARGET_SPOKEN_WORDS} spoken words total):
+1. Hook (block 1 TEXT = the chosen hook exactly) ~15–25 words
+2. Setup / context ~25–35 words
+3. Point A with concrete detail ~30–40 words
+4. Point B ~30–40 words
+5. Caveat / honesty beat ~20–30 words
+6. Takeaway + soft CTA ~20–30 words
+Optional 7–9 short blocks if needed — stay under {MAX_COPY_WORDS} spoken words.
+
 RULES:
 - CRITICAL: Do NOT use line breaks (newlines) inside a single block. Each timestamp block must be exactly one line.
 - Output AT LEAST {MIN_SCRIPT_BLOCKS} separate lines (blocks), ideally 6–9, covering ~0:00 to ~1:00–1:30 max.
 - HARD LENGTH TARGET: spoken words in TEXT fields MUST be between {MIN_SPOKEN_WORDS} and {MAX_COPY_WORDS}.
-  Aim for ~{TARGET_SPOKEN_WORDS}. NEVER exceed {MAX_COPY_WORDS} spoken words — keep it a short, not a 2-minute lecture.
-- COMPLETE NARRATION arc: hook → context → 2–4 concrete points → quick caveat → takeaway/CTA.
-  The chosen hook is ONLY the first spoken line — continue with real dialogue, stay tight.
+  Aim for ~{TARGET_SPOKEN_WORDS}. NEVER exceed {MAX_COPY_WORDS} spoken words.
+- At least TWO EDITING fields must cite MEASURED numbers from the profile
+  (e.g. "~X cuts/min", "shot ~Ys", "~Z WPM pace").
+- COMPLETE NARRATION: the chosen hook is ONLY the first spoken line — continue with real dialogue.
 - At most ONE block may use "(no speech — music only)". Almost every block needs real dialogue (1–2 sentences each).
 - Every block MUST include all 5 fields separated by `|`: timestamp, shot, text, editing, psychology.
-- SHOT TYPES must match the creator's measured grammar (e.g. "CLOSE-UP face",
-  "MEDIUM shot", "SPLIT-SCREEN", "B-ROLL", "TEXT OVERLAY").
-- EDITING must use MEASURED NUMBERS: cut cadence (~X cuts/min, every ~Y seconds),
-  specific transitions (jump cut, zoom, text pop-in). Never vague.
-- WHY IT WORKS must explain the retention psychology or editing principle.
-  Use terms like: pattern interrupt, curiosity gap, social proof, authority,
-  dopamine loop, visual anchor, pacing rhythm, contrast, payoff.
+- SHOT TYPES must match the creator's measured grammar when provided.
 - Never put the next timestamp inside the WHY field — start a NEW line instead.
-- Respond in English.
+- Respond in English (or the user's language if the theme is clearly non-English).
 """
+
+
+# ---------------------------------------------------------------------------
+# Profile slim + quality helpers (no extra LLM)
+# ---------------------------------------------------------------------------
+
+
+def slim_profile_for_prompt(profile_obj) -> dict:
+    """Compact evidence for hooks/copy — cuts tokens, keeps measured formula."""
+    full = profile_obj.model_dump() if hasattr(profile_obj, "model_dump") else dict(profile_obj)
+    style = full.get("style") or {}
+    editing = full.get("editing") or {}
+    metrics = full.get("metrics") if isinstance(full.get("metrics"), dict) else {}
+    m_edit = metrics.get("editing") or {}
+    m_speech = metrics.get("speech") or {}
+    ngrams = metrics.get("signature_ngrams") or []
+    if isinstance(ngrams, list):
+        ngrams = ngrams[:6]
+
+    hooks = style.get("hook_patterns") or []
+    if isinstance(hooks, list):
+        hooks = hooks[:5]
+
+    exprs = style.get("signature_expressions") or []
+    if isinstance(exprs, list):
+        exprs = [e for e in exprs if isinstance(e, str) and len(e) > 2][:8]
+
+    return {
+        "creator": full.get("creator"),
+        "videos_analyzed": full.get("videos_analyzed"),
+        "metrics": {
+            "editing": {
+                "avg_cuts_per_min": m_edit.get("avg_cuts_per_min"),
+                "avg_shot_length_s": m_edit.get("avg_shot_length_s"),
+                "videos_measured": m_edit.get("videos_measured"),
+            },
+            "speech": {"avg_wpm": m_speech.get("avg_wpm")},
+            "signature_ngrams": ngrams,
+        },
+        "style": {
+            "tone": style.get("tone"),
+            "sentence_rhythm": style.get("sentence_rhythm"),
+            "persona": style.get("persona"),
+            "copy_structure": style.get("copy_structure"),
+            "hook_patterns": hooks,
+            "signature_expressions": exprs,
+            "persuasion_tactics": (style.get("persuasion_tactics") or [])[:5],
+            "evidence_notes": (style.get("evidence_notes") or "")[:300],
+        },
+        "editing": {
+            "cut_cadence": editing.get("cut_cadence"),
+            "shot_types": editing.get("shot_types"),
+            "text_overlay_style": editing.get("text_overlay_style"),
+            "b_roll_usage": editing.get("b_roll_usage"),
+            "retention_tricks": (editing.get("retention_tricks") or [])[:5],
+            "evidence_notes": (editing.get("evidence_notes") or "")[:200],
+        },
+    }
+
+
+def _is_bad_hook_text(text: str) -> bool:
+    t = (text or "").strip()
+    if len(t.split()) < 5:
+        return True
+    if len(t) > 180:
+        return True
+    if _GARBAGE_HOOK_RE.search(t):
+        return True
+    low = t.lower()
+    if "let s " in low or low.startswith("let s"):
+        return True
+    return False
+
+
+def _hook_dedupe_key(text: str) -> str:
+    words = re.findall(r"[a-z0-9']+", (text or "").lower())
+    return " ".join(words[:4])
+
+
+def filter_hooks(hooks: list[Hook], theme: str) -> list[Hook]:
+    """Drop garbage / near-duplicate hooks. No LLM."""
+    theme_tokens = {w for w in re.findall(r"[a-z0-9']+", theme.lower()) if len(w) > 3}
+    cleaned: list[Hook] = []
+    seen: set[str] = set()
+    pattern_counts: dict[str, int] = {}
+
+    for h in hooks:
+        text = (h.text or "").strip()
+        if _is_bad_hook_text(text):
+            continue
+        key = _hook_dedupe_key(text)
+        if not key or key in seen:
+            continue
+        # Soft theme check: if theme has content words, prefer hooks that share ≥1
+        if theme_tokens:
+            hook_tokens = set(re.findall(r"[a-z0-9']+", text.lower()))
+            if not (theme_tokens & hook_tokens) and len(cleaned) >= 6:
+                # allow early variety; after 6 good ones skip off-theme
+                continue
+        pat = (h.pattern or "pattern").strip() or "pattern"
+        if pattern_counts.get(pat, 0) >= 2:
+            continue
+        pattern_counts[pat] = pattern_counts.get(pat, 0) + 1
+        seen.add(key)
+        cleaned.append(Hook(text=text, pattern=pat))
+        if len(cleaned) >= 10:
+            break
+    return cleaned
+
+
+def _pad_hooks_to_ten(hooks: list[Hook], theme: str, profile_obj) -> list[Hook]:
+    """Deterministic fillers from measured patterns when model returns < 10 clean hooks."""
+    out = list(hooks)
+    patterns: list[str] = []
+    style = getattr(profile_obj, "style", None)
+    if style and getattr(style, "hook_patterns", None):
+        patterns = [hp.pattern for hp in style.hook_patterns if hp.pattern]
+    if not patterns:
+        patterns = [
+            "Direct promise",
+            "Problem → fix",
+            "Curiosity gap",
+            "Counterintuitive claim",
+            "Social proof angle",
+        ]
+    templates = [
+        "Stop scrolling — here's the truth about {theme}.",
+        "What nobody tells you about {theme}.",
+        "I tested {theme} so you don't waste time.",
+        "The {theme} mistake almost everyone makes.",
+        "Want better results with {theme}? Start here.",
+        "Three seconds on {theme} that change the game.",
+        "If you care about {theme}, hear this first.",
+        "The simple {theme} fix that actually sticks.",
+        "Before you try {theme}, watch this.",
+        "Here's how {theme} actually works — no hype.",
+    ]
+    seen = {_hook_dedupe_key(h.text) for h in out}
+    i = 0
+    while len(out) < 10 and i < 40:
+        text = templates[i % len(templates)].format(theme=theme.strip() or "this")
+        key = _hook_dedupe_key(text)
+        i += 1
+        if key in seen or _is_bad_hook_text(text):
+            continue
+        seen.add(key)
+        out.append(Hook(text=text, pattern=patterns[len(out) % len(patterns)]))
+    return out[:10]
+
+
+def _strip_quotes(text: str) -> str:
+    t = (text or "").strip()
+    if (t.startswith('"') and t.endswith('"')) or (t.startswith("“") and t.endswith("”")):
+        return t[1:-1].strip()
+    return t
+
+
+def _hook_aligned(chosen_hook: str, first_block_text: str) -> bool:
+    a = _strip_quotes(chosen_hook).lower()
+    b = _strip_quotes(first_block_text).lower()
+    if not a or not b:
+        return False
+    if a in b or b in a:
+        return True
+    return SequenceMatcher(None, a, b).ratio() >= 0.55
+
+
+def _spoken_word_count(copy: VideoCopy) -> int:
+    return normalize_script(copy.script).spoken_word_count
+
+
+def _truncate_copy_words(copy: VideoCopy) -> VideoCopy:
+    """Drop trailing blocks until spoken words ≤ MAX_COPY_WORDS (deterministic)."""
+    norm = normalize_script(copy.script)
+    if not norm.blocks or norm.spoken_word_count <= MAX_COPY_WORDS:
+        return copy
+
+    blocks = list(norm.blocks)
+    while len(blocks) > 4 and normalize_script(
+        "\n".join(
+            f"{b.timestamp} | {b.shot} | {b.text} | {b.editing} | {b.why}" for b in blocks
+        )
+    ).spoken_word_count > MAX_COPY_WORDS:
+        blocks.pop()
+
+    script = "\n".join(
+        f"{b.timestamp} | {b.shot} | {b.text} | {b.editing} | {b.why}" for b in blocks
+    )
+    directions = list(copy.editing_directions or [])
+    if len(directions) > len(blocks):
+        directions = directions[: len(blocks)]
+    note = (copy.data_notes or "").strip()
+    trim_note = " [Script auto-trimmed to ~60–90s spoken length.]"
+    if trim_note.strip() not in note:
+        note = (note + trim_note).strip()
+    logger.info(
+        "Copy truncated to %d blocks / ~%d spoken words",
+        len(blocks),
+        normalize_script(script).spoken_word_count,
+    )
+    return VideoCopy(script=script, editing_directions=directions, data_notes=note)
 
 
 def _profile_or_raise(creator: str):
@@ -151,7 +365,18 @@ def _facts_block(research: ResearchReport | None) -> str:
             "\nVERIFIED FACTS: unavailable (fact-check failed). "
             "Do NOT state any fact about the theme — use [INSERT: ...] placeholders."
         )
-    return f"\nVERIFIED FACTS ABOUT THE THEME (single factual source — JSON):\n{research.model_dump_json(indent=2)}"
+    # Cap facts for prompt budget
+    slim = {
+        "summary": (research.summary or "")[:400],
+        "facts": [
+            {"claim": f.claim[:280], "source": f.source} for f in (research.facts or [])[:5]
+        ],
+        "unconfirmed": (research.unconfirmed or [])[:5],
+    }
+    return (
+        "\nVERIFIED FACTS ABOUT THE THEME (single factual source — JSON):\n"
+        f"{json.dumps(slim, ensure_ascii=False, indent=2)}"
+    )
 
 
 def _coerce_profile(creator: str, profile: dict | None):
@@ -164,7 +389,9 @@ def _coerce_profile(creator: str, profile: dict | None):
     return _profile_or_raise(creator)
 
 
-def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None = None, profile: dict | None = None) -> HookList:
+def generate_hooks(
+    creator: str, theme: str, *, research: ResearchReport | None = None, profile: dict | None = None
+) -> HookList:
     """Step 1: 10 hooks from the creator's formula + verified facts."""
     profile_obj = _coerce_profile(creator, profile)
 
@@ -176,72 +403,63 @@ def generate_hooks(creator: str, theme: str, *, research: ResearchReport | None 
         description="Hook strategist based on creators' measured formulas.",
         instructions=HOOKS_INSTRUCTIONS,
         output_schema=HookList,
+        temperature=0.4,
     )
-    # Slim profile for the prompt — huge per_video metric dumps slow watsonx and bloat tokens
-    slim = profile_obj.model_dump()
-    if isinstance(slim.get("metrics"), dict):
-        m = slim["metrics"]
-        editing = m.get("editing") or {}
-        speech = m.get("speech") or {}
-        slim["metrics"] = {
-            "editing": {
-                "avg_cuts_per_min": editing.get("avg_cuts_per_min"),
-                "avg_shot_length_s": editing.get("avg_shot_length_s"),
-                "videos_measured": editing.get("videos_measured"),
-            },
-            "speech": {"avg_wpm": speech.get("avg_wpm")},
-            "signature_ngrams": (m.get("signature_ngrams") or [])[:8],
-        }
-    # Drop heavy frame-level thumbnail noise if present
-    if isinstance(slim.get("thumbnail"), dict):
-        th = slim["thumbnail"]
-        slim["thumbnail"] = {
-            "score": th.get("score"),
-            "composition": th.get("composition"),
-            "suggestions": (th.get("suggestions") or [])[:3],
-        }
+    slim = slim_profile_for_prompt(profile_obj)
 
     logger.info("Generating 10 hooks from '%s' for '%s'...", creator, theme)
     response = agent.run(
         f"USER'S THEME (the hooks MUST be about this topic): {theme}\n\n"
-        f"Creator profile (measured evidence — JSON):\n{__import__('json').dumps(slim, ensure_ascii=False, indent=2)}\n"
+        f"Creator profile (measured evidence — compact JSON):\n"
+        f"{json.dumps(slim, ensure_ascii=False, indent=2)}\n"
         f"{_facts_block(research)}\n\n"
         f"Generate exactly 10 hooks. Every single hook MUST reference the user's theme: '{theme}'. "
         "Apply the creator's patterns to THIS theme — do NOT use the creator's original topic. "
         "Return structured JSON only — be concise."
     )
-    return coerce_structured(response.content, HookList, stage="Hook generation")
+    raw = coerce_structured(response.content, HookList, stage="Hook generation")
+    cleaned = filter_hooks(raw.hooks, theme)
+    if len(cleaned) < 10:
+        logger.info("Hooks after filter: %d — padding to 10 with measured-pattern templates", len(cleaned))
+        cleaned = _pad_hooks_to_ten(cleaned, theme, profile_obj)
+    return HookList(hooks=cleaned[:10])
 
 
-def _slim_profile_json(profile_obj) -> str:
-    """Drop heavy per_video dumps so the model spends tokens on spoken copy."""
-    import json
+def _normalize_video_copy(copy: VideoCopy) -> VideoCopy:
+    """Repair pipe-format drift so API consumers always get a full multi-block script."""
+    normalized = normalize_script(copy.script)
+    if not normalized.blocks:
+        logger.warning("Copy normalization found 0 blocks — returning raw script")
+        return copy
 
-    slim = profile_obj.model_dump()
-    if isinstance(slim.get("metrics"), dict):
-        m = slim["metrics"]
-        editing = m.get("editing") or {}
-        speech = m.get("speech") or {}
-        slim["metrics"] = {
-            "editing": {
-                "avg_cuts_per_min": editing.get("avg_cuts_per_min"),
-                "avg_shot_length_s": editing.get("avg_shot_length_s"),
-            },
-            "speech": {"avg_wpm": speech.get("avg_wpm")},
-            "signature_ngrams": (m.get("signature_ngrams") or [])[:6],
-        }
-    if isinstance(slim.get("thumbnail"), dict):
-        th = slim["thumbnail"]
-        slim["thumbnail"] = {"score": th.get("score"), "composition": (th.get("composition") or "")[:200]}
-    return json.dumps(slim, ensure_ascii=False, indent=2)
+    repaired_script = normalized.script
+    if normalized.was_repaired:
+        logger.info(
+            "Copy script repaired: %d blocks, %d spoken words (was_repaired=True)",
+            len(normalized.blocks),
+            normalized.spoken_word_count,
+        )
 
+    directions = list(copy.editing_directions or [])
+    if len(directions) < max(3, len(normalized.blocks) // 2):
+        directions = [
+            f"{b.timestamp}: {b.editing}".strip(": ") for b in normalized.blocks if b.editing
+        ] or directions
 
-def _spoken_word_count(copy: VideoCopy) -> int:
-    return normalize_script(copy.script).spoken_word_count
+    return VideoCopy(
+        script=repaired_script,
+        editing_directions=directions,
+        data_notes=copy.data_notes,
+    )
 
 
 def generate_copy(
-    creator: str, theme: str, chosen_hook: str, *, research: ResearchReport | None = None, profile: dict | None = None
+    creator: str,
+    theme: str,
+    chosen_hook: str,
+    *,
+    research: ResearchReport | None = None,
+    profile: dict | None = None,
 ) -> VideoCopy:
     """Step 2: short-form copy (~170–200 spoken words, ~60–90s) around the chosen hook."""
     profile_obj = _coerce_profile(creator, profile)
@@ -254,33 +472,51 @@ def generate_copy(
         description="Scriptwriter for 60–90s short-form monologues (170–200 spoken words max).",
         instructions=COPY_INSTRUCTIONS,
         output_schema=VideoCopy,
+        temperature=0.25,
     )
     logger.info("Generating copy for '%s' x '%s' with the chosen hook...", creator, theme)
 
-    profile_json = _slim_profile_json(profile_obj)
+    profile_json = json.dumps(slim_profile_for_prompt(profile_obj), ensure_ascii=False, indent=2)
     facts = _facts_block(research)
+    cuts = None
+    wpm = None
+    try:
+        m = slim_profile_for_prompt(profile_obj).get("metrics") or {}
+        cuts = (m.get("editing") or {}).get("avg_cuts_per_min")
+        wpm = (m.get("speech") or {}).get("avg_wpm")
+    except Exception:
+        pass
+    metrics_hint = ""
+    if cuts is not None or wpm is not None:
+        metrics_hint = (
+            f"\nMEASURED TARGETS TO CITE IN EDITING FIELDS: "
+            f"cuts/min={cuts!s}, WPM={wpm!s}.\n"
+        )
 
     base_prompt = (
-        f"CREATOR PROFILE (measured evidence — JSON):\n{profile_json}\n"
-        f"{facts}\n\n"
+        f"CREATOR PROFILE (measured evidence — compact JSON):\n{profile_json}\n"
+        f"{facts}\n"
+        f"{metrics_hint}\n"
         f"USER THEME: {theme}\n"
-        f'CHOSEN HOOK: "{chosen_hook}"\n\n'
-        "Write a COMPLETE SHORT-FORM shooting script for ~60–90 SECONDS (max ~1:30, never 2+ minutes).\n"
-        f"Spoken length: {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} words the host SAYS out loud "
-        f"(target ~{TARGET_SPOKEN_WORDS}). HARD CAP: do NOT exceed {MAX_COPY_WORDS} spoken words.\n"
+        f'CHOSEN HOOK (block 1 TEXT must match): "{chosen_hook}"\n\n'
+        "Write a COMPLETE SHORT-FORM shooting script for ~60–90 SECONDS (max ~1:30).\n"
+        f"Spoken length: {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} words "
+        f"(target ~{TARGET_SPOKEN_WORDS}). HARD CAP: do NOT exceed {MAX_COPY_WORDS}.\n"
         f"Use {MIN_SCRIPT_BLOCKS}–9 timeline blocks, one line each:\n"
         "  [TIMESTAMP] | [SHOT] | [TEXT TO SAY] | [EDITING] | [WHY IT WORKS]\n"
-        f'Block 1 TEXT = exactly the hook: "{chosen_hook}"\n'
-        "Then: brief context → 2–4 concrete points → one caveat → clear close/CTA.\n"
-        "Each speaking block: 1–2 full sentences (~15–30 words). Stay punchy for Shorts.\n"
-        "At most ONE '(no speech — music only)' block. No timestamps inside WHY.\n"
-        "Use measured cuts/min and shot grammar from the profile."
+        f'Block 1 TEXT = exactly: "{chosen_hook}"\n'
+        "Arc: hook → setup → 2 concrete points → caveat → CTA. Stay punchy for Shorts.\n"
+        "At most ONE '(no speech — music only)' block. Cite measured cuts/min or WPM in ≥2 EDITING fields."
     )
-    response = agent.run(base_prompt)
-    copy = coerce_structured(response.content, VideoCopy, stage="Copy generation")
-    copy = _normalize_video_copy(copy)
 
-    # One light expansion only if truly short (under ~150). Do NOT push past 200 words.
+    def _once(prompt: str, stage: str) -> VideoCopy:
+        response = agent.run(prompt)
+        copy = coerce_structured(response.content, VideoCopy, stage=stage)
+        return _normalize_video_copy(copy)
+
+    copy = _once(base_prompt, "Copy generation")
+
+    # Expand if too short
     spoken_n = _spoken_word_count(copy)
     if spoken_n < MIN_SPOKEN_WORDS:
         logger.warning(
@@ -300,9 +536,7 @@ def generate_copy(
             "Pipe format, 6–9 blocks, ~0:00–1:20 max. Punchy short-form, not a lecture."
         )
         try:
-            expand = agent.run(expand_prompt)
-            expanded = coerce_structured(expand.content, VideoCopy, stage="Copy expansion")
-            expanded = _normalize_video_copy(expanded)
+            expanded = _once(expand_prompt, "Copy expansion")
             new_n = _spoken_word_count(expanded)
             if MIN_SPOKEN_WORDS <= new_n <= MAX_COPY_WORDS or (
                 new_n > spoken_n and new_n <= MAX_COPY_WORDS + 20
@@ -312,10 +546,49 @@ def generate_copy(
         except Exception:
             logger.exception("Copy expansion pass failed")
 
+    # Align opening hook if model drifted
+    norm = normalize_script(copy.script)
+    first_text = norm.blocks[0].text if norm.blocks else ""
+    if norm.blocks and not _hook_aligned(chosen_hook, first_text):
+        logger.warning("First block hook misaligned — one repair pass...")
+        repair_prompt = (
+            f"THEME: {theme}\n"
+            f'CHOSEN HOOK (MUST be block 1 TEXT exactly): "{chosen_hook}"\n'
+            f"{facts}\n\n"
+            "Rewrite the full pipe-format script. Block 1 TEXT must be the chosen hook. "
+            f"Keep {MIN_SPOKEN_WORDS}–{MAX_COPY_WORDS} spoken words, 6–9 blocks.\n\n"
+            f"CURRENT SCRIPT:\n{copy.script[:3500]}"
+        )
+        try:
+            repaired = _once(repair_prompt, "Copy hook repair")
+            rnorm = normalize_script(repaired.script)
+            if rnorm.blocks and _hook_aligned(chosen_hook, rnorm.blocks[0].text):
+                copy = repaired
+            elif rnorm.blocks:
+                # Force-inject hook into first block text
+                b0 = rnorm.blocks[0]
+                lines = [
+                    f'{b0.timestamp} | {b0.shot} | "{_strip_quotes(chosen_hook)}" | {b0.editing} | {b0.why}'
+                ]
+                for b in rnorm.blocks[1:]:
+                    lines.append(f"{b.timestamp} | {b.shot} | {b.text} | {b.editing} | {b.why}")
+                copy = VideoCopy(
+                    script="\n".join(lines),
+                    editing_directions=repaired.editing_directions,
+                    data_notes=repaired.data_notes,
+                )
+                copy = _normalize_video_copy(copy)
+        except Exception:
+            logger.exception("Copy hook repair failed")
+
+    # Hard cap spoken length
+    if _spoken_word_count(copy) > MAX_COPY_WORDS:
+        copy = _truncate_copy_words(copy)
+
     final_n = _spoken_word_count(copy)
     if final_n > MAX_COPY_WORDS + 30:
         logger.warning(
-            "Copy is long (%d words, cap %d) — model over-wrote; leaving as-is for editor trim.",
+            "Copy still long (%d words, cap %d) after truncate.",
             final_n,
             MAX_COPY_WORDS,
         )
@@ -326,37 +599,6 @@ def generate_copy(
             MIN_SPOKEN_WORDS,
         )
     return copy
-
-
-def _normalize_video_copy(copy: VideoCopy) -> VideoCopy:
-    """Repair pipe-format drift so API consumers always get a full multi-block script."""
-    normalized = normalize_script(copy.script)
-    if not normalized.blocks:
-        logger.warning("Copy normalization found 0 blocks — returning raw script")
-        return copy
-
-    repaired_script = normalized.script
-    if normalized.was_repaired:
-        logger.info(
-            "Copy script repaired: %d blocks, %d spoken words (was_repaired=True)",
-            len(normalized.blocks),
-            normalized.spoken_word_count,
-        )
-
-    # Keep model editing_directions if rich enough; otherwise synthesize from blocks
-    directions = list(copy.editing_directions or [])
-    if len(directions) < max(3, len(normalized.blocks) // 2):
-        directions = [
-            f"{b.timestamp}: {b.editing}".strip(": ")
-            for b in normalized.blocks
-            if b.editing
-        ] or directions
-
-    return VideoCopy(
-        script=repaired_script,
-        editing_directions=directions,
-        data_notes=copy.data_notes,
-    )
 
 
 def copy_payload(copy: VideoCopy) -> dict:

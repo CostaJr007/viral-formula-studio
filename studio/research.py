@@ -28,6 +28,14 @@ logger = logging.getLogger(__name__)
 TAVILY_HTTP_TIMEOUT_S = 12
 RESEARCH_BUDGET_S = 18
 
+# In-process cache: hooks + copy share the same theme research (one Tavily hit)
+_RESEARCH_CACHE: dict[str, ResearchReport | None] = {}
+
+
+def clear_research_cache() -> None:
+    """Test helper / manual reset."""
+    _RESEARCH_CACHE.clear()
+
 
 def _tavily_search(theme: str, api_key: str) -> dict[str, Any]:
     import json
@@ -88,14 +96,23 @@ def _report_from_tavily(theme: str, data: dict[str, Any]) -> ResearchReport:
 
 
 def research_theme(theme: str) -> ResearchReport | None:
-    """Search verified facts about the theme. Returns None on any failure (graceful degradation)."""
+    """Search verified facts about the theme. Returns None on any failure (graceful degradation).
+
+    Cached per normalized theme so hooks + copy do not double-hit Tavily.
+    """
+    theme = (theme or "").strip()
+    if not theme:
+        return None
+
+    cache_key = " ".join(theme.lower().split())
+    if cache_key in _RESEARCH_CACHE:
+        logger.info("Fact-check cache hit for '%s'", theme)
+        return _RESEARCH_CACHE[cache_key]
+
     settings = get_settings()
     if not settings.tavily_api_key:
         logger.warning("TAVILY_API_KEY missing — dossier will proceed in structural mode (no fact-check).")
-        return None
-
-    theme = (theme or "").strip()
-    if not theme:
+        _RESEARCH_CACHE[cache_key] = None
         return None
 
     def _run() -> ResearchReport:
@@ -109,21 +126,25 @@ def research_theme(theme: str) -> ResearchReport | None:
         )
         return report
 
+    result: ResearchReport | None
     try:
         # Bound wall-clock time so /api/hooks never waits forever on scout stage
         with ThreadPoolExecutor(max_workers=1) as pool:
             fut = pool.submit(_run)
-            return fut.result(timeout=RESEARCH_BUDGET_S)
+            result = fut.result(timeout=RESEARCH_BUDGET_S)
     except FuturesTimeout:
         logger.warning(
             "Fact-check timed out after %ss for '%s' — continuing without facts.",
             RESEARCH_BUDGET_S,
             theme,
         )
-        return None
+        result = None
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
         logger.warning("Fact-check HTTP failed for '%s': %s", theme, e)
-        return None
+        result = None
     except Exception:
         logger.exception("Fact-check failed — proceeding without it (graceful degradation).")
-        return None
+        result = None
+
+    _RESEARCH_CACHE[cache_key] = result
+    return result

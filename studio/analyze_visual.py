@@ -56,6 +56,7 @@ def analyze_editing(creator: str, max_videos: int | None = None, metrics: dict |
         instructions=INSTRUCTIONS,
         output_schema=EditingProfile,
         vision=True,
+        temperature=0.15,
     )
     logger.info("Analyzing editing grammar of %s (%d frames)...", creator, len(frames))
     response = agent.run(

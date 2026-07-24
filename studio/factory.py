@@ -17,7 +17,7 @@ from agno.models.openai import OpenAIChat
 from .config import get_settings
 
 
-def _build_model(model_id: str, vision: bool) -> Model:
+def _build_model(model_id: str, vision: bool, *, temperature: float = 0.2) -> Model:
     settings = get_settings()
 
     if settings.model_provider == "watsonx":
@@ -33,7 +33,7 @@ def _build_model(model_id: str, vision: bool) -> Model:
             project_id=settings.ibm_watsonx_project_id,
             url=settings.ibm_watsonx_url,
             max_tokens=settings.watsonx_max_tokens,
-            temperature=0.2,
+            temperature=temperature,
         )
 
     if settings.model_provider == "gemini":
@@ -42,27 +42,29 @@ def _build_model(model_id: str, vision: bool) -> Model:
         return Gemini(
             id=settings.gemini_model_id,
             api_key=settings.google_api_key,
+            temperature=temperature,
         )
 
-    return OpenAIChat(id=model_id)
+    return OpenAIChat(id=model_id, temperature=temperature)
 
 
-def _openai_fallback(vision: bool) -> Model | None:
+def _openai_fallback(vision: bool, *, temperature: float = 0.2) -> Model | None:
     """OpenAI as the safety net whenever the primary provider is something else."""
     settings = get_settings()
     if settings.model_provider == "openai" or not settings.openai_api_key:
         return None
-    return OpenAIChat(id=settings.openai_vision_model_id if vision else settings.openai_model_id)
+    mid = settings.openai_vision_model_id if vision else settings.openai_model_id
+    return OpenAIChat(id=mid, temperature=temperature)
 
 
-def get_model() -> Model:
+def get_model(*, temperature: float = 0.2) -> Model:
     """The product's voice: text analysis and the final dossier."""
-    return _build_model(get_settings().openai_model_id, vision=False)
+    return _build_model(get_settings().openai_model_id, vision=False, temperature=temperature)
 
 
-def get_vision_model() -> Model:
+def get_vision_model(*, temperature: float = 0.15) -> Model:
     """The frame-analysis model (multimodal stage only)."""
-    return _build_model(get_settings().openai_vision_model_id, vision=True)
+    return _build_model(get_settings().openai_vision_model_id, vision=True, temperature=temperature)
 
 
 def create_agent(
@@ -73,11 +75,19 @@ def create_agent(
     output_schema: type | None = None,
     tools: list | None = None,
     vision: bool = False,
+    temperature: float = 0.2,
 ) -> Agent:
-    """Build an agent on the active provider with the project's defaults."""
-    fallback = _openai_fallback(vision)
+    """Build an agent on the active provider with the project's defaults.
+
+    Temperature is role-specific: lower for analysis (0.15), mid for hooks (0.4),
+    controlled for copy (0.25). Defaults keep prior behaviour (~0.2).
+    """
+    settings = get_settings()
+    model_id = settings.openai_vision_model_id if vision else settings.openai_model_id
+    model = _build_model(model_id, vision, temperature=temperature)
+    fallback = _openai_fallback(vision, temperature=temperature)
     return Agent(
-        model=get_vision_model() if vision else get_model(),
+        model=model,
         name=name,
         description=description,
         instructions=instructions,

@@ -271,6 +271,7 @@ def analyze_style(creator: str, max_videos: int | None = None, metrics: dict | N
             description="Expert in copywriting reverse engineering and style analysis.",
             instructions=INSTRUCTIONS,
             output_schema=CreatorStyle,
+            temperature=0.15,
         )
         logger.info("Analyzing textual style of %s (%d videos)...", creator, len(sample))
         response = agent.run(
