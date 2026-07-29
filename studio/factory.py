@@ -60,6 +60,14 @@ def _build_groq(*, temperature: float = 0.2, max_tokens: int | None = None) -> M
 def _build_model(model_id: str, vision: bool, *, temperature: float = 0.2) -> Model:
     settings = get_settings()
 
+    if settings.model_provider == "groq":
+        if not vision:
+            groq_m = _build_groq(temperature=temperature)
+            if groq_m is not None:
+                return groq_m
+        # Vision stage or missing key falls back to OpenAI
+        return OpenAIChat(id=settings.openai_vision_model_id if vision else model_id, temperature=temperature)
+
     if settings.model_provider == "watsonx":
         resolved = settings.watsonx_vision_model_id if vision else settings.watsonx_model_id
         return _build_watsonx(resolved, temperature=temperature)
@@ -77,12 +85,19 @@ def _build_model(model_id: str, vision: bool, *, temperature: float = 0.2) -> Mo
 
 
 def _fallback_chain(vision: bool, *, temperature: float = 0.2) -> list[Model]:
-    """Ordered fallbacks. Text: IBM secondary model → Groq → optional OpenAI."""
+    """Ordered fallbacks. Groq -> OpenAI."""
     settings = get_settings()
     chain: list[Model] = []
 
     if settings.model_provider == "watsonx":
         primary = (settings.watsonx_vision_model_id if vision else settings.watsonx_model_id) or ""
+        
+        # Groq text model first for text fallbacks (avoids double 403 on IBM project quota)
+        if not vision and (settings.groq_llm_fallback or settings.groq_api_key):
+            groq_model = _build_groq(temperature=temperature)
+            if groq_model is not None:
+                chain.append(groq_model)
+
         if vision:
             fb = (settings.watsonx_fallback_vision_model_id or "").strip()
         else:
@@ -90,13 +105,12 @@ def _fallback_chain(vision: bool, *, temperature: float = 0.2) -> list[Model]:
         if fb and fb != primary:
             chain.append(_build_watsonx(fb, temperature=temperature))
 
-        # Groq is text-only — skip for vision agents
-        if not vision and settings.groq_llm_fallback:
-            groq_model = _build_groq(temperature=temperature)
-            if groq_model is not None:
-                chain.append(groq_model)
+    elif settings.model_provider == "groq":
+        if vision and settings.openai_api_key:
+            chain.append(OpenAIChat(id=settings.openai_vision_model_id, temperature=temperature))
 
-    if settings.openai_fallback and settings.openai_api_key and settings.model_provider != "openai":
+    # OpenAI as fallback for both vision and text if API key is present
+    if settings.openai_api_key and settings.model_provider != "openai" and not any(isinstance(m, OpenAIChat) for m in chain):
         mid = settings.openai_vision_model_id if vision else settings.openai_model_id
         chain.append(OpenAIChat(id=mid, temperature=temperature))
 

@@ -50,16 +50,13 @@ def analyze_creator(
     def _editing():
         try:
             return analyze_editing(creator, max_videos, metrics=profile.metrics)
-        except (FileNotFoundError, ValueError) as e:
+        except Exception as e:
             logger.warning("Visual analysis skipped: %s", e)
             return None
 
     def _thumbnail():
-        try:
-            return analyze_thumbnail(creator, max_videos)
-        except (FileNotFoundError, ValueError) as e:
-            logger.warning("Thumbnail analysis skipped: %s", e)
-            return None
+        # Completely disabled to eliminate 2-minute Vision API decoding bottleneck
+        return None
 
     # Parallel LLM stages (independent after metrics)
     with ThreadPoolExecutor(max_workers=3) as pool:

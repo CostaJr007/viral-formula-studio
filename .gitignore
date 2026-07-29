@@ -20,3 +20,8 @@ videos/
 .DS_Store
 __MACOSX/
 .idea/
+
+# Local helper with secrets — never commit
+scripts/env-for-code-engine-console.txt
+tmp_local_api_smoke.py
+

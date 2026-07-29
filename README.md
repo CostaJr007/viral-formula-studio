@@ -8,7 +8,7 @@ Paste short-form links (or pick a seed creator) + your topic. The system **measu
 
 | | |
 |---|---|
-| **Live demo** | [bit.ly/viral-studio](https://bit.ly/viral-studio) |
+| **Live demo** | [vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud](https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud) |
 | **API** | `https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud` |
 | **Web** | `https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud` |
 | **Challenge** | IBM AI Builders · July 2026 · *Reimagine Creative Industries with AI* |
@@ -25,7 +25,7 @@ Paste short-form links (or pick a seed creator) + your topic. The system **measu
 
 Seed creators are **pre-analyzed** — no upload, no wait for yt-dlp.
 
-1. Open **[bit.ly/viral-studio](https://bit.ly/viral-studio)**
+1. Open **[vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud](https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud)**
 2. Tap **Decode formula** on **jeffnippard** (or Bryan / kallaway)
 3. Review the **measured** profile (cuts/min, WPM, style, editing)
 4. **Generate 10 hooks** → pick one

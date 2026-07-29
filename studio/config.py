@@ -36,8 +36,8 @@ class Settings(BaseSettings):
         """
         return init_settings, dotenv_settings, env_settings, file_secret_settings
 
-    # Provider switch: "openai" (prototyping) | "watsonx" (IBM submission) | "gemini" (free tier)
-    model_provider: str = "openai"
+    # Provider switch: "groq" (fast LLM & Whisper) | "openai" (prototyping) | "watsonx" (IBM) | "gemini" (free tier)
+    model_provider: str = "groq"
 
     # OpenAI (prototyping)
     openai_api_key: str | None = None
@@ -91,10 +91,10 @@ class Settings(BaseSettings):
     output_dir: Path = PROJECT_ROOT / "output"
     db_file: Path = PROJECT_ROOT / "tmp" / "storage.db"
 
-    # Analysis tuning
+    # Analysis tuning — kept lean for fast Vision API response times
     max_videos_per_creator: int = 5
-    frames_per_video: int = 8
-    max_frames_per_analysis: int = 24
+    frames_per_video: int = 4
+    max_frames_per_analysis: int = 8
     min_transcription_words: int = 20
 
     def export_to_environ(self) -> None:

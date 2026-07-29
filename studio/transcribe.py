@@ -68,7 +68,8 @@ def process_new_videos() -> dict[str, list[dict]]:
         existing = {item["video"] for item in transcriptions.get(creator, [])}
         transcriptions.setdefault(creator, [])
 
-        for video_file in sorted(creator_dir.glob("*.mp4")):
+        media_files = [f for f in sorted(creator_dir.iterdir()) if f.suffix.lower() in {".mp4", ".m4a", ".webm", ".mp3", ".mkv"}]
+        for video_file in media_files:
             if video_file.name in existing:
                 continue
 
