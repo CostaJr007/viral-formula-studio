@@ -39,21 +39,33 @@ def extract_audio(video_path: Path, audio_path: Path) -> None:
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30), reraise=True)
-def transcribe_audio(audio_path: Path, client: Groq, model: str) -> str:
+def transcribe_audio(audio_path: Path, client: object, model: str) -> str:
     with open(audio_path, "rb") as audio_file:
-        return client.audio.transcriptions.create(
+        res = client.audio.transcriptions.create(
             model=model,
             file=audio_file,
             response_format="text",
         )
+        return str(res.text) if hasattr(res, "text") else str(res)
 
 
 def process_new_videos() -> dict[str, list[dict]]:
     settings = get_settings()
-    if not settings.groq_api_key:
-        raise RuntimeError("GROQ_API_KEY not configured — set it in the .env")
+    if settings.openai_api_key and settings.model_provider == "openai":
+        from openai import OpenAI
+        client = OpenAI(api_key=settings.openai_api_key)
+        model = "whisper-1"
+    elif settings.groq_api_key:
+        client = Groq(api_key=settings.groq_api_key)
+        model = settings.groq_whisper_model
+    elif settings.openai_api_key:
+        from openai import OpenAI
+        client = OpenAI(api_key=settings.openai_api_key)
+        model = "whisper-1"
+    else:
+        logger.warning("No API key configured for Whisper — cannot process new videos.")
+        return load_transcriptions()
 
-    client = Groq(api_key=settings.groq_api_key)
     transcriptions = load_transcriptions()
 
     if not settings.videos_dir.exists():

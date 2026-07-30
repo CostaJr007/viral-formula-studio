@@ -201,14 +201,25 @@ def download_video(url: str, out_dir: Path) -> Path:
 
 def _transcribe_with_whisper(video_path: Path) -> str | None:
     settings = get_settings()
-    if not settings.groq_api_key:
-        logger.warning("GROQ_API_KEY missing — cannot transcribe %s without captions.", video_path.name)
+    if settings.openai_api_key and settings.model_provider == "openai":
+        from openai import OpenAI
+        client = OpenAI(api_key=settings.openai_api_key)
+        whisper_model = "whisper-1"
+    elif settings.groq_api_key:
+        client = Groq(api_key=settings.groq_api_key)
+        whisper_model = settings.groq_whisper_model
+    elif settings.openai_api_key:
+        from openai import OpenAI
+        client = OpenAI(api_key=settings.openai_api_key)
+        whisper_model = "whisper-1"
+    else:
+        logger.warning("No API key available for Whisper transcription of %s.", video_path.name)
         return None
-    client = Groq(api_key=settings.groq_api_key)
+
     audio_path = video_path.with_suffix(".mp3")
     try:
         extract_audio(video_path, audio_path)
-        text = transcribe_audio(audio_path, client, settings.groq_whisper_model).strip()
+        text = transcribe_audio(audio_path, client, whisper_model).strip()
         if len(text.split()) < settings.min_transcription_words:
             logger.warning("Transcription too short, ignored: %s", video_path.name)
             return None
