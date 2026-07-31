@@ -189,5 +189,11 @@
       "Consider A/B testing a different hook text"
     ],
     "evidence_notes": "Analyzed from local backup frame."
+  },
+  "audience": {
+    "primary_platform": "YouTube",
+    "followers_label": "8.56M",
+    "followers_display": "8.56M YT",
+    "note": "Public snapshot ~Jul 2026 (channel @JeffNippard). Not live API."
   }
 }

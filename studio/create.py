@@ -28,7 +28,7 @@ from .factory import (
 )
 from .parse import coerce_structured
 from .research import research_theme
-from .schemas import ResearchReport
+from .schemas import CreatorProfile, ResearchReport
 from .script_format import normalize_script
 
 logger = logging.getLogger(__name__)
@@ -409,7 +409,7 @@ def _coerce_profile(creator: str, profile: dict | None):
     """Prefer client-sent profile (survives restarts); fall back to disk; never crash on partial JSON."""
     if profile is not None:
         try:
-            return store.CreatorProfile.model_validate(profile)
+            return CreatorProfile.model_validate(profile)
         except Exception as e:
             logger.warning("Client profile invalid for '%s' (%s) — loading from disk", creator, e)
     return _profile_or_raise(creator)

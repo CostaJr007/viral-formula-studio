@@ -12,7 +12,7 @@ import logging
 from . import store
 from .factory import create_agent
 from .research import research_theme
-from .schemas import ResearchReport
+from .schemas import CreatorProfile, ResearchReport
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ def generate_dossier(creator: str, theme: str, *, research: ResearchReport | Non
     profile = None
     if profile_data is not None:
         try:
-            profile = store.CreatorProfile.model_validate(profile_data)
+            profile = CreatorProfile.model_validate(profile_data)
         except Exception as e:
             logger.warning("Client profile invalid for dossier '%s' (%s) — disk fallback", creator, e)
     if profile is None:

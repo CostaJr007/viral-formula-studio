@@ -1,0 +1,184 @@
+{
+  "creator": "rourkeheath",
+  "videos_analyzed": 5,
+  "metrics": {
+    "editing": {
+      "videos_measured": 5,
+      "total_cuts": 38,
+      "total_duration_s": 197.4,
+      "avg_cuts_per_min": 11.6,
+      "avg_shot_length_s": 4.6,
+      "per_video": [
+        {
+          "video": "17842524498435931.mp4",
+          "duration_s": 33.5,
+          "cuts": 8,
+          "cuts_per_min": 14.3,
+          "avg_shot_length_s": 3.7
+        },
+        {
+          "video": "17842834806539437.mp4",
+          "duration_s": 41.2,
+          "cuts": 20,
+          "cuts_per_min": 29.1,
+          "avg_shot_length_s": 2.0
+        },
+        {
+          "video": "17843293098317721.mp4",
+          "duration_s": 38.7,
+          "cuts": 1,
+          "cuts_per_min": 1.6,
+          "avg_shot_length_s": 19.3
+        },
+        {
+          "video": "17843383557264449.mp4",
+          "duration_s": 54.1,
+          "cuts": 6,
+          "cuts_per_min": 6.7,
+          "avg_shot_length_s": 7.7
+        },
+        {
+          "video": "17843878014370924.mp4",
+          "duration_s": 29.9,
+          "cuts": 3,
+          "cuts_per_min": 6.0,
+          "avg_shot_length_s": 7.5
+        }
+      ]
+    },
+    "speech": {
+      "avg_wpm": 122.5,
+      "per_video": [
+        {
+          "video": "17842524498435931.mp4",
+          "words": 63,
+          "duration_s": 33.5,
+          "wpm": 112.9
+        },
+        {
+          "video": "17843878014370924.mp4",
+          "words": 60,
+          "duration_s": 29.9,
+          "wpm": 120.6
+        },
+        {
+          "video": "17842834806539437.mp4",
+          "words": 77,
+          "duration_s": 41.2,
+          "wpm": 112.2
+        },
+        {
+          "video": "17843383557264449.mp4",
+          "words": 112,
+          "duration_s": 54.1,
+          "wpm": 124.2
+        },
+        {
+          "video": "17843293098317721.mp4",
+          "words": 92,
+          "duration_s": 38.7,
+          "wpm": 142.8
+        }
+      ]
+    },
+    "signature_ngrams": [
+      {
+        "ngram": "comments and i'll",
+        "count": 4
+      },
+      {
+        "ngram": "send you link",
+        "count": 3
+      },
+      {
+        "ngram": "it into video",
+        "count": 2
+      },
+      {
+        "ngram": "prompt to customize",
+        "count": 2
+      },
+      {
+        "ngram": "photo of yourself",
+        "count": 2
+      },
+      {
+        "ngram": "photo and writing",
+        "count": 2
+      },
+      {
+        "ngram": "writing in text",
+        "count": 2
+      },
+      {
+        "ngram": "transform your photos",
+        "count": 2
+      },
+      {
+        "ngram": "add in rain",
+        "count": 2
+      },
+      {
+        "ngram": "photo into night",
+        "count": 2
+      }
+    ]
+  },
+  "style": {
+    "tone": "informative and engaging",
+    "sentence_rhythm": "Fast-paced with a mix of short and medium-length sentences, averaging around 100-140 words per minute, creating a dynamic flow that keeps the audience engaged.",
+    "persona": "tech-savvy guide or mentor, providing practical tips and tools for creative enhancement",
+    "hook_patterns": [
+      {
+        "pattern": "So here's a really cool trick for you to...",
+        "why_it_works": "This pattern creates curiosity and promises value, enticing viewers to stay for the reveal.",
+        "example": "So here's a really cool trick for you to blend two images together in Photoshop."
+      },
+      {
+        "pattern": "If you want to try this out, go to...",
+        "why_it_works": "Directly invites the audience to take action, making the content feel interactive and personal.",
+        "example": "If you want to try this out, go to www.rendernet.ai."
+      }
+    ],
+    "copy_structure": "The videos typically open with a hook that presents a problem or a cool trick, followed by a step-by-step explanation of how to use a tool or technique, and conclude with a call to action, encouraging viewers to engage further (e.g., comment for links).",
+    "signature_expressions": [
+      "comments and i'll",
+      "send you link",
+      "it into video",
+      "prompt to customize",
+      "photo of yourself",
+      "photo and writing",
+      "writing in text",
+      "transform your photos",
+      "add in rain",
+      "photo into night"
+    ],
+    "persuasion_tactics": [
+      "Urgency in calls to action (e.g., 'type AI in the comments')",
+      "Social proof by showcasing advanced capabilities of tools (e.g., 'Hollywood-level VFX')",
+      "Authority by demonstrating expertise in tools like Photoshop and AI technologies"
+    ],
+    "evidence_notes": "The analysis is based on a limited number of transcriptions, which may not capture the full range of the creator's style or techniques."
+  },
+  "editing": {
+    "cut_cadence": "Average of 11.6 cuts per minute, with varying rates across videos (14.3 cuts/min in one video, down to 1.6 cuts/min in another).",
+    "shot_types": "Predominantly medium shots and close-ups of the creator, with occasional b-roll and screen captures of clothing items or apps.",
+    "text_overlay_style": "Text overlays are used to highlight key points, often positioned at the top or bottom of the screen, with contrasting colors for visibility.",
+    "b_roll_usage": "B-roll is utilized to showcase clothing items and app interfaces, enhancing the main content.",
+    "visual_identity": "Bright, vibrant colors with a casual aesthetic; the creator often appears in various settings, including urban and indoor environments.",
+    "retention_tricks": [
+      "Quick cuts to maintain viewer engagement",
+      "Use of on-screen text to emphasize points",
+      "Incorporation of b-roll to visually support the narrative"
+    ],
+    "evidence_notes": "Specific details about transitions, camera movements, or the exact nature of the cuts cannot be determined from the available frames."
+  },
+  "thumbnail": null,
+  "audience": {
+    "primary_platform": "TikTok",
+    "followers_label": "263K",
+    "followers_display": "263K TT",
+    "secondary_display": "928K IG",
+    "note": "Public snapshot ~Jul 2026 (@rourke.heath TikTok; Meta/IG est.). Not live API."
+  }
+}

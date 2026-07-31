@@ -42,17 +42,45 @@ def get_creator_transcriptions(creator: str) -> list[dict]:
     return []
 
 
+def _is_junk_creator_name(name: str) -> bool:
+    """Skip test fixtures and OS noise so demos/API stay clean."""
+    if not name or name.startswith((".", "__")):
+        return True
+    n = name.lower()
+    return n.startswith("test_") or n.endswith("_test") or "rickroll" in n
+
+
 def list_creators() -> list[str]:
-    """Creators known from any source: videos dir, transcriptions or saved profiles."""
+    """Creators with a saved profile (demo seeds + finished analyses).
+
+    Incomplete local folders (videos only, no profile) are omitted so the
+    judge/demo path only shows click-ready creators with ffmpeg metrics already
+    baked into data/profiles/*.json. Custom ingest still works via POST /api/ingest.
+    """
     settings = get_settings()
-    names = set(load_transcriptions().keys())
-    if settings.videos_dir.exists():
-        names |= {
-            d.name for d in settings.videos_dir.iterdir() if d.is_dir() and not d.name.startswith((".", "__"))
-        }
-    if settings.profiles_dir.exists():
-        names |= {p.stem for p in settings.profiles_dir.glob("*.json")}
-    return sorted(names)
+    by_lower: dict[str, str] = {}
+
+    if not settings.profiles_dir.exists():
+        return []
+
+    for path in settings.profiles_dir.glob("*.json"):
+        if _is_junk_creator_name(path.stem):
+            continue
+        display = path.stem
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            # Require measured metrics so empty stubs never appear as demos
+            metrics = data.get("metrics")
+            if not isinstance(metrics, dict) or not metrics:
+                continue
+            creator = data.get("creator")
+            if isinstance(creator, str) and creator.strip():
+                display = creator.strip()
+        except (OSError, json.JSONDecodeError, TypeError):
+            continue
+        by_lower[display.lower()] = display
+
+    return sorted(by_lower.values(), key=str.lower)
 
 
 def profile_path(creator: str) -> Path:

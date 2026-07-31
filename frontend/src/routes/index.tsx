@@ -89,7 +89,7 @@ function humanizeError(err: unknown): string {
     return "Can't reach the API right now (cold start or offline). Wait ~20s and try again — or pick a seed creator.";
   }
   if (t.includes("429") || t.includes("rate limit")) {
-    return "Rate limit reached for new analyses this hour. Use a seed creator (jeffnippard / Bryan / kallaway) — unlimited demo cache.";
+    return "Rate limit reached for new analyses this hour. Use a seed creator (jeffnippard / kallaway / rourkeheath) — unlimited demo cache.";
   }
   if (t.includes("timeout") || t.includes("timed out")) {
     return "Request timed out. Server may be waking up — retry once, or use a pre-analyzed seed.";
@@ -221,6 +221,14 @@ type Profile = {
     suggestions: string[];
     evidence_notes: string;
   };
+  /** Cached public follower snapshot (not live social API). */
+  audience?: {
+    primary_platform?: string;
+    followers_label?: string;
+    followers_display?: string;
+    secondary_display?: string;
+    note?: string;
+  } | null;
 };
 
 type Hook = { text: string; pattern: string };
@@ -256,32 +264,42 @@ const STEPS: { id: StepId; label: string; hint: string; icon: typeof LinkIcon }[
   { id: "copy", label: "Script", hint: "shooting report", icon: Film },
 ];
 
-const SEED_NAMES = ["bryan", "jeffnippard", "kallaway"] as const;
+const SEED_NAMES = ["jeffnippard", "kallaway", "rourkeheath"] as const;
 
+// Seed card metrics + audience must match data/profiles/*.json (measured / cached, not live).
 const DEMO_CREATORS = [
-  {
-    name: "Bryan",
-    topic: "optimal morning routine for longevity",
-    tag: "Longevity",
-    desc: "Biohacking · data-driven tone · measured slow cuts",
-    metrics: { cuts: "12.4", wpm: "148", shot: "2.1s" },
-    accent: "from-emerald-500/25 to-primary/10",
-  },
   {
     name: "jeffnippard",
     topic: "science-based hypertrophy training",
     tag: "Fitness science",
-    desc: "Technical authority · fast cuts · proof-first hooks",
-    metrics: { cuts: "28.1", wpm: "172", shot: "1.1s" },
+    desc: "Technical authority · mid-tempo cuts · proof-first hooks",
+    // Must match data/profiles/jeffnippard.json metrics (measured).
+    metrics: { cuts: "17.9", wpm: "179.3", shot: "3.1s" },
+    followers: "8.56M YT",
+    followersNote: "YouTube · public snapshot ~Jul 2026",
     accent: "from-sky-500/25 to-primary/10",
   },
   {
     name: "kallaway",
     topic: "building consistent coding habits",
     tag: "Tech / productivity",
-    desc: "Story-driven · motivational cadence · clean B-roll",
-    metrics: { cuts: "18.6", wpm: "155", shot: "1.6s" },
+    desc: "Story-driven · fast cuts · high speech rate",
+    // Must match data/profiles/kallaway.json metrics (measured).
+    metrics: { cuts: "28.8", wpm: "216.5", shot: "2.0s" },
+    followers: "1.3M+ total",
+    followersNote: "Multi-platform · public snapshot ~Jul 2026",
     accent: "from-violet-500/25 to-primary/10",
+  },
+  {
+    name: "rourkeheath",
+    topic: "AI tools that turn product photos into UGC video",
+    tag: "AI tools / UGC",
+    desc: "Tutorial hooks · demo cadence · CTA for tool links",
+    // Must match data/profiles/rourkeheath.json metrics (measured).
+    metrics: { cuts: "11.6", wpm: "122.5", shot: "4.6s" },
+    followers: "263K TT · 928K IG",
+    followersNote: "TikTok + Instagram · public snapshot ~Jul 2026",
+    accent: "from-emerald-500/25 to-primary/10",
   },
 ] as const;
 
@@ -339,12 +357,18 @@ function Studio() {
     setAnalyzing(true);
     setError(null);
 
-    // Seed creator without links — skip ingestion, load cached profile directly
+    // Seed creator without links — require topic, then load cached profile (no re-measure)
     if (seed) {
+      if (theme.length < 3) {
+        setError("Enter your topic on the seed card (3+ characters) before Decode.");
+        setAnalyzing(false);
+        return;
+      }
       try {
         setJobStatus("Loading pre-analyzed profile…");
         const prof = await apiGet<Profile>(`/api/profile/${encodeURIComponent(name)}`);
         setProfile({ ...prof, style: healStyleForDisplay(prof) });
+        setTopic(theme);
         setStep("profile");
       } catch (e) {
         setError(humanizeError(e));
@@ -356,17 +380,20 @@ function Studio() {
     }
 
     if (name.length < 2 || validLinks.length < 1 || theme.length < 3) {
-      setError("Pick a seed creator, or enter a name, topic (3+ chars), and at least one public Shorts URL.");
+      setError("Pick a seed creator (with topic), or enter a name, topic (3+ chars), and at least one public Shorts URL.");
       setAnalyzing(false);
       return;
     }
 
     setJobStatus("Queuing ingestion…");
     try {
-      const { job_id } = await apiPost<{ job_id: string; remaining?: number }>("/api/ingest", {
-        creator: name,
-        urls: validLinks,
-      });
+      const { job_id } = await apiPost<{ job_id: string; remaining_creators?: number }>(
+        "/api/ingest",
+        {
+          creator: name,
+          urls: validLinks,
+        },
+      );
 
       await pollJob(job_id, setJobStatus);
 
@@ -760,6 +787,10 @@ function CreatorStep({
     (d) => d.name.toLowerCase() === creatorName.trim().toLowerCase(),
   );
   const [showAdvanced, setShowAdvanced] = useState(filled > 0 && !selectedDemo);
+  // Per-seed topic so judges set theme on the card before Decode (not only in custom flow).
+  const [seedTopics, setSeedTopics] = useState<Record<string, string>>(() =>
+    Object.fromEntries(DEMO_CREATORS.map((d) => [d.name, d.topic])),
+  );
 
   return (
     <div className="space-y-6 sm:space-y-8 md:space-y-10">
@@ -906,7 +937,8 @@ function CreatorStep({
                   Pick a seed creator — one tap
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-                  Cached profiles on IBM Code Engine. No upload. Topic is prefilled — Decode runs immediately.
+                  Cached ffmpeg metrics + style on disk. Set <span className="text-foreground/80">your topic</span> on the
+                  card, then Decode — no upload, no re-measure.
                 </p>
               </div>
               <Badge variant="outline" className="gap-1.5 text-[10px] border-success/40 text-success">
@@ -917,6 +949,8 @@ function CreatorStep({
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {DEMO_CREATORS.map((demo) => {
                 const active = selectedDemo?.name === demo.name;
+                const seedTopic = seedTopics[demo.name] ?? demo.topic;
+                const seedReady = seedTopic.trim().length >= 3;
                 return (
                   <div
                     key={demo.name}
@@ -933,6 +967,12 @@ function CreatorStep({
                         <div className="min-w-0">
                           <div className="font-display font-semibold text-base sm:text-lg truncate">{demo.name}</div>
                           <div className="text-[11px] text-muted-foreground mt-0.5">{demo.tag}</div>
+                          <div
+                            className="text-[10px] font-mono text-primary/90 mt-1 tabular-nums"
+                            title={demo.followersNote}
+                          >
+                            {demo.followers}
+                          </div>
                         </div>
                         <Badge
                           variant={active ? "default" : "secondary"}
@@ -963,14 +1003,32 @@ function CreatorStep({
                           </div>
                         ))}
                       </div>
-                      <p className="text-[10px] text-muted-foreground line-clamp-2 pt-1 flex-1">
-                        Topic: <span className="text-foreground/80">{demo.topic}</span>
-                      </p>
+                      <div className="space-y-1.5 pt-1 flex-1">
+                        <Label
+                          htmlFor={`seed-topic-${demo.name}`}
+                          className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                        >
+                          Your topic
+                        </Label>
+                        <Textarea
+                          id={`seed-topic-${demo.name}`}
+                          value={seedTopic}
+                          onChange={(e) =>
+                            setSeedTopics((prev) => ({ ...prev, [demo.name]: e.target.value }))
+                          }
+                          rows={2}
+                          placeholder="e.g. your niche theme for hooks & script"
+                          className="bg-background/60 resize-none text-xs min-h-[56px]"
+                        />
+                      </div>
                       <Button
                         type="button"
                         size="lg"
+                        disabled={!seedReady || analyzing}
                         className="w-full shadow-glow mt-1 h-12 touch-target text-sm sm:text-base"
-                        onClick={() => runAnalysis({ creator: demo.name, topic: demo.topic })}
+                        onClick={() =>
+                          runAnalysis({ creator: demo.name, topic: seedTopic.trim() })
+                        }
                       >
                         Decode formula
                         <ArrowRight className="h-4 w-4" />
@@ -1456,6 +1514,18 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
           <Badge variant="secondary" className="font-mono text-[10px]">
             {profile.creator}
           </Badge>
+          {profile.audience?.followers_display && (
+            <Badge
+              variant="outline"
+              className="font-mono text-[10px] border-primary/40 text-primary"
+              title={profile.audience.note ?? "Cached public follower snapshot"}
+            >
+              {profile.audience.followers_display}
+              {profile.audience.secondary_display
+                ? ` · ${profile.audience.secondary_display}`
+                : ""}
+            </Badge>
+          )}
         </div>
         <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-semibold leading-[1.1] sm:leading-[1.05]">
           Formula <span className="text-gradient">measured</span>, not guessed.
@@ -1572,8 +1642,10 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
                 profile.editing.text_overlay_style,
                 profile.editing.b_roll_usage,
                 profile.editing.visual_identity,
-                ...profile.editing.retention_tricks,
-              ].map((line) => (
+                ...(profile.editing.retention_tricks ?? []),
+              ]
+                .filter((line): line is string => Boolean(line && String(line).trim()))
+                .map((line) => (
                 <li key={line} className="flex gap-3">
                   <Check className="h-4 w-4 text-success shrink-0 mt-0.5" />
                   <span className="text-muted-foreground">{line}</span>

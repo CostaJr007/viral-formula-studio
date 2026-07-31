@@ -86,6 +86,8 @@ class CreatorProfile(BaseModel):
     style: CreatorStyle | None = None
     editing: EditingProfile | None = None
     thumbnail: ThumbnailAnalysis | None = None
+    # Cached public follower snapshot for demo UI (not live social API).
+    audience: dict | None = None
 
 
 class Fact(BaseModel):

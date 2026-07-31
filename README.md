@@ -26,7 +26,7 @@ Paste short-form links (or pick a seed creator) + your topic. The system **measu
 Seed creators are **pre-analyzed** — no upload, no wait for yt-dlp.
 
 1. Open **[vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud](https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud)**
-2. Tap **Decode formula** on **jeffnippard** (or Bryan / kallaway)
+2. Enter your **topic** on a seed card → **Decode formula** on **jeffnippard** (or kallaway / rourkeheath)
 3. Review the **measured** profile (cuts/min, WPM, style, editing)
 4. **Generate 10 hooks** → pick one
 5. **Write script** → shooting report (spoken copy + timeline + export `.md`)
@@ -121,7 +121,7 @@ Smoke checks against the live Code Engine apps:
 | IBM API fallback model | `meta-llama/llama-3-3-70b-instruct` (same project/key — no extra instance) |
 | Groq LLM fallback | **on** when `GROQ_API_KEY` is set (`llama-3.3-70b-versatile`) — survives watsonx token_quota |
 | OpenAI fallback | **off** (`openai_fallback=false`) |
-| `GET /api/creators` | Seeds **Bryan**, **jeffnippard**, **kallaway** with profiles |
+| `GET /api/creators` | Seeds **jeffnippard**, **kallaway**, **rourkeheath** with profiles |
 | `GET /api/profile/jeffnippard` | OK · metrics (e.g. cuts/min, WPM) + style + editing |
 | `GET /api/usage` | OK · rate window active |
 | Web UI | HTTP 200 · Viral Formula Studio loads |
@@ -213,7 +213,7 @@ studio/                 # Product engine (measure → analyze → create)
   parse.py · store.py · limits.py · schemas.py · …
 api.py                  # FastAPI (production)
 frontend/               # Wizard UI (seeds, light mode, mobile)
-data/profiles/          # Seed creators (bryan, jeffnippard, kallaway)
+data/profiles/          # Seed creators (jeffnippard, kallaway, rourkeheath)
 tests/                  # pytest — no API keys required
 docs/                   # Innovation, deploy, hackathon demo
 ```
@@ -262,3 +262,7 @@ Product decisions and honesty rules remain human-owned.
 
 © 2026 Costa Jr. All rights reserved.  
 Shared publicly for review as part of the **IBM AI Builders Challenge (July 2026)**.
+
+---
+
+\* Live demo currently runs on OpenAI/Groq — watsonx Lite tokens were exhausted. Stack and code still support IBM watsonx (Granite + Vision) via `MODEL_PROVIDER=watsonx`.

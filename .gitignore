@@ -21,7 +21,9 @@ videos/
 __MACOSX/
 .idea/
 
-# Local helper with secrets — never commit
+# Local helpers / scratch (may contain secrets â€” never commit)
 scripts/env-for-code-engine-console.txt
 tmp_local_api_smoke.py
+scratch_*.py
+test_tiktok.py
 

@@ -1,11 +1,11 @@
 """In-memory rate limiter — lightweight, no external dependencies.
 
 Two limits per IP (rolling 1-hour window):
-  1. Max 3 distinct creator analyses  (POST /api/ingest)
-  2. Max 3 dossier/PDF exports per creator  (POST /api/dossier)
+  1. Max 8 distinct non-seed creator analyses  (POST /api/ingest)
+  2. Max 8 dossier exports per creator  (POST /api/dossier)
 
-Hooks and copy endpoints are unconstrained — they're transient steps
-within the flow and don't hit external LLMs independently in practice.
+Seed creators (profile already on disk) do not consume the ingest quota.
+Hooks and copy endpoints are unconstrained for the demo flow.
 """
 
 from __future__ import annotations

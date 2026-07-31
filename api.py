@@ -82,8 +82,8 @@ class DossierRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-# Bump when ship-blocking ingest/copy fixes land — use to verify Code Engine pulled the new image
-API_BUILD = "2026-07-24-groq-key-check"
+# Bump when ship-blocking ingest/copy/seed fixes land — verify Code Engine pulled the new image
+API_BUILD = "2026-07-31-seeds-rourkeheath"
 
 
 def _health_payload() -> dict:
@@ -128,15 +128,24 @@ def health_alias() -> dict:
 
 @app.get("/api/creators")
 def list_creators() -> dict:
+    """List creators with a saved profile (demo seeds + finished analyses).
+
+    Incomplete folders (videos only, no profile) are omitted so the UI does not
+    show noise like half-ingested creators next to the seed demos.
+    Includes cached audience snapshot when present (not a live social API).
+    """
     creators = []
     for name in store.list_creators():
         profile = store.load_profile(name)
+        if profile is None:
+            continue
         creators.append(
             {
                 "name": name,
-                "has_profile": profile is not None,
-                "videos_analyzed": profile.videos_analyzed if profile else 0,
-                "has_metrics": bool(profile and profile.metrics),
+                "has_profile": True,
+                "videos_analyzed": profile.videos_analyzed,
+                "has_metrics": bool(profile.metrics),
+                "audience": profile.audience,
             }
         )
     return {"creators": creators}
@@ -179,7 +188,7 @@ async def _run_ingest_job(job_id: str, creator: str, urls: list[str]) -> None:
                 "No video could be ingested. "
                 f"{detail_txt}. "
                 "Tip: one public YouTube Shorts link is enough (any row), or use seed "
-                "creators bryan / jeffnippard / kallaway without links."
+                "creators jeffnippard / kallaway / rourkeheath without links."
             )
             return
 
@@ -208,7 +217,7 @@ async def start_ingest(req: IngestRequest, request: Request) -> dict:
             status_code=400,
             detail=(
                 "No valid http(s) URLs. Paste a full YouTube Shorts link, "
-                "or use seed creators bryan / jeffnippard / kallaway without links."
+                "or use seed creators jeffnippard / kallaway / rourkeheath without links."
             ),
         )
 
@@ -255,7 +264,7 @@ def get_profile(creator: str) -> dict:
             status_code=404,
             detail=(
                 f"No profile for '{creator}' — run Decode first, "
-                "or use seed creators bryan / jeffnippard / kallaway."
+                "or use seed creators jeffnippard / kallaway / rourkeheath."
             ),
         )
     return profile.model_dump()
