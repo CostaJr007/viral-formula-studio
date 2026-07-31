@@ -309,6 +309,8 @@ function Studio() {
   const [links, setLinks] = useState<string[]>(["", "", "", "", ""]);
   const [topic, setTopic] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  /** Seed = load disk cache only; ingest = full measure+LLM path. */
+  const [analysisMode, setAnalysisMode] = useState<"seed" | "ingest">("ingest");
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -344,28 +346,35 @@ function Studio() {
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
 
   /** Accept overrides so seed cards can one-tap decode without waiting on setState. */
-  async function runAnalysis(overrides?: { creator?: string; topic?: string }) {
+  async function runAnalysis(overrides?: {
+    creator?: string;
+    topic?: string;
+    /** Seed cards always load cache — ignore leftover links in the advanced form. */
+    forceSeed?: boolean;
+  }) {
     const name = (overrides?.creator ?? creatorName).trim();
     const theme = (overrides?.topic ?? topic).trim();
     if (overrides?.creator) setCreatorName(overrides.creator);
     if (overrides?.topic) setTopic(overrides.topic);
 
-    const seed =
-      SEED_NAMES.includes(name.toLowerCase() as (typeof SEED_NAMES)[number]) &&
-      validLinks.length === 0;
+    const isSeedName = SEED_NAMES.includes(
+      name.toLowerCase() as (typeof SEED_NAMES)[number],
+    );
+    // Cache path: known seed with no links, or explicit forceSeed from demo cards.
+    const seed = isSeedName && (overrides?.forceSeed === true || validLinks.length === 0);
 
-    setAnalyzing(true);
     setError(null);
 
     // Seed creator without links — require topic, then load cached profile (no re-measure)
     if (seed) {
       if (theme.length < 3) {
         setError("Enter your topic on the seed card (3+ characters) before Decode.");
-        setAnalyzing(false);
         return;
       }
+      setAnalysisMode("seed");
+      setAnalyzing(true);
+      setJobStatus("Opening cached formula…");
       try {
-        setJobStatus("Loading pre-analyzed profile…");
         const prof = await apiGet<Profile>(`/api/profile/${encodeURIComponent(name)}`);
         setProfile({ ...prof, style: healStyleForDisplay(prof) });
         setTopic(theme);
@@ -381,10 +390,11 @@ function Studio() {
 
     if (name.length < 2 || validLinks.length < 1 || theme.length < 3) {
       setError("Pick a seed creator (with topic), or enter a name, topic (3+ chars), and at least one public Shorts URL.");
-      setAnalyzing(false);
       return;
     }
 
+    setAnalysisMode("ingest");
+    setAnalyzing(true);
     setJobStatus("Queuing ingestion…");
     try {
       const { job_id } = await apiPost<{ job_id: string; remaining_creators?: number }>(
@@ -699,6 +709,7 @@ function Studio() {
                 setTopic={setTopic}
                 canAnalyze={canAnalyze}
                 analyzing={analyzing}
+                analysisMode={analysisMode}
                 jobStatus={jobStatus}
                 runAnalysis={runAnalysis}
               />
@@ -768,6 +779,7 @@ function CreatorStep({
   setTopic,
   canAnalyze,
   analyzing,
+  analysisMode,
   jobStatus,
   runAnalysis,
 }: {
@@ -779,8 +791,13 @@ function CreatorStep({
   setTopic: (v: string) => void;
   canAnalyze: boolean;
   analyzing: boolean;
+  analysisMode: "seed" | "ingest";
   jobStatus: string | null;
-  runAnalysis: (overrides?: { creator?: string; topic?: string }) => void;
+  runAnalysis: (overrides?: {
+    creator?: string;
+    topic?: string;
+    forceSeed?: boolean;
+  }) => void;
 }) {
   const filled = links.filter((l) => l.trim().startsWith("http")).length;
   const selectedDemo = DEMO_CREATORS.find(
@@ -923,7 +940,11 @@ function CreatorStep({
       </header>
 
       {analyzing ? (
-        <AnalysisProgress jobStatus={jobStatus} />
+        analysisMode === "seed" ? (
+          <SeedCacheProgress statusLine={jobStatus} />
+        ) : (
+          <AnalysisProgress jobStatus={jobStatus} />
+        )
       ) : (
         <>
           {/* Demo creators — primary path for judges */}
@@ -1027,7 +1048,11 @@ function CreatorStep({
                         disabled={!seedReady || analyzing}
                         className="w-full shadow-glow mt-1 h-12 touch-target text-sm sm:text-base"
                         onClick={() =>
-                          runAnalysis({ creator: demo.name, topic: seedTopic.trim() })
+                          runAnalysis({
+                            creator: demo.name,
+                            topic: seedTopic.trim(),
+                            forceSeed: true,
+                          })
                         }
                       >
                         Decode formula
@@ -1371,6 +1396,51 @@ function AnalysisProgress({ jobStatus }: { jobStatus: string | null }) {
       statusLine={jobStatus}
       mode="analysis"
     />
+  );
+}
+
+/** Seed path: profile already measured and cached — never show the 30–90s measure UI. */
+function SeedCacheProgress({ statusLine }: { statusLine?: string | null }) {
+  return (
+    <Card className="p-6 sm:p-8 border-border/60 bg-card/80 space-y-5 max-w-lg mx-auto animate-studio-in">
+      <div className="flex items-start gap-4">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-success/15 text-success shrink-0">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </span>
+        <div className="min-w-0 space-y-1.5">
+          <h2 className="font-display text-lg sm:text-xl font-semibold leading-tight">
+            Loading cached formula
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Pre-analyzed seed — ffmpeg metrics, style and editing are already on disk.
+            No re-download, no re-measure. Usually under a few seconds (or ~20s on cold start).
+          </p>
+        </div>
+      </div>
+      <div className="rounded-lg border border-success/30 bg-success/5 px-3 py-2.5 text-xs text-muted-foreground">
+        <span className="font-medium text-success">Cache hit</span>
+        {" · "}
+        {statusLine?.trim() || "Reading profile from API…"}
+      </div>
+      <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-muted-foreground">
+        {[
+          { k: "Measure", v: "Done (cached)" },
+          { k: "Style", v: "Done (cached)" },
+          { k: "Editing", v: "Done (cached)" },
+        ].map((row) => (
+          <li
+            key={row.k}
+            className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-2 flex items-center gap-2"
+          >
+            <Check className="h-3.5 w-3.5 text-success shrink-0" />
+            <span>
+              <span className="text-foreground font-medium">{row.k}</span>
+              <span className="text-muted-foreground"> · {row.v}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 
