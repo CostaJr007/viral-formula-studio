@@ -1,53 +1,87 @@
 # Viral Formula Studio
 
-**Multimodal reverse engineering of a content creator’s viral formula.**
+**Multimodal reverse engineering of a content creator’s viral formula — measured first, then interpreted by AI.**
 
-Paste short-form links (or pick a seed creator) + your topic. The system **measures** cuts, speech rate and patterns with ffmpeg, **decodes** style with IBM Granite 4 and editing grammar with Llama Vision on watsonx.ai, then delivers **10 hooks** and a **shoot-ready call-sheet script** (~60–90s) on *your* theme — in *your* voice.
+Most “AI for creators” tools do this: *paste a topic → model invents hooks and scripts*.  
+We do the opposite: **ffmpeg + Python measure real videos** (cuts/min, shot length, WPM, n-grams). Those numbers — plus style and editing profiles — become a **structured evidence pack** the LLM must follow. The model does not invent “fast cuts”; it **interprets measured context** and **transposes** the formula to *your* topic, in *your* voice.
 
-> **Inspiration, not imitation.** We hand you the notebook that used to take months to build.
+> **Inspiration, not imitation.** The notebook that used to take months to build — without cloning the influencer’s words.
 
 | | |
 |---|---|
 | **Live demo** | [vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud](https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud) |
 | **API** | `https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud` |
-| **Web** | `https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud` |
 | **Challenge** | IBM AI Builders · July 2026 · *Reimagine Creative Industries with AI* |
 | **Hosting** | IBM Cloud Code Engine (us-south) |
 | **Repo** | [CostaJr007/viral-formula-studio](https://github.com/CostaJr007/viral-formula-studio) |
 
 ![Demo](demo.gif)
 
-**IBM stack:** watsonx.ai (Granite 4 + Llama 3.2 Vision) · Code Engine · Container Registry · IBM Bob (dev partner)
+**IBM stack:** watsonx.ai (Granite 4 + Llama 3.2 Vision) · Code Engine · Container Registry · **IBM Bob** (architecture & ship partner)
+
+---
+
+## Challenge fit (July — Creative Industries)
+
+Judges score **technical execution, innovation, challenge fit, implementation, feasibility**. How this project maps:
+
+| Criterion | How we hit it |
+|-----------|----------------|
+| **Creative industries** | Tool for short-form creators: reverse-engineer *what works*, then produce hooks + a shoot-ready call sheet — not a generic chatbot |
+| **Innovation** | **Deterministic-first pipeline**: measure before any LLM; multimodal (metrics + text + vision); honesty placeholders when facts are missing |
+| **Technical execution** | Modular `studio/` engine, Pydantic structured outputs, rate limits, seed cache, pytest suite, live Code Engine deploy |
+| **Implementation** | End-to-end product: React wizard + FastAPI + ffmpeg + provider factory (watsonx primary path in code) |
+| **Feasibility** | Working prototype online; pre-analyzed seed creators so judges decode in seconds; fallbacks when Lite quota fails |
+
+**What we are *not*:** another prompt wrapper that asks an LLM to “write viral scripts like [creator]” from vibes alone.
 
 ---
 
 ## For judges (2 minutes)
 
-Seed creators are **pre-analyzed** — no upload, no wait for yt-dlp.
+Seed creators are **pre-analyzed** (metrics + style + editing already on disk). Decode loads the **cache** — no re-download, no re-ffmpeg.
 
-1. Open **[vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud](https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud)**
-2. Enter your **topic** on a seed card → **Decode formula** on **jeffnippard** (or kallaway / rourkeheath)
-3. Review the **measured** profile (cuts/min, WPM, style, editing)
-4. **Generate 10 hooks** → pick one
+1. Open the **[live demo](https://vfs-web.2cfhg08pznl4.us-south.codeengine.appdomain.cloud)**
+2. Enter **your topic** on a seed card → **Decode formula** (**jeffnippard** / **kallaway** / **rourkeheath**)
+3. Review the **measured** profile (cuts/min, WPM, shot length, style, editing grammar)
+4. **Generate 10 hooks** → pick one  
 5. **Write script** → shooting report (spoken copy + timeline + export `.md`)
 
-Optional: light/dark toggle · **New topic** reuses the same creator formula · custom Shorts via *Or analyze your own creator*.
+Optional: system/light/dark theme · **New topic** reuses the same formula · custom Shorts under *Or analyze your own creator*.
+
+> **Cold start:** free-tier Code Engine may scale to zero (~20–90s first hit). After that, seed Decode is a cache read. Use **min-scale 1** on pitch day.
 
 ---
 
-## Problem
+## Why this is different (the product thesis)
 
-Creators spend weeks watching others and still **guess** what works — hooks, cut pace, speech rhythm. Generic AI writers invent claims (“fast cuts”) without ever measuring a frame.
+### Generic AI copy tools
 
-## Solution
+```
+User topic + vague prompt  →  LLM  →  generic hooks/script
+                                 ↑
+                    prior knowledge + hallucination risk
+                    (“this creator uses fast cuts” — never measured)
+```
+
+### Viral Formula Studio
+
+```
+Real videos  →  MEASURE (ffmpeg, no AI)  →  numbers + n-grams
+            →  EVIDENCE (style + vision interpret numbers)
+            →  slim structured profile (JSON the model can follow)
+User topic  →  SCOUT facts (Tavily, cited)  →  CREATE hooks/script
+            →  LLM constrained by evidence pack + word budget + honesty rules
+```
 
 | Principle | What we do |
 |-----------|------------|
-| **Measured, not guessed** | ffmpeg/Python: cuts/min, shot length, WPM, n-grams — before any LLM |
-| **Multimodal evidence** | Transcripts → Granite 4 · frames → Llama Vision · metrics stay ground truth |
-| **Transpose, don’t clone** | Patterns applied to *your* topic; user voice stays |
+| **Measured, not guessed** | cuts/min, shot length, WPM, signature n-grams **before** any generation |
+| **Context the LLM understands** | Compact Pydantic/JSON profile (metrics + hook patterns + editing grammar) injected into prompts — not a wall of free text |
+| **Multimodal evidence** | Transcripts → style · frames → editing · metrics stay ground truth |
+| **Transpose, don’t clone** | Same *technique*, your *topic* and voice |
 | **Honesty by design** | `evidence_notes`, `unconfirmed`, `[INSERT: …]` when facts are missing |
-| **Ship-ready** | Live on Code Engine, rate limits, seed cache, mobile + light mode |
+| **Ship-ready** | Live demo, seed cache, rate limits, mobile-friendly UI |
 
 Deep dive: [docs/INNOVATION.md](docs/INNOVATION.md)
 
@@ -60,9 +94,9 @@ INPUT                         PIPELINE                              OUTPUT
 ─────                         ────────                              ──────
 Seed creator  ──┐
   or            ├──▶  0 MEASURE   ffmpeg (no AI)              ──▶  Profile
-1–5 Shorts      │     1 EVIDENCE  Granite style ∥ Vision      ──▶  10 hooks
-+ your topic  ──┘     2 SCOUT     Tavily (topic facts, cached)──▶  Shooting script
-                      3 CREATE    Granite hooks + copy        ──▶  Call-sheet report
+1–5 Shorts      │     1 EVIDENCE  style ∥ vision              ──▶  10 hooks
++ your topic  ──┘     2 SCOUT     Tavily (topic facts)        ──▶  Shooting script
+                      3 CREATE    hooks + copy (evidence-guided)  Call-sheet report
 ```
 
 **Product defaults (short-form):** ~**170–200** spoken words · **~60–90s** · **6–9** timeline blocks.
@@ -74,23 +108,19 @@ Seed creator  ──┐
 | Measure | Cuts/min, shot length, WPM, n-grams | ffmpeg + Python |
 | Textual analyst | Tone, hooks, copy structure | Granite 4 (watsonx) |
 | Visual editor | Editing grammar from frames | Llama 3.2 Vision (watsonx) |
-| Thumbnail analyst | First-frame CTR signals | Llama 3.2 Vision |
-| Scout | Verified facts about **your topic** (not the influencer’s biography) | Tavily HTTP (cached per theme) |
-| Hook strategist | 10 hooks + quality filter | Granite 4 |
-| Script director | Call-sheet script + length repair/trim | Granite 4 |
-| Fallback (same watsonx API) | Second model id if Granite fails | e.g. Llama 3.3 70B — **no new cloud app** |
-| Fallback (demo safety) | Groq LLM if watsonx **token_quota / 403** | Same `GROQ_API_KEY` as Whisper · text only |
-| OpenAI | Opt-in last resort (`OPENAI_FALLBACK=true`) | Off by default |
+| Scout | Verified facts about **your topic** | Tavily (cached per theme) |
+| Hook strategist | 10 hooks + quality filter | Guided by measured profile |
+| Script director | Call-sheet + length repair/trim | Guided by measured profile + facts |
+| Fallback chain | Keep demo alive on quota errors | watsonx 2nd model → Groq → optional OpenAI |
 
-**Primary voice:** Granite 4 on watsonx.  
-**Chain:** Granite → IBM Llama (same project) → **Groq** (if `GROQ_API_KEY` set) so hooks/script still work when Lite quota is exhausted. Vision stays on watsonx; seed profiles already cache editing metrics.
+**Architecture rule:** provider switch lives only in `studio/factory.py`. Code path supports **watsonx as primary** for submission; live env may use OpenAI/Groq when Lite tokens are exhausted (see footnote).
 
-### Quality without extra agents
+### Quality without inventing “agents for agents”
 
-- Slim measured profile into prompts (metrics + formula only)
-- Hook post-filter (drop transcript garbage / near-dupes) + pad to 10
-- Copy: word budget, hook alignment repair, hard truncate to ~200 spoken words
-- Role-specific temperatures · parallel style/vision after metrics · research cache (hooks + copy share one Tavily call)
+- Slim measured profile into prompts (metrics + formula only — higher signal for the LLM)
+- Hook post-filter (drop garbage / near-dupes) + pad to 10
+- Copy: word budget, hook alignment, hard cap ~200 spoken words
+- Parallel style/vision after metrics · shared research cache for hooks + script
 
 ---
 
@@ -98,50 +128,34 @@ Seed creator  ──┐
 
 | Component | Service |
 |-----------|---------|
-| Language + vision | **IBM watsonx.ai** — `ibm/granite-4-h-small` + `meta-llama/llama-3-2-11b-vision-instruct` |
-| Hosting | **IBM Cloud Code Engine** — `vfs-api` + `vfs-web` (serverless) |
-| Images | Container registry via CI (GitHub Actions → Docker Hub → Code Engine) |
-| Build partner | **IBM Bob** — architecture, watsonx wiring, deploy debugging |
+| Language + vision | **IBM watsonx.ai** — Granite 4 + Llama 3.2 Vision |
+| Hosting | **IBM Cloud Code Engine** — `vfs-api` + `vfs-web` |
+| Images | CI (GitHub Actions → registry → Code Engine) |
+| Build partner | **IBM Bob** — modular engine, deploy, structured outputs |
 
 | App | Role | Notes |
 |-----|------|--------|
-| `vfs-api` | FastAPI + ffmpeg | Port 8000 · seeds in image · env secrets |
-| `vfs-web` | React UI | Port 4173 · `VITE_API_URL` at **build** time |
+| `vfs-api` | FastAPI + ffmpeg | Seeds in image · env secrets |
+| `vfs-web` | React UI | `VITE_API_URL` at **build** time |
 
-Deploy guide: [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md)
+Deploy: [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md)
 
-### Production status (verified 2026-07-24)
+### Production status (live smoke)
 
-Smoke checks against the live Code Engine apps:
-
-| Check | Result |
-|-------|--------|
-| `GET /api/health` | OK · `provider=watsonx` · `build` includes `ibm-fallback` |
-| Primary model | `ibm/granite-4-h-small` |
-| IBM API fallback model | `meta-llama/llama-3-3-70b-instruct` (same project/key — no extra instance) |
-| Groq LLM fallback | **on** when `GROQ_API_KEY` is set (`llama-3.3-70b-versatile`) — survives watsonx token_quota |
-| OpenAI fallback | **off** (`openai_fallback=false`) |
-| `GET /api/creators` | Seeds **jeffnippard**, **kallaway**, **rourkeheath** with profiles |
-| `GET /api/profile/jeffnippard` | OK · metrics (e.g. cuts/min, WPM) + style + editing |
-| `GET /api/usage` | OK · rate window active |
-| Web UI | HTTP 200 · Viral Formula Studio loads |
-| CORS | Web origin allowed on API |
+| Check | Expected |
+|-------|----------|
+| `GET /api/health` | `status=ok`, `build` present |
+| `GET /api/creators` | **jeffnippard**, **kallaway**, **rourkeheath** (profiles + metrics) |
+| `GET /api/profile/{seed}` | metrics + style + editing (+ audience snapshot) |
+| Seed Decode | **Cache load** — no full re-measure UI |
+| Web UI | Wizard, topic on seed cards, social follower badge, theme toggle |
 
 ```bash
 curl -s https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud/api/health
-# {"status":"ok","provider":"watsonx","build":"...","model":"ibm/granite-4-h-small",
-#  "fallback_model":"meta-llama/llama-3-3-70b-instruct","openai_fallback":false}
+curl -s https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud/api/creators
 ```
 
-**If hooks/copy return 502:** often watsonx **token quota / 403** on Lite. The API retries **IBM fallback model**, then **Groq LLM** (needs `GROQ_API_KEY` on `vfs-api`). After deploying the Groq fallback build, hooks should work even with watsonx quota exhausted.
-
-**Production checklist**
-
-- Rate limit: 8 new creators / IP / hour (seeds unlimited)
-- Health: `GET /api/health` → `status`, `provider`, `build`, `model`, `fallback_model`
-- Cold start ~30–90s on free tier (min-scale 0); use **min-scale 1** on pitch day
-- Prefer public **YouTube Shorts** in cloud; TikTok/IG may block datacenter IPs
-- Confirm watsonx Lite quota before a live pitch (seed decode works offline of LLM; hooks/script need inference)
+**Pitch checklist:** min-scale 1 if possible · public YouTube Shorts for custom ingest · seeds unlimited under rate limits · first hit may cold-start.
 
 ---
 
@@ -149,10 +163,10 @@ curl -s https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud/api/hea
 
 | Layer | Stack |
 |-------|--------|
-| AI | watsonx.ai · Agno 2.7 · structured Pydantic outputs |
+| AI | watsonx.ai · Agno · structured Pydantic outputs |
 | API | Python 3.12 · FastAPI · uvicorn |
 | UI | React 19 · Vite · TanStack Start · Tailwind 4 · shadcn/ui |
-| Media | yt-dlp · ffmpeg · Groq Whisper (when captions fail) |
+| Media | yt-dlp · ffmpeg · Whisper fallback when captions fail |
 | Facts | Tavily |
 | Tests | pytest (no live keys) · ruff |
 
@@ -173,25 +187,20 @@ IBM_WATSONX_API_KEY=
 IBM_WATSONX_PROJECT_ID=
 IBM_WATSONX_URL=https://us-south.ml.cloud.ibm.com
 WATSONX_MODEL_ID=ibm/granite-4-h-small
-WATSONX_FALLBACK_MODEL_ID=meta-llama/llama-3-3-70b-instruct   # same API/project
+WATSONX_FALLBACK_MODEL_ID=meta-llama/llama-3-3-70b-instruct
 WATSONX_VISION_MODEL_ID=meta-llama/llama-3-2-11b-vision-instruct
 OPENAI_FALLBACK=false
-OPENAI_API_KEY=          # only if OPENAI_FALLBACK=true
-GROQ_API_KEY=            # Whisper + LLM text fallback
-GROQ_LLM_MODEL_ID=llama-3.3-70b-versatile
+OPENAI_API_KEY=
+GROQ_API_KEY=            # Whisper + optional LLM fallback
 GROQ_LLM_FALLBACK=true
-TAVILY_API_KEY=          # topic fact-check
+TAVILY_API_KEY=
 ```
 
 ```bash
 uv run python api.py                       # http://localhost:8000
 cd frontend && npm install && npm run dev  # http://localhost:3000
-```
-
-```bash
 curl -s http://localhost:8000/api/health
 uv run pytest
-uv run ruff check .
 ```
 
 ---
@@ -199,38 +208,29 @@ uv run ruff check .
 ## Project structure
 
 ```
-studio/                 # Product engine (measure → analyze → create)
-  config.py             # Settings / env
-  factory.py            # Provider switch + fallback + per-role temperature
+studio/                 # Engine: measure → evidence → create
   metrics.py            # Deterministic measurements (no LLM)
-  analyze_text.py       # CreatorStyle
-  analyze_visual.py     # EditingProfile
-  analyze_thumbnail.py  # ThumbnailAnalysis
-  research.py           # Tavily scout (cached)
-  create.py             # Hooks + shooting script + quality gates
-  script_format.py      # Pipe script → blocks + spoken_copy
-  pipeline.py           # Per-creator orchestration (parallel LLM stages)
-  parse.py · store.py · limits.py · schemas.py · …
-api.py                  # FastAPI (production)
-frontend/               # Wizard UI (seeds, light mode, mobile)
-data/profiles/          # Seed creators (jeffnippard, kallaway, rourkeheath)
-tests/                  # pytest — no API keys required
-docs/                   # Innovation, deploy, hackathon demo
+  factory.py            # Provider switch + fallbacks
+  analyze_text.py · analyze_visual.py · create.py · research.py · …
+api.py                  # FastAPI production API
+frontend/               # 5-step wizard (seeds, mobile, theme)
+data/profiles/          # Seed creators (pre-measured demos)
+tests/                  # pytest — including seed contract tests
+docs/                   # Innovation + deploy
 ```
 
-### API
+### API (summary)
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/health` | Status + provider + build id |
-| GET | `/api/creators` | Listed / seed creators |
-| POST | `/api/ingest` | 1–5 URLs → async job |
-| GET | `/api/jobs/{id}` | Job status |
-| GET | `/api/profile/{creator}` | Cached profile |
-| POST | `/api/hooks` | 10 hooks (+ optional client profile) |
-| POST | `/api/copy` | Script payload (`blocks`, `spoken_copy`, word count) |
+| GET | `/api/health` | Status + provider + build |
+| GET | `/api/creators` | Seed / listed creators |
+| GET | `/api/profile/{creator}` | Cached measured profile |
+| POST | `/api/hooks` | 10 hooks (profile + topic) |
+| POST | `/api/copy` | Script (`blocks`, `spoken_copy`, word count) |
+| POST | `/api/ingest` | Custom URLs → async analyze job |
+| GET | `/api/jobs/{id}` | Job poll |
 | POST | `/api/dossier` | Full markdown playbook |
-| GET | `/api/usage` | Rate-limit remaining |
 
 ---
 
@@ -240,19 +240,18 @@ docs/                   # Innovation, deploy, hackathon demo
 |-----|----------|
 | [docs/INNOVATION.md](docs/INNOVATION.md) | Why measured + multimodal + IBM |
 | [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md) | Code Engine deploy |
-| [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md) | Alternate host notes |
 | [AGENTS.md](AGENTS.md) | Contributor / agent rules |
 
 ---
 
 ## How IBM Bob was used
 
-Bob was a **spec-driven build partner**, not a black-box code dump:
+Bob was a **spec-driven build partner**, not a black-box dump:
 
-- Modular `studio/` engine and provider factory (watsonx primary, OpenAI fallback)
-- Structured-output recovery (`parse.py`) and script normalization
-- Code Engine deploy, CORS, and free-tier constraints
-- Test suite expansion for metrics/schemas without live LLM keys
+- Modular `studio/` engine and provider factory
+- Structured-output recovery and script normalization
+- Code Engine deploy, CORS, free-tier constraints
+- Test suite for metrics/schemas/seeds without live LLM keys
 
 Product decisions and honesty rules remain human-owned.
 
@@ -261,8 +260,8 @@ Product decisions and honesty rules remain human-owned.
 ## License
 
 © 2026 Costa Jr. All rights reserved.  
-Shared publicly for review as part of the **IBM AI Builders Challenge (July 2026)**.
+Shared publicly for review as part of the **IBM AI Builders Challenge (July 2026)** — *Reimagine Creative Industries with AI*.
 
 ---
 
-\* Live demo currently runs on OpenAI/Groq — watsonx Lite tokens were exhausted. Stack and code still support IBM watsonx (Granite + Vision) via `MODEL_PROVIDER=watsonx`.
+\* Live demo may run on OpenAI/Groq when **watsonx Lite tokens are exhausted**. The architecture and code still treat **IBM watsonx (Granite + Vision)** as the primary submission stack via `MODEL_PROVIDER=watsonx`.
