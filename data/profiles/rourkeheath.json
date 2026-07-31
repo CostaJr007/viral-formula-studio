@@ -175,10 +175,9 @@
   },
   "thumbnail": null,
   "audience": {
-    "primary_platform": "TikTok",
-    "followers_label": "263K",
-    "followers_display": "263K TT",
-    "secondary_display": "928K IG",
-    "note": "Public snapshot ~Jul 2026 (@rourke.heath TikTok; Meta/IG est.). Not live API."
+    "primary_platform": "Instagram",
+    "followers_label": "928K",
+    "followers_display": "928K",
+    "note": "Instagram · public snapshot ~Jul 2026 (larger than TikTok ~263K). Not live API."
   }
 }

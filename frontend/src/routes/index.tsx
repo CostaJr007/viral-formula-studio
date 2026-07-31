@@ -38,6 +38,77 @@ import { Textarea } from "@/components/ui/textarea";
 import { useTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 
+/** Primary network for demo UI — only the platform with the largest public audience. */
+type SocialPlatform = "youtube" | "instagram";
+
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function SocialFollowers({
+  platform,
+  count,
+  note,
+  className,
+  size = "md",
+}: {
+  platform: SocialPlatform;
+  count: string;
+  note?: string;
+  className?: string;
+  size?: "sm" | "md";
+}) {
+  const iconCls = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4 sm:h-5 sm:w-5";
+  const textCls =
+    size === "sm"
+      ? "text-xs sm:text-sm font-semibold tabular-nums"
+      : "text-sm sm:text-base font-semibold tabular-nums";
+  const label = platform === "youtube" ? "YouTube" : "Instagram";
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-1.5 sm:gap-2 min-w-0",
+        platform === "youtube" ? "text-red-500" : "text-pink-500",
+        className,
+      )}
+      title={note ?? `${label} · public follower snapshot`}
+    >
+      {platform === "youtube" ? (
+        <Youtube className={cn(iconCls, "shrink-0")} aria-hidden />
+      ) : (
+        <InstagramIcon className={cn(iconCls, "shrink-0")} />
+      )}
+      <span className={cn("font-mono text-foreground truncate", textCls)}>
+        <span className="sr-only">{label} </span>
+        {count}
+      </span>
+    </div>
+  );
+}
+
+function themePlatformFromAudience(audience?: {
+  primary_platform?: string;
+} | null): SocialPlatform {
+  const p = (audience?.primary_platform || "").toLowerCase();
+  if (p.includes("instagram") || p === "ig") return "instagram";
+  return "youtube";
+}
+
 function ThemeToggle({ className }: { className?: string }) {
   const { theme, toggleTheme, isDark } = useTheme();
   return (
@@ -267,6 +338,7 @@ const STEPS: { id: StepId; label: string; hint: string; icon: typeof LinkIcon }[
 const SEED_NAMES = ["jeffnippard", "kallaway", "rourkeheath"] as const;
 
 // Seed card metrics + audience must match data/profiles/*.json (measured / cached, not live).
+// social = platform with the largest public audience only (YouTube or Instagram).
 const DEMO_CREATORS = [
   {
     name: "jeffnippard",
@@ -275,7 +347,8 @@ const DEMO_CREATORS = [
     desc: "Technical authority · mid-tempo cuts · proof-first hooks",
     // Must match data/profiles/jeffnippard.json metrics (measured).
     metrics: { cuts: "17.9", wpm: "179.3", shot: "3.1s" },
-    followers: "8.56M YT",
+    social: "youtube" as SocialPlatform,
+    followers: "8.56M",
     followersNote: "YouTube · public snapshot ~Jul 2026",
     accent: "from-sky-500/25 to-primary/10",
   },
@@ -286,8 +359,9 @@ const DEMO_CREATORS = [
     desc: "Story-driven · fast cuts · high speech rate",
     // Must match data/profiles/kallaway.json metrics (measured).
     metrics: { cuts: "28.8", wpm: "216.5", shot: "2.0s" },
-    followers: "1.3M+ total",
-    followersNote: "Multi-platform · public snapshot ~Jul 2026",
+    social: "youtube" as SocialPlatform,
+    followers: "1.3M+",
+    followersNote: "Largest public audience snapshot ~Jul 2026 (video platforms)",
     accent: "from-violet-500/25 to-primary/10",
   },
   {
@@ -297,8 +371,10 @@ const DEMO_CREATORS = [
     desc: "Tutorial hooks · demo cadence · CTA for tool links",
     // Must match data/profiles/rourkeheath.json metrics (measured).
     metrics: { cuts: "11.6", wpm: "122.5", shot: "4.6s" },
-    followers: "263K TT · 928K IG",
-    followersNote: "TikTok + Instagram · public snapshot ~Jul 2026",
+    // Instagram (~928K) > TikTok (~263K) — show only the larger network.
+    social: "instagram" as SocialPlatform,
+    followers: "928K",
+    followersNote: "Instagram · public snapshot ~Jul 2026 (largest network)",
     accent: "from-emerald-500/25 to-primary/10",
   },
 ] as const;
@@ -862,7 +938,7 @@ function CreatorStep({
               ].map((label) => (
                 <span
                   key={label}
-                  className="font-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-md border border-border/60 bg-background/50 text-muted-foreground"
+                  className="font-mono text-[11px] sm:text-xs uppercase tracking-wider px-2.5 py-1 rounded-md border border-border/60 bg-background/50 text-muted-foreground"
                 >
                   {label}
                 </span>
@@ -874,16 +950,18 @@ function CreatorStep({
           <div className="lg:col-span-2 relative order-last lg:order-none">
             <div className="rounded-xl border border-primary/30 bg-background/60 backdrop-blur-sm p-3 sm:p-4 shadow-glow space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-primary">
+                <span className="text-[11px] sm:text-xs font-mono uppercase tracking-[0.16em] text-primary">
                   Output preview
                 </span>
-                <Badge variant="secondary" className="text-[9px]">
+                <Badge variant="secondary" className="text-[10px] sm:text-[11px]">
                   Shooting report
                 </Badge>
               </div>
               <div className="rounded-lg border border-border/50 bg-secondary/30 p-3 space-y-2">
-                <div className="text-[9px] font-mono text-muted-foreground uppercase">Hook · 0:00–0:03</div>
-                <p className="text-sm font-display font-semibold leading-snug">
+                <div className="text-[10px] sm:text-[11px] font-mono text-muted-foreground uppercase">
+                  Hook · 0:00–0:03
+                </div>
+                <p className="text-sm sm:text-base font-display font-semibold leading-snug">
                   &ldquo;Stop guessing what works — measure it.&rdquo;
                 </p>
               </div>
@@ -893,13 +971,13 @@ function CreatorStep({
                   { k: "WPM", v: "172" },
                   { k: "words", v: "186" },
                 ].map((m) => (
-                  <div key={m.k} className="rounded-md bg-background/50 border border-border/40 py-1.5">
-                    <div className="font-mono text-xs font-semibold tabular-nums">{m.v}</div>
-                    <div className="text-[8px] uppercase text-muted-foreground">{m.k}</div>
+                  <div key={m.k} className="rounded-md bg-background/50 border border-border/40 py-2">
+                    <div className="font-mono text-sm font-semibold tabular-nums">{m.v}</div>
+                    <div className="text-[10px] uppercase text-muted-foreground mt-0.5">{m.k}</div>
                   </div>
                 ))}
               </div>
-              <div className="space-y-1.5 text-[11px] text-muted-foreground">
+              <div className="space-y-1.5 text-xs sm:text-sm text-muted-foreground">
                 <div className="flex gap-2 items-start">
                   <span className="font-mono text-primary shrink-0">0:03</span>
                   <span>Proof beat · B-roll cut · retention pull</span>
@@ -909,7 +987,7 @@ function CreatorStep({
                   <span>CTA close · measured n-gram echo</span>
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground/80 leading-relaxed border-t border-border/40 pt-2">
+              <p className="text-xs text-muted-foreground/80 leading-relaxed border-t border-border/40 pt-2">
                 Real reports include timestamps, shot types, spoken copy & honesty notes.
               </p>
             </div>
@@ -931,8 +1009,8 @@ function CreatorStep({
                 <Icon className="h-4.5 w-4.5" />
               </span>
               <div>
-                <div className="font-display text-sm font-semibold">{label}</div>
-                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{text}</p>
+                <div className="font-display text-sm sm:text-base font-semibold">{label}</div>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">{text}</p>
               </div>
             </div>
           ))}
@@ -948,26 +1026,30 @@ function CreatorStep({
       ) : (
         <>
           {/* Demo creators — primary path for judges */}
-          <section className="space-y-4" aria-labelledby="seed-heading">
+          <section className="space-y-4 sm:space-y-5" aria-labelledby="seed-heading">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.22em] text-primary font-mono mb-1">
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary font-mono mb-1.5">
                   60-second judge path · pre-analyzed
                 </div>
-                <h2 id="seed-heading" className="font-display text-xl md:text-2xl font-semibold">
+                <h2 id="seed-heading" className="font-display text-2xl sm:text-3xl font-semibold leading-tight">
                   Pick a seed creator — one tap
                 </h2>
-                <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-                  Cached ffmpeg metrics + style on disk. Set <span className="text-foreground/80">your topic</span> on the
-                  card, then Decode — no upload, no re-measure.
+                <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-xl leading-relaxed">
+                  Cached ffmpeg metrics + style on disk. Set{" "}
+                  <span className="text-foreground/90 font-medium">your topic</span> on the card, then Decode — no
+                  upload, no re-measure.
                 </p>
               </div>
-              <Badge variant="outline" className="gap-1.5 text-[10px] border-success/40 text-success">
-                <Zap className="h-3 w-3" /> 0 upload · cache ready
+              <Badge
+                variant="outline"
+                className="gap-1.5 text-[11px] sm:text-xs border-success/40 text-success shrink-0"
+              >
+                <Zap className="h-3.5 w-3.5" /> 0 upload · cache ready
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
               {DEMO_CREATORS.map((demo) => {
                 const active = selectedDemo?.name === demo.name;
                 const seedTopic = seedTopics[demo.name] ?? demo.topic;
@@ -976,36 +1058,37 @@ function CreatorStep({
                   <div
                     key={demo.name}
                     className={cn(
-                      "text-left rounded-xl sm:rounded-2xl border p-4 sm:p-5 transition-all relative overflow-hidden flex flex-col",
+                      "text-left rounded-2xl border p-4 sm:p-5 md:p-6 transition-all relative overflow-hidden flex flex-col min-h-0",
                       active
                         ? "border-primary bg-primary/10 shadow-glow ring-1 ring-primary/40"
                         : "border-border/60 bg-card/60 hover:border-primary/40 hover:bg-card",
                     )}
                   >
                     <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", demo.accent)} />
-                    <div className="relative space-y-3 flex-1 flex flex-col">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-display font-semibold text-base sm:text-lg truncate">{demo.name}</div>
-                          <div className="text-[11px] text-muted-foreground mt-0.5">{demo.tag}</div>
-                          <div
-                            className="text-[10px] font-mono text-primary/90 mt-1 tabular-nums"
-                            title={demo.followersNote}
-                          >
-                            {demo.followers}
+                    <div className="relative space-y-3.5 sm:space-y-4 flex-1 flex flex-col">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1.5">
+                          <div className="font-display font-semibold text-lg sm:text-xl truncate tracking-tight">
+                            {demo.name}
                           </div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">{demo.tag}</div>
+                          <SocialFollowers
+                            platform={demo.social}
+                            count={demo.followers}
+                            note={demo.followersNote}
+                          />
                         </div>
                         <Badge
                           variant={active ? "default" : "secondary"}
-                          className="text-[9px] uppercase tracking-wider shrink-0"
+                          className="text-[10px] sm:text-[11px] uppercase tracking-wider shrink-0 px-2.5 py-0.5"
                         >
                           {active ? "Selected" : "Demo"}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-none">
+                      <p className="text-sm sm:text-[15px] text-muted-foreground leading-relaxed line-clamp-3 sm:line-clamp-none">
                         {demo.desc}
                       </p>
-                      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1">
+                      <div className="grid grid-cols-3 gap-2 sm:gap-2.5 pt-0.5">
                         {[
                           { k: "cuts/min", v: demo.metrics.cuts },
                           { k: "WPM", v: demo.metrics.wpm },
@@ -1013,21 +1096,21 @@ function CreatorStep({
                         ].map((m) => (
                           <div
                             key={m.k}
-                            className="rounded-lg bg-background/50 border border-border/40 px-1.5 sm:px-2 py-1.5 text-center"
+                            className="rounded-xl bg-background/55 border border-border/40 px-2 sm:px-2.5 py-2 sm:py-2.5 text-center"
                           >
-                            <div className="font-mono text-[11px] sm:text-xs font-semibold text-foreground tabular-nums">
+                            <div className="font-mono text-sm sm:text-base font-semibold text-foreground tabular-nums leading-none">
                               {m.v}
                             </div>
-                            <div className="text-[8px] sm:text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5">
+                            <div className="text-[10px] sm:text-[11px] uppercase tracking-wide text-muted-foreground mt-1.5">
                               {m.k}
                             </div>
                           </div>
                         ))}
                       </div>
-                      <div className="space-y-1.5 pt-1 flex-1">
+                      <div className="space-y-2 pt-0.5 flex-1">
                         <Label
                           htmlFor={`seed-topic-${demo.name}`}
-                          className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                          className="text-xs sm:text-sm font-medium text-foreground/90"
                         >
                           Your topic
                         </Label>
@@ -1037,16 +1120,16 @@ function CreatorStep({
                           onChange={(e) =>
                             setSeedTopics((prev) => ({ ...prev, [demo.name]: e.target.value }))
                           }
-                          rows={2}
+                          rows={3}
                           placeholder="e.g. your niche theme for hooks & script"
-                          className="bg-background/60 resize-none text-xs min-h-[56px]"
+                          className="bg-background/60 resize-none text-sm sm:text-[15px] min-h-[72px] sm:min-h-[84px] leading-relaxed"
                         />
                       </div>
                       <Button
                         type="button"
                         size="lg"
                         disabled={!seedReady || analyzing}
-                        className="w-full shadow-glow mt-1 h-12 touch-target text-sm sm:text-base"
+                        className="w-full shadow-glow mt-1 h-12 sm:h-14 touch-target text-base font-semibold"
                         onClick={() =>
                           runAnalysis({
                             creator: demo.name,
@@ -1056,7 +1139,7 @@ function CreatorStep({
                         }
                       >
                         Decode formula
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
                       </Button>
                     </div>
                   </div>
@@ -1584,17 +1667,19 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
           <Badge variant="secondary" className="font-mono text-[10px]">
             {profile.creator}
           </Badge>
-          {profile.audience?.followers_display && (
-            <Badge
-              variant="outline"
-              className="font-mono text-[10px] border-primary/40 text-primary"
-              title={profile.audience.note ?? "Cached public follower snapshot"}
-            >
-              {profile.audience.followers_display}
-              {profile.audience.secondary_display
-                ? ` · ${profile.audience.secondary_display}`
-                : ""}
-            </Badge>
+          {(profile.audience?.followers_label || profile.audience?.followers_display) && (
+            <span className="inline-flex items-center rounded-full border border-border/60 bg-background/50 px-2.5 py-1">
+              <SocialFollowers
+                platform={themePlatformFromAudience(profile.audience)}
+                count={
+                  profile.audience.followers_label ||
+                  profile.audience.followers_display ||
+                  ""
+                }
+                note={profile.audience.note}
+                size="sm"
+              />
+            </span>
           )}
         </div>
         <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-semibold leading-[1.1] sm:leading-[1.05]">

@@ -190,9 +190,9 @@
     "evidence_notes": "Analyzed from local backup frame."
   },
   "audience": {
-    "primary_platform": "multi-platform",
+    "primary_platform": "YouTube",
     "followers_label": "1.3M+",
-    "followers_display": "1.3M+ total",
-    "note": "Public snapshot ~Jul 2026 (tech/AI creator, multi-platform). Not live API."
+    "followers_display": "1.3M+",
+    "note": "Largest public audience snapshot ~Jul 2026 (video platforms). Not live API."
   }
 }
