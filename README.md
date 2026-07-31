@@ -67,16 +67,23 @@ User topic + vague prompt  →  LLM  →  generic hooks/script
 ### Viral Formula Studio
 
 ```
-Real videos  →  MEASURE (ffmpeg, no AI)  →  numbers + n-grams
-            →  EVIDENCE (style + vision interpret numbers)
-            →  slim structured profile (JSON the model can follow)
-User topic  →  SCOUT facts (Tavily, cited)  →  CREATE hooks/script
-            →  LLM constrained by evidence pack + word budget + honesty rules
+Real videos
+  → INGEST       yt-dlp download
+  → SPEECH       YouTube captions first · Whisper fallback (Groq/OpenAI)
+  → CLEAN        regex cleanup · optional LLM polish · quality gate
+  → STORE        data/transcriptions.json (speech) + videos/ (files)
+  → MEASURE      ffmpeg + Python (cuts/min, shot length, WPM, n-grams) — no AI
+  → EVIDENCE     Granite reads transcripts · Vision reads frames
+  → PROFILE      slim Pydantic/JSON the model must follow
+User topic
+  → SCOUT        Tavily facts (cited)
+  → CREATE       hooks + shoot-ready script (evidence-guided, honesty rules)
 ```
 
 | Principle | What we do |
 |-----------|------------|
 | **Measured, not guessed** | cuts/min, shot length, WPM, signature n-grams **before** any generation |
+| **Speech before style** | Captions or Whisper → cleaned text → then Granite interprets real words |
 | **Context the LLM understands** | Compact Pydantic/JSON profile (metrics + hook patterns + editing grammar) injected into prompts — not a wall of free text |
 | **Multimodal evidence** | Transcripts → style · frames → editing · metrics stay ground truth |
 | **Transpose, don’t clone** | Same *technique*, your *topic* and voice |
@@ -89,34 +96,74 @@ Deep dive: [docs/INNOVATION.md](docs/INNOVATION.md)
 
 ## How it works
 
+Data is treated in a fixed order: **download → speech → clean → measure → LLM evidence → create**.  
+The LLM never invents cuts or WPM; it only interprets numbers and cleaned transcripts.
+
 ```
-INPUT                         PIPELINE                              OUTPUT
-─────                         ────────                              ──────
-Seed creator  ──┐
-  or            ├──▶  0 MEASURE   ffmpeg (no AI)              ──▶  Profile
-1–5 Shorts      │     1 EVIDENCE  style ∥ vision              ──▶  10 hooks
-+ your topic  ──┘     2 SCOUT     Tavily (topic facts)        ──▶  Shooting script
-                      3 CREATE    hooks + copy (evidence-guided)  Call-sheet report
+INPUT                              DATA PIPELINE                                   OUTPUT
+─────                              ─────────────                                   ──────
+Seed creator (cached)  ──┐
+  or                     │
+1–5 Shorts / links       ├──▶  0 INGEST      yt-dlp → videos/<creator>/
++ your topic           ──┘     1 SPEECH      captions (free) ──else──▶ Whisper
+                               2 CLEAN       regex + optional polish + speech gate
+                               3 STORE       transcriptions.json (incremental)
+                               4 MEASURE     ffmpeg + Python (no AI) ──▶ metrics
+                               5 EVIDENCE    style (Granite) ∥ vision (Llama)
+                               6 SCOUT       Tavily (topic facts, cited)
+                               7 CREATE      hooks + copy (evidence-guided)
+                                                                          ──▶ Profile
+                                                                          ──▶ 10 hooks
+                                                                          ──▶ Shooting script
+                                                                          ──▶ Call-sheet report
 ```
+
+**Speech path (stage 1–2):** prefer free YouTube/auto captions when available; if missing or too short, extract audio with ffmpeg and run **Whisper** (`whisper-large-v3-turbo` on Groq, or `whisper-1` on OpenAI). Then clean artifacts (HTML entities, broken contractions), optionally polish with the same LLM factory, and **reject** empty/error blobs so only usable speech reaches Granite.
 
 **Product defaults (short-form):** ~**170–200** spoken words · **~60–90s** · **6–9** timeline blocks.
 
-### Evidence stages (specialized, not one mega-prompt)
+### Pipeline stages (data treatment + specialized evidence)
 
-| Stage | Role | Engine |
-|-------|------|--------|
-| Measure | Cuts/min, shot length, WPM, n-grams | ffmpeg + Python |
-| Textual analyst | Tone, hooks, copy structure | Granite 4 (watsonx) |
-| Visual editor | Editing grammar from frames | Llama 3.2 Vision (watsonx) |
-| Scout | Verified facts about **your topic** | Tavily (cached per theme) |
-| Hook strategist | 10 hooks + quality filter | Guided by measured profile |
-| Script director | Call-sheet + length repair/trim | Guided by measured profile + facts |
-| Fallback chain | Keep demo alive on quota errors | watsonx 2nd model → Groq → optional OpenAI |
+| # | Stage | Role | Engine / store |
+|---|-------|------|----------------|
+| 0 | **Ingest** | Download short-form video from links | yt-dlp → `videos/<creator>/` |
+| 1 | **Speech** | Spoken words as text | YouTube captions **first**; **Whisper** fallback (Groq / OpenAI) |
+| 2 | **Clean** | Fix caption/Whisper noise; drop unusable text | Regex cleanup · optional LLM polish · quality gate (`studio/ingest.py`) |
+| 3 | **Store** | Persist speech for metrics + style | `data/transcriptions.json` |
+| 4 | **Measure** | Cuts/min, shot length, WPM, n-grams | ffmpeg + Python (`studio/metrics.py`) — **no LLM** |
+| 5a | **Textual analyst** | Tone, hooks, copy structure from **real transcripts** | **Granite 4** (watsonx) · `analyze_text.py` |
+| 5b | **Visual editor** | Editing grammar from frames | Llama 3.2 Vision (watsonx) · `analyze_visual.py` |
+| 6 | **Scout** | Verified facts about **your topic** | Tavily (cached per theme) |
+| 7a | **Hook strategist** | 10 hooks + quality filter | Guided by measured profile |
+| 7b | **Script director** | Call-sheet + length repair/trim | Guided by measured profile + facts |
+| — | **Fallback chain** | Keep demo alive on quota errors | watsonx 2nd model → Groq → optional OpenAI |
 
-**Architecture rule:** provider switch lives only in `studio/factory.py`. Code path supports **watsonx as primary** for submission; live env may use OpenAI/Groq when Lite tokens are exhausted (see footnote).
+```
+                     ┌─ captions OK ──────────────────────┐
+video file ──▶ speech branch                              ├──▶ CLEAN ──▶ STORE
+                     └─ no / short captions ──▶ Whisper ──┘         │
+                                                                    ▼
+                                                         transcripts.json
+                                                                    │
+                              frames + audio ──▶ MEASURE (ffmpeg, no AI)
+                                                    │
+                         ┌──────────────────────────┼──────────────────────────┐
+                         ▼                          ▼                          ▼
+                   style (Granite 4)          editing (Llama Vision)      metrics pack
+                   ← real transcripts         ← sampled frames            ← ground truth
+                         │                          │                          │
+                         └──────────────────────────┴──────────────────────────┘
+                                                    ▼
+                                         CreatorProfile (JSON)
+                                                    │
+                              topic ──▶ Scout ──▶ CREATE (hooks + script)
+```
+
+**Architecture rule:** provider switch lives only in `studio/factory.py`. Code path supports **watsonx as primary** for submission; live env may use OpenAI/Groq when Lite tokens are exhausted (see footnote). Whisper keys: `GROQ_API_KEY` (preferred) or `OPENAI_API_KEY`.
 
 ### Quality without inventing “agents for agents”
 
+- Captions/Whisper → clean speech **before** any style model sees the text
 - Slim measured profile into prompts (metrics + formula only — higher signal for the LLM)
 - Hook post-filter (drop garbage / near-dupes) + pad to 10
 - Copy: word budget, hook alignment, hard cap ~200 spoken words
@@ -166,7 +213,7 @@ curl -s https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud/api/cre
 | AI | watsonx.ai · Agno · structured Pydantic outputs |
 | API | Python 3.12 · FastAPI · uvicorn |
 | UI | React 19 · Vite · TanStack Start · Tailwind 4 · shadcn/ui |
-| Media | yt-dlp · ffmpeg · Whisper fallback when captions fail |
+| Media | yt-dlp · ffmpeg · captions-first speech · Whisper fallback · transcript clean/store |
 | Facts | Tavily |
 | Tests | pytest (no live keys) · ruff |
 
@@ -208,12 +255,17 @@ uv run pytest
 ## Project structure
 
 ```
-studio/                 # Engine: measure → evidence → create
+studio/                 # Engine: ingest → speech → clean → measure → evidence → create
+  ingest.py             # Links → download · captions / Whisper · clean · store
+  transcribe.py         # ffmpeg audio extract · Whisper API (Groq / OpenAI)
   metrics.py            # Deterministic measurements (no LLM)
+  analyze_text.py       # Granite: style from real transcriptions
+  analyze_visual.py     # Vision: editing from frames
   factory.py            # Provider switch + fallbacks
-  analyze_text.py · analyze_visual.py · create.py · research.py · …
+  create.py · research.py · …
 api.py                  # FastAPI production API
 frontend/               # 5-step wizard (seeds, mobile, theme)
+data/transcriptions.json  # Cleaned speech per creator/video
 data/profiles/          # Seed creators (pre-measured demos)
 tests/                  # pytest — including seed contract tests
 docs/                   # Innovation + deploy
