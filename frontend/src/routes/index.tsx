@@ -41,21 +41,46 @@ import { cn } from "@/lib/utils";
 /** Primary network for demo UI — only the platform with the largest public audience. */
 type SocialPlatform = "youtube" | "instagram";
 
-function InstagramIcon({ className }: { className?: string }) {
+/** Filled brand marks — more visible than thin Lucide outlines on dark/light cards. */
+function YoutubeMark({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      width="20"
+      height="20"
       className={className}
       aria-hidden
+      focusable="false"
     >
-      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
+      <path
+        fill="#FF0000"
+        d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8z"
+      />
+      <path fill="#fff" d="M9.75 15.5v-7l6.5 3.5-6.5 3.5z" />
+    </svg>
+  );
+}
+
+function InstagramMark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      className={className}
+      aria-hidden
+      focusable="false"
+    >
+      <defs>
+        <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#f58529" />
+          <stop offset="50%" stopColor="#dd2a7b" />
+          <stop offset="100%" stopColor="#8134af" />
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig-grad)" />
+      <circle cx="12" cy="12" r="4.2" fill="none" stroke="#fff" strokeWidth="1.8" />
+      <circle cx="17.2" cy="6.8" r="1.2" fill="#fff" />
     </svg>
   );
 }
@@ -73,7 +98,8 @@ function SocialFollowers({
   className?: string;
   size?: "sm" | "md";
 }) {
-  const iconCls = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4 sm:h-5 sm:w-5";
+  const iconBox =
+    size === "sm" ? "h-5 w-5 sm:h-5 sm:w-5" : "h-5 w-5 sm:h-6 sm:w-6";
   const textCls =
     size === "sm"
       ? "text-xs sm:text-sm font-semibold tabular-nums"
@@ -82,20 +108,23 @@ function SocialFollowers({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 sm:gap-2 min-w-0",
-        platform === "youtube" ? "text-red-500" : "text-pink-500",
+        "inline-flex items-center gap-2 min-w-0 rounded-full border border-border/60 bg-background/80 px-2.5 py-1 shadow-sm",
         className,
       )}
       title={note ?? `${label} · public follower snapshot`}
+      role="img"
+      aria-label={`${label} ${count} followers`}
     >
       {platform === "youtube" ? (
-        <Youtube className={cn(iconCls, "shrink-0")} aria-hidden />
+        <YoutubeMark className={cn(iconBox, "shrink-0 block")} />
       ) : (
-        <InstagramIcon className={cn(iconCls, "shrink-0")} />
+        <InstagramMark className={cn(iconBox, "shrink-0 block")} />
       )}
-      <span className={cn("font-mono text-foreground truncate", textCls)}>
-        <span className="sr-only">{label} </span>
+      <span className={cn("font-mono text-foreground truncate leading-none", textCls)}>
         {count}
+      </span>
+      <span className="text-[10px] sm:text-[11px] uppercase tracking-wide text-muted-foreground font-medium shrink-0">
+        {label}
       </span>
     </div>
   );
@@ -1668,18 +1697,16 @@ function ProfileStep({ profile, onNext }: { profile: Profile | null; onNext: () 
             {profile.creator}
           </Badge>
           {(profile.audience?.followers_label || profile.audience?.followers_display) && (
-            <span className="inline-flex items-center rounded-full border border-border/60 bg-background/50 px-2.5 py-1">
-              <SocialFollowers
-                platform={themePlatformFromAudience(profile.audience)}
-                count={
-                  profile.audience.followers_label ||
-                  profile.audience.followers_display ||
-                  ""
-                }
-                note={profile.audience.note}
-                size="sm"
-              />
-            </span>
+            <SocialFollowers
+              platform={themePlatformFromAudience(profile.audience)}
+              count={
+                profile.audience.followers_label ||
+                profile.audience.followers_display ||
+                ""
+              }
+              note={profile.audience.note}
+              size="sm"
+            />
           )}
         </div>
         <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-semibold leading-[1.1] sm:leading-[1.05]">
