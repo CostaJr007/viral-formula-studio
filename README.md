@@ -177,16 +177,43 @@ video file ──▶ speech branch                              ├──▶ CLE
 | Component | Service |
 |-----------|---------|
 | Language + vision | **IBM watsonx.ai** — Granite 4 + Llama 3.2 Vision |
-| Hosting | **IBM Cloud Code Engine** — `vfs-api` + `vfs-web` |
-| Images | CI (GitHub Actions → registry → Code Engine) |
+| Hosting | **IBM Cloud Code Engine** — `vfs-api` + `vfs-web` (serverless containers) |
+| Containers | **Docker** — root `Dockerfile` (API + ffmpeg) + `frontend/Dockerfile` (web) |
+| CI/CD | **GitHub Actions** — `docker-publish.yml` (Buildx → Docker Hub) |
+| Registry | Docker Hub images (`vfs-api` / `vfs-web`) → Code Engine runtime |
 | Build partner | **IBM Bob** — modular engine, deploy, structured outputs |
 
 | App | Role | Notes |
 |-----|------|--------|
-| `vfs-api` | FastAPI + ffmpeg | Seeds in image · env secrets |
-| `vfs-web` | React UI | `VITE_API_URL` at **build** time |
+| `vfs-api` | FastAPI + ffmpeg | Multi-stage-ready image · seeds in image · env secrets |
+| `vfs-web` | React UI | `VITE_API_URL` baked at **image build** time |
 
-Deploy: [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md)
+Deploy guides: [docs/deployment/DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md) · [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md)
+
+### DevOps & delivery (why this ships, not just demos)
+
+Hackathon demos die when they only run on one laptop. This project is built as a **containerized, CI-backed product path**:
+
+```
+git push (main)
+    → GitHub Actions (docker-publish)
+        → Docker Buildx
+            → push vfs-api:latest + vfs-web:latest (Docker Hub)
+                → IBM Cloud Code Engine pulls / rebuilds from Dockerfile
+                    → live demo + API (us-south)
+```
+
+| Practice | What we do | Where |
+|----------|------------|--------|
+| **Containerize** | API image with Python 3.12, `ffmpeg`, `uv`, seeds; web image for React preview | `Dockerfile`, `frontend/Dockerfile`, `.dockerignore` |
+| **CI build & push** | On relevant `main` changes: checkout → Docker login → Buildx → push with GHA cache | `.github/workflows/docker-publish.yml` |
+| **Cloud run** | Two Code Engine apps, ports 8000 / 4173, min-scale 0 (free tier) / 1 on pitch day | [DEPLOY_IBM.md](docs/deployment/DEPLOY_IBM.md) |
+| **Config as secrets** | API keys and origins via env (never committed) | `.env.example`, Code Engine env vars |
+| **Reproducible deps** | Locked Python deps (`uv.lock`) inside image (`uv sync --frozen`) | `pyproject.toml`, `uv.lock` |
+| **Health / smoke** | Live `GET /api/health` + creators/profile checks documented | Production status below |
+| **Quality gates** | `pytest` + `ruff` without live keys for local/CI-friendly checks | `tests/`, Tech stack |
+
+**Not claimed (honest scope):** no Kubernetes cluster, no Terraform/IaC monorepo, no multi-region mesh. The DevOps surface is the right size for a solo hackathon product: **Docker → Actions → registry → Code Engine**.
 
 ### Production status (live smoke)
 
@@ -216,6 +243,10 @@ curl -s https://vfs-api.2cfhg08pznl4.us-south.codeengine.appdomain.cloud/api/cre
 | UI | React 19 · Vite · TanStack Start · Tailwind 4 · shadcn/ui |
 | Media | yt-dlp · ffmpeg · captions-first speech · Whisper fallback · transcript clean/store |
 | Facts | Tavily |
+| **Containers** | **Docker** (API + web images) · `.dockerignore` · ffmpeg/nodejs in API image |
+| **CI/CD** | **GitHub Actions** · Docker Buildx · Docker Hub publish · build cache (GHA) |
+| **Cloud / ops** | **IBM Cloud Code Engine** · env secrets · health endpoints · cold-start aware min-scale |
+| Package mgmt | uv (`uv.lock`) · npm (frontend) |
 | Tests | pytest (no live keys) · ruff |
 
 ---
