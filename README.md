@@ -14,6 +14,7 @@ We do the opposite: **ffmpeg + Python measure real videos** (cuts/min, shot leng
 | **Challenge** | IBM AI Builders · July 2026 · *Reimagine Creative Industries with AI* |
 | **Hosting** | IBM Cloud Code Engine (us-south) |
 | **Repo** | [CostaJr007/viral-formula-studio](https://github.com/CostaJr007/viral-formula-studio) |
+| **Built by** | [Adeilson Costa Jr · LinkedIn](https://www.linkedin.com/in/adeilsoncostajr/) |
 
 ![Demo](demo.gif)
 
@@ -311,8 +312,9 @@ Product decisions and honesty rules remain human-owned.
 
 ## License
 
-© 2026 Costa Jr. All rights reserved.  
-Shared publicly for review as part of the **IBM AI Builders Challenge (July 2026)** — *Reimagine Creative Industries with AI*.
+© 2026 [Adeilson Costa Jr](https://www.linkedin.com/in/adeilsoncostajr/). All rights reserved.  
+Shared publicly for review as part of the **IBM AI Builders Challenge (July 2026)** — *Reimagine Creative Industries with AI*.  
+**Contact:** [linkedin.com/in/adeilsoncostajr](https://www.linkedin.com/in/adeilsoncostajr/)
 
 ---
 
